@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-upload"></i> 
+                        Upload Race Results
+                    </h3>
+                    <small>Upload CSV file with participant race times</small>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="fas fa-info-circle"></i> Upload Instructions</h5>
+                        <ul class="mb-0">
+                            <li>Select the event you're uploading results for</li>
+                            <li>Upload a CSV file with participant race results</li>
+                            <li><strong>Identify participants:</strong> Use either participant_id OR email</li>
+                            <li><strong>Time format:</strong> start_time and end_time columns required</li>
+                            <li>Supported time formats: HH:MM:SS (08:30:00), HH:MM (08:30)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Overwrite Confirmation -->
+                    {% if confirmation_needed %}
+                    <div class="alert alert-warning mb-4">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Confirmation Required</h5>
+                        <p><strong>{{ message }}</strong></p>
+                        
+                        {% if existing_summary %}
+                        <div class="mt-3">
+                            <h6>Current Results Summary:</h6>
+                            <ul>
+                                <li><strong>Total Results:</strong> {{ existing_summary['total_results'] }}</li>
+                                <li><strong>Earliest Start:</strong> {{ existing_summary['earliest_start'].strftime('%H:%M:%S') if existing_summary['earliest_start'] else 'N/A' }}</li>
+                                <li><strong>Latest Finish:</strong> {{ existing_summary['latest_finish'].strftime('%H:%M:%S') if existing_summary['latest_finish'] else 'N/A' }}</li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mt-3">
+                            <form method="POST" action="{{ url_for('results.confirm_overwrite') }}" class="d-inline">
+                                <input type="hidden" name="action" value="confirm">
+                                <button type="submit" class="btn btn-danger me-2">
+                                    <i class="fas fa-trash-alt"></i> Overwrite Existing Results
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('results.confirm_overwrite') }}" class="d-inline">
+                                <input type="hidden" name="action" value="cancel">
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel Upload
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Unregistered Participants Confirmation -->
+                    {% if unregistered_confirmation_needed and stats %}
+                    <div class="alert alert-warning mb-4">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Unregistered Participants Found</h5>
+                        <p>{{ message }}</p>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Upload Summary:</h6>
+                                <ul>
+                                    <li><strong>Total Rows:</strong> {{ stats.total_rows }}</li>
+                                    <li><strong>Valid Results:</strong> {{ stats.valid_rows }}</li>
+                                    <li><strong>Unregistered Participants:</strong> {{ stats.unregistered }}</li>
+                                    {% if stats.errors > 0 %}
+                                    <li><strong>Validation Errors:</strong> {{ stats.errors }}</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Unregistered Participants:</h6>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Row</th>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for participant in stats.unregistered_participants %}
+                                            <tr>
+                                                <td>{{ participant.row }}</td>
+                                                <td>{{ participant.name or 'Unknown' }}</td>
+                                                <td>{{ participant.email }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <p><strong>What would you like to do?</strong></p>
+                            <form method="POST" action="{{ url_for('results.confirm_unregistered') }}" class="d-inline">
+                                <input type="hidden" name="action" value="proceed_registered_only">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-check"></i> Upload Only Registered Participants ({{ stats.valid_rows }} results)
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('results.confirm_unregistered') }}" class="d-inline">
+                                <input type="hidden" name="action" value="proceed_include_all">
+                                <button type="submit" class="btn btn-warning me-2">
+                                    <i class="fas fa-exclamation-triangle"></i> Upload All Results ({{ stats.valid_rows + stats.unregistered }} total)
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('results.confirm_unregistered') }}" class="d-inline">
+                                <input type="hidden" name="action" value="cancel">
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel Upload
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Validation Errors Display -->
+                    {% if stats and stats.validation_errors %}
+                    <div class="alert alert-danger mb-4">
+                        <h5><i class="fas fa-exclamation-circle"></i> Validation Errors</h5>
+                        <p>The following errors were found in your CSV file. Please fix these issues and try again:</p>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Summary:</h6>
+                                <ul>
+                                    <li><strong>Total Rows:</strong> {{ stats.total_rows }}</li>
+                                    <li><strong>Valid Results:</strong> {{ stats.valid_rows }}</li>
+                                    <li><strong>Error Count:</strong> {{ stats.errors }}</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Detailed Errors:</h6>
+                                <div style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+                                    {% for error in stats.validation_errors %}
+                                    <div class="text-danger small mb-1">
+                                        <i class="fas fa-times-circle"></i> {{ error }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Upload Form -->
+                    {% if not confirmation_needed and not unregistered_confirmation_needed %}
+                    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                        <!-- Event Selection -->
+                        <div class="mb-4">
+                            <label for="event_id" class="form-label">
+                                <i class="fas fa-calendar-alt"></i> Select Event *
+                            </label>
+                            <select class="form-select" id="event_id" name="event_id" required>
+                                <option value="">Choose event...</option>
+                                {% for event in events %}
+                                <option value="{{ event['Event_ID'] }}" {% if selected_event and selected_event['Event_ID'] == event['Event_ID'] %}selected{% endif %}>
+                                    {{ event['Event_Name'] }} - {{ event['Event_Date'].strftime('%d/%m/%Y') }} 
+                                    ({{ event['Event_Location'] }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label for="results_file" class="form-label">
+                                <i class="fas fa-file-csv"></i> Results CSV File *
+                            </label>
+                            <input class="form-control" type="file" id="results_file" name="results_file" 
+                                   accept=".csv" required>
+                            <div class="form-text">
+                                Maximum file size: 10MB. Only CSV files are accepted.
+                            </div>
+                        </div>
+
+                        <!-- CSV Format Examples -->
+                        <div class="mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-file-alt"></i> CSV Format Examples
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-8 mx-auto">
+                                            <h6>CSV Format: Mixed Participant Identification</h6>
+                                            <pre class="bg-light p-2 small"><code>participant_id,email,start_time,end_time
+1,,08:30:00,08:55:30
+,jane@email.com,08:31:00,08:59:45
+3,,08:32:00,09:04:15
+,bob@email.com,08:33:00,09:07:20</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <div class="alert alert-success small mb-2">
+                                            <strong><i class="fas fa-lightbulb"></i> Tips:</strong>
+                                            <ul class="mb-0 mt-1">
+                                                <li>You can mix participant IDs and emails in the same CSV file</li>
+                                                <li>Leave the unused column empty (participant_id OR email)</li>
+                                                <li>Start time: When the participant began the race</li>
+                                                <li>End time: When the participant finished the race</li>
+                                                <li>Race time will be automatically calculated</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('results.public_results') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Results
+                            </a>
+                            <button type="submit" class="btn btn-success" id="submitBtn">
+                                <i class="fas fa-upload"></i> Upload Results
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-secondary">
+                        <p class="mb-0">Please confirm your action above before uploading new results.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>Processing Upload...</h5>
+                <p class="text-muted mb-0">Please wait while we process your CSV file.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadModal = new bootstrap.Modal(document.getElementById('uploadModal'));
+    
+    form.addEventListener('submit', function(e) {
+        // Basic validation
+        const eventId = document.getElementById('event_id').value;
+        const resultsFile = document.getElementById('results_file').files[0];
+        
+        if (!eventId) {
+            e.preventDefault();
+            alert('Please select an event.');
+            return;
+        }
+        
+        if (!resultsFile) {
+            e.preventDefault();
+            alert('Please select a CSV file.');
+            return;
+        }
+        
+        // Check file type
+        if (!resultsFile.name.toLowerCase().endsWith('.csv')) {
+            e.preventDefault();
+            alert('Please select a valid CSV file.');
+            return;
+        }
+        
+        // Check file size (10MB)
+        if (resultsFile.size > 10 * 1024 * 1024) {
+            e.preventDefault();
+            alert('File size must be less than 10MB.');
+            return;
+        }
+        
+        // Show progress modal
+        submitBtn.disabled = true;
+        uploadModal.show();
+    });
+    
+    // Handle file input change
+    document.getElementById('results_file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            console.log(`Selected file: ${file.name} (${fileSize} MB)`);
+        }
+    });
+});
+</script>
+
+<!-- Add FontAwesome if not already included -->
+{% if not config.get('FONTAWESOME_INCLUDED') %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endif %}
+
+{% endblock %}

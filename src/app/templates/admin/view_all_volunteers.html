@@ -1,0 +1,157 @@
+{%extends 'base.html'%} {%block content %}
+<div class="container py-5">
+  <!-- back button -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('admin.admin_dashboard') }}"
+      class="btn btn-outline-light rounded-3"
+    >
+      <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+  </div>
+  <div class="text-center mb-4">
+    <h1 class="fw-bold text-white">
+      </i>Upcoming Volunteer Roles
+    </h1>
+    <p class="text-light">Monitor upcoming events' volunteers</p>
+  </div>
+  <div class="container py-4">
+    <!-- Search -->
+    <form
+      method="get"
+      action="{{ url_for('admin.view_all_volunteers') }}"
+      class="row g-2 mb-5 align-items-center"
+    >
+      <!-- search by user name -->
+      <div class="col-md-3 col-sm-6">
+        <input
+          type="text"
+          name="role_name"
+          value="{{ filters.role_name or '' }}"
+          class="form-control"
+          placeholder="Role name"
+        />
+      </div>
+      <!-- search by user role -->
+      <div class="col-md-3 col-sm-6">
+        <input
+          type="text"
+          name="event_name"
+          value="{{ filters.event_name or '' }}"
+          class="form-control"
+          placeholder="Event name"
+        />
+      </div>
+      <!-- search by status -->
+      <div class="col-md-3 col-sm-6">
+        <input
+          type="text"
+          name="location"
+          value="{{ filters.location or '' }}"
+          class="form-control"
+          placeholder="Location"
+        />
+      </div>
+      <!-- search button -->
+      <div class="col-md-1 col-sm-6 d-grid">
+        <button type="submit" class="btn btn-primary d-flex align-items-center">
+          <i class="bi bi-search me-1"></i> search
+        </button>
+      </div>
+
+      <!--clear button -->
+      <div class="col-md-1 col-sm-6 d-grid">
+        <a
+          href="{{url_for('admin.view_all_volunteers')}}"
+          class="btn btn-light"
+        >
+          <i class="bi bi-x-lg me-1"></i> clear
+        </a>
+      </div>
+    </form>
+    {% if volunteers %}
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover align-middle">
+        <thead class="table-primary">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Role Name</th>
+            <th scope="col">Event Name</th>
+            <th scope="col">Date</th>
+            <th scope="col">Location</th>
+            <th scope="col">Volunteers Assigned</th>
+            <th scope="col">Max Volunteers</th>
+            <th scope="col">Max Participants</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in volunteers %}
+          <tr>
+            <td class="fw-bold">{{loop.index}}</td>
+            <td>{{ v.volunteer_role_name }}</td>
+            <td>{{ v.event_name }}</td>
+            <td>
+              {{ v.event_datetime.strftime(DateFormat.NZ_NUMERIC.value) }}
+            </td>
+            <td>{{ v.event_location }}</td>
+            <td>{{ v.volunteer_count }}</td>
+            <td>{{ volunteer_required }}</td>
+            <td>{{ v.event_max_participants }}</td>
+            <td>
+              <form
+                method="POST"
+                action="{{ url_for('admin.delete_volunteer_role',event_id=v['event_id'], role_id=v['volunteer_role_id']) }}"
+                class="d-inline"
+              >
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-link p-0 text-danger"
+                >
+                  <i class="bi bi-trash fs-5"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <!-- pagination -->
+      <nav>
+        <ul class="pagination justify-content-center">
+          {% if page > 1 %}
+          <li class="page-item">
+            <a
+              class="page-link"
+              href="?page={{ page-1 }}&role_name={{ filters.role_name or '' }}&event_name={{ filters.event_name or '' }}&location={{ filters.location or '' }}"
+              >&lt;</a
+            >
+          </li>
+          {% endif %} {% for p in range(1, total_pages + 1) %}
+          <li class="page-item {% if p == page %}active{% endif %}">
+            <a
+              class="page-link {% if p == page %}text-white bg-primary{% endif %}"
+              href="?page={{ p }}&role_name={{ filters.role_name or '' }}&event_name={{ filters.event_name or '' }}&location={{ filters.location or '' }}"
+              >{{ p }}</a
+            >
+          </li>
+          {% endfor %} {% if page < total_pages %}
+          <li class="page-item">
+            <a
+              class="page-link"
+              href="?page={{ page+1 }}&role_name={{ filters.role_name or '' }}&event_name={{ filters.event_name or '' }}&location={{ filters.location or '' }}"
+              >&gt;</a
+            >
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+      No upcoming volunteer roles found.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{%endblock%}

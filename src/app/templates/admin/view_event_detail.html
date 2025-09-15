@@ -1,0 +1,232 @@
+{% extends "base.html" %} {% block content %}
+<div class="container py-5">
+  <!-- Back Button -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('admin.view_events') }}"
+      class="btn btn-outline-light rounded-3"
+    >
+      <i class="bi bi-arrow-left me-2"></i>Back to Events
+    </a>
+  </div>
+  <!-- Event Header -->
+  <div class="card shadow-lg border-0 rounded-4 mb-4">
+    <!-- Header -->
+    <div class="bg-primary py-4 text-center">
+      <h1 class="fw-bold text-white mb-3">{{ event.name }}</h1>
+      <div class="row g-3 justify-content-center text-white">
+        <div class="col-md-4 col-sm-6">
+          <span class="fw-semibold">
+            <i class="bi bi-calendar3 me-2"></i> Date:
+          </span>
+          {{ event.datetime.strftime(DateFormat.NZ_NUMERIC.value) }}
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <span class="fw-semibold">
+            <i class="bi bi-clock me-2"></i> Time:
+          </span>
+          {{ event.datetime.strftime('%I:%M %p') if event.datetime else 'Time
+          TBD' }}
+        </div>
+        <div class="col-md-4 col-sm-12">
+          <span class="fw-semibold">
+            <i class="bi bi-geo-alt-fill me-2"></i> Location:
+          </span>
+          {{ event.town }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="card-body p-4">
+      {% if event.description %}
+      <p class="lead text-muted text-center text-md-start">
+        {{ event.description }}
+      </p>
+      {% else %}
+      <p class="text-muted fst-italic text-center">No description available.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Statistics Overview -->
+  <div class="row g-4 mb-5 text-center">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="mb-3">
+            <i class="bi bi-people-fill text-primary fs-1"></i>
+          </div>
+          <h3 class="fw-bold text-primary">{{ event_register_user_count }}</h3>
+          <p class="text-muted mb-0">Total Participants</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="mb-3">
+            <i class="bi bi-person-check-fill text-success fs-1"></i>
+          </div>
+          <h3 class="fw-bold text-success">{{ volunteer_total_amount }}</h3>
+          <p class="text-muted mb-0">Registered Volunteers</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="mb-3">
+            <i class="bi bi-hourglass-split text-warning fs-1"></i>
+          </div>
+          <h3 class="fw-bold text-warning">
+            {% if event.datetime %} {% set today = namespace(value=namespace())
+            %} {% set today.value = cycler(datetime.utcnow()) %} {% set
+            remaining = (event.datetime - datetime.utcnow()).days %} {% if
+            remaining >= 0 %} {{ remaining }} day{{ 's' if remaining != 1 else
+            '' }} {% else %} Event started {% endif %} {% else %} TBD {% endif
+            %}
+          </h3>
+          <p class="text-muted mb-0">Day Remaining</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Volunteer Roles Table -->
+    <div class="row g-4">
+      <div class="col-12">
+        <div class="card shadow-lg border-0 rounded-4 mb-5">
+          <div class="bg-primary py-3">
+            <h4 class="mb-0 fw-bold text-white">
+              <i class="bi bi-person-gear me-2"></i>
+              Registered Volunteer Details
+            </h4>
+          </div>
+          <div class="card-body p-0">
+            {% if volunteer_roles %}
+            <div class="overflow-auto">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 15%">Role</th>
+                    <th class="text-center" style="width: 10%">Max</th>
+                    <th class="text-center" style="width: 10%">Assigned</th>
+                    <th class="text-center" style="width: 10%">Remaining</th>
+                    <th class="text-center" style="width: 45%">Description</th>
+                    <th class="text-center" style="width: 10%">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for role in volunteer_roles %}
+                  <tr>
+                    <td class="fw-semibold">{{ role.name }}</td>
+                    <td class="text-center">
+                      <span class="badge bg-secondary fs-6 px-3 py-2">50</span>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge bg-info fs-6 px-3 py-2"
+                        >{{ role.spots }}</span
+                      >
+                    </td>
+                    <td class="text-center">{{ 50 - role.spots }}</td>
+                    <td class="text-center" style="max-width: 200px">
+                      <div class="text-wrap" style="word-break: break-word">
+                        {{ role.description }}
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <a
+                        href="{{ url_for('admin.manage_volunteer_roles', event_id=event.id) }}"
+                        class="btn btn-link text-primary"
+                      >
+                        <i class="bi bi-pencil-square fs-5"></i>
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+              <i class="bi bi-person-x display-6 mb-3"></i>
+              <p>No volunteer roles defined for this event.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Participants  -->
+    <div class="row g-4">
+      <div class="col-12">
+        <div class="card shadow border-0 rounded-4 h-100">
+          <div class="bg-primary text-white py-3">
+            <h5 class="mb-0 fw-bold">
+              <i class="bi bi-people me-2"></i>Registered Participants
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            {% if participants %}
+            <div
+              class="table-responsive"
+              style="max-height: 400px; overflow: auto"
+            >
+              <table class="table table-hover table-striped mb-0 align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Town</th>
+                    <th>Role</th>
+                    <th>status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for participant in participants %}
+                  <tr>
+                    <td>
+                      {{ participant.first_name }} {{ participant.last_name }}
+                    </td>
+                    <td>{{ participant.email }}</td>
+                    <td>{{ participant.town }}</td>
+                    <td>{{ participant.role }}</td>
+                    <td>{{ participant.status }}</td>
+                    <td>
+                      <form
+                        method="post"
+                        action="{{ url_for('admin.set_user_status', user_id=participant.participant_id, event_id=event.id, status='registered' if participant.status=='cancelled' else 'cancelled') }}"
+                        style="display: inline;"
+                      >
+                        <button
+                          type="submit"
+                          class="btn btn-sm {% if participant.status == 'registered' %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                        >
+                          {% if participant.status == 'registered' %}
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                          {% else %}
+                            <i class="bi bi-check-circle me-1"></i>Register
+                          {% endif %}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+              <i class="bi bi-person-x display-6 mb-3"></i>
+              <p>No participants registered yet.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endblock %}
+</div>

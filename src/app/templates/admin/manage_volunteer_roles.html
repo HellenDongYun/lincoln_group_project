@@ -1,0 +1,136 @@
+{% extends "base.html" %} {%block content%}
+<div class="container py-5">
+
+<!-- back button -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('admin.view_event_details',event_id=event_id) }}"
+      class="btn btn-outline-light rounded-3"
+    >
+      <i class="bi bi-arrow-left me-2"></i>Back to Event Details
+    </a>
+  </div>
+  <!-- title -->
+  <div class="text-center mb-5">
+    <h1 class="fw-bold text-white">Manage Volunteer Roles</h1>
+    <p class="lead text-light mt-3">
+      <span class="badge bg-primary me-2 px-3 py-2">Event</span>
+      <span class="fw-bold text-decoration-underline">{{ event_name }}</span>
+    </p>
+  </div>
+  <!-- add or update roles -->
+  <div class="card shadow-lg border-0 rounded-4 mb-5">
+    <div class="card-body p-4">
+      <h4 class="mb-3 fw-semibold text-primary">
+        <i class="bi bi-person-plus-fill me-2"></i> Add / Update Volunteer Role
+      </h4>
+      <form method="POST" class="row g-4">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Select Role</label>
+          <select class="form-select shadow-sm" name="role_id">
+            <option value="">-- Choose a Role --</option>
+            {% for volunteer_role in volunteer_roles %}
+            <option value="{{ volunteer_role['id'] }}"
+             {% if form_data.role_id is defined and form_data.role_id == volunteer_role['id']|string %}
+                selected
+            {% endif %}>
+              {{ volunteer_role.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Volunteers Required</label>
+          <input type="number" class="form-control shadow-sm" name="spots" value="{{ form_data.spots if form_data.spots is defined else '' }}"/>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-success w-100 fw-bold">
+            <i class="bi bi-check2-circle me-1"></i> Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- The currently assigned role -->
+  <div class="card shadow-lg border-0 rounded-4">
+    <div class="card-body p-4">
+      <h4 class="fw-semibold text-success mb-3">
+        <i class="bi bi-people-fill me-2"></i> Assigned Volunteer Roles
+      </h4>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle text-center">
+          <thead class="table-light">
+            <tr>
+              <th>Role</th>
+              <th>Spots Required</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for assigned_role in assigned_roles %}
+            <tr>
+              <td class="fw-semibold">{{ assigned_role.name }}</td>
+              <td>
+                <span class="badge bg-info text-dark fs-6 px-3 py-2">
+                  {{ assigned_role.spots }}
+                </span>
+              </td>
+              <td>
+                <form method="POST" style="display: inline">
+                  <input
+                    type="hidden"
+                    name="role_id"
+                    value="{{ assigned_role.role_id }}"
+                  />
+                  <input type="hidden" name="remove_role" value="1" />
+                  <button
+                    type="submit"
+                    class="btn btn-link text-danger btn-sm"
+                    onclick="return confirm('Are you sure you want to remove this volunteer role?');"
+                  >
+                    <i class="bi bi-trash-fill fs-5 me-1"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+
+            {% else %}
+            <tr>
+              <td colspan="2" class="text-muted">No roles assigned yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- <style>
+  .btn-gradient {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+    border: none;
+    color: #fff;
+    transition: 0.3s ease-in-out;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .btn-gradient:hover {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    transform: scale(1.05);
+  }
+
+  .table-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+
+  .bg-badge {
+    background: #e0d4f7;
+    color: #4b2c72;
+  }
+  .bg-gradient {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+</style> -->
+{%endblock%}

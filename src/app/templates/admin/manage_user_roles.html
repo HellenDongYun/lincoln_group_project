@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block title %}ActiveLoop - Manage User Roles{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+
+  <!-- back button -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('admin.admin_dashboard') }}"
+      class="btn btn-outline-light rounded-3"
+    >
+      <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+  </div>
+  <div class="text-center mb-4">
+    <h1 class="fw-bold text-white">
+      User Role Management
+    </h1>
+    <p class="text-light">Manage user roles and permissions across the system</p>
+  </div>
+  <div class="container py-4">
+
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.manage_user_roles') }}" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search_name" class="form-label">Search by Name</label>
+                            <input type="text" 
+                                   id="search_name"
+                                   name="search_name" 
+                                   class="form-control" 
+                                   placeholder="Enter first or last name..."
+                                   value="{{ search_name }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search_role" class="form-label">Filter by Role</label>
+                            <select id="search_role" name="search_role" class="form-select">
+                                <option value="">All Roles</option>
+                                <option value="participant" {% if search_role == 'participant' %}selected{% endif %}>Participant</option>
+                                <option value="volunteer" {% if search_role == 'volunteer' %}selected{% endif %}>Volunteer</option>
+                                <option value="admin" {% if search_role == 'admin' %}selected{% endif %}>Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Search
+                            </button>
+                            <a href="{{ url_for('admin.manage_user_roles') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Clear
+                            </a>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <small class="text-muted">
+                                {{ total_count }} total users
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" width="5%">#</th>
+                                    <th scope="col" width="20%">Name</th>
+                                    <th scope="col" width="20%">Email</th>
+                                    <th scope="col" width="12%">Town</th>
+                                    <th scope="col" width="12%">Current Role</th>
+                                    <th scope="col" width="10%">Status</th>
+                                    <th scope="col" width="12%">Change Role</th>
+                                    <th scope="col" width="9%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr id="user-row-{{ user.id }}">
+                                    <td class="fw-bold text-muted">
+                                        {{ (page - 1) * per_page + loop.index }}
+                                    </td>
+                                    <td>
+
+                                                <div class="fw-semibold">{{ user.full_name }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">{{ user.email }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ user.town or 'N/A' }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if user.role == 'admin' %}bg-danger
+                                            {% elif user.role == 'volunteer' %}bg-info
+                                            {% else %}bg-success{% endif %}" 
+                                              id="role-badge-{{ user.id }}">
+                                            {{ user.role.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if user.status == 'active' %}bg-success
+                                            {% else %}bg-danger{% endif %}" 
+                                              id="status-badge-{{ user.id }}">
+                                            {{ user.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                    type="button" 
+                                                    id="roleDropdown{{ user.id }}" 
+                                                    data-bs-toggle="dropdown" 
+                                                    aria-expanded="false">
+                                                </i>Change Role
+                                            </button>
+                                            <ul class="dropdown-menu" aria-labelledby="roleDropdown{{ user.id }}">
+                                                {% for role in ['participant', 'volunteer', 'admin'] %}
+                                                    {% if role != user.role %}
+                                                    <li>
+                                                        <a class="dropdown-item role-change-btn" 
+                                                           href="#" 
+                                                           data-user-id="{{ user.id }}" 
+                                                           data-user-name="{{ user.full_name }}" 
+                                                           data-new-role="{{ role }}"
+                                                           data-current-role="{{ user.role }}">
+                                                            <i class="fas fa-arrow-right me-2"></i>
+                                                            Change to {{ role.title() }}
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm 
+                                            {% if user.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %} 
+                                            status-toggle-btn" 
+                                                data-user-id="{{ user.id }}" 
+                                                data-user-name="{{ user.full_name }}" 
+                                                data-current-status="{{ user.status }}"
+                                                id="status-btn-{{ user.id }}">
+                                            {% if user.status == 'active' %}
+                                                </i>Deactivate
+                                            {% else %}
+                                                </i>Activate
+                                            {% endif %}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if total_pages > 1 %}
+                    <nav aria-label="User pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.manage_user_roles', page=page-1, search_name=search_name, search_role=search_role) }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            
+                            {% for p in range(1, total_pages + 1) %}
+                                {% if p == page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                                {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.manage_user_roles', page=p, search_name=search_name, search_role=search_role) }}">{{ p }}</a>
+                                </li>
+                                {% elif p == page - 3 or p == page + 3 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.manage_user_roles', page=page+1, search_name=search_name, search_role=search_role) }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No users found</h5>
+                        <p class="text-muted">Try adjusting your search criteria</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="roleChangeModal" tabindex="-1" aria-labelledby="roleChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="roleChangeModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirm Role Change
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to change <strong id="modal-user-name"></strong>'s role from 
+                   <span class="badge bg-secondary" id="modal-current-role"></span> to 
+                   <span class="badge bg-primary" id="modal-new-role"></span>?
+                </p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> This change will take effect immediately and may affect the user's access to certain features.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-role-change">
+                    <i class="fas fa-check me-2"></i>Confirm Change
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Change Confirmation Modal -->
+<div class="modal fade" id="statusChangeModal" tabindex="-1" aria-labelledby="statusChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusChangeModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirm Status Change
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to <strong id="modal-status-action"></strong> <strong id="modal-status-user-name"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> <span id="modal-status-warning"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-status-change">
+                    <i class="fas fa-check me-2"></i>Confirm Change
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner Overlay -->
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
+    <div class="d-flex justify-content-center align-items-center h-100">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentUserId = null;
+    let currentNewRole = null;
+    let currentNewStatus = null;
+    
+    // Handle role change button clicks
+    document.querySelectorAll('.role-change-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            currentUserId = this.dataset.userId;
+            currentNewRole = this.dataset.newRole;
+            const userName = this.dataset.userName;
+            const currentRole = this.dataset.currentRole;
+            
+            // Update modal content
+            document.getElementById('modal-user-name').textContent = userName;
+            document.getElementById('modal-current-role').textContent = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
+            document.getElementById('modal-new-role').textContent = currentNewRole.charAt(0).toUpperCase() + currentNewRole.slice(1);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('roleChangeModal'));
+            modal.show();
+        });
+    });
+    
+    // Handle status toggle button clicks
+    document.querySelectorAll('.status-toggle-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            currentUserId = this.dataset.userId;
+            const userName = this.dataset.userName;
+            const currentStatus = this.dataset.currentStatus;
+            currentNewStatus = currentStatus === 'active' ? 'inactive' : 'active';
+            
+            // Update modal content
+            const action = currentNewStatus === 'active' ? 'activate' : 'deactivate';
+            const warning = currentNewStatus === 'active' ? 
+                'This user will be able to log in and access the system again.' : 
+                'This user will be unable to log in or access the system.';
+            
+            document.getElementById('modal-status-action').textContent = action;
+            document.getElementById('modal-status-user-name').textContent = userName;
+            document.getElementById('modal-status-warning').textContent = warning;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('statusChangeModal'));
+            modal.show();
+        });
+    });
+    
+    // Handle role change confirmation
+    document.getElementById('confirm-role-change').addEventListener('click', function() {
+        if (currentUserId && currentNewRole) {
+            updateUserRole(currentUserId, currentNewRole);
+        }
+    });
+    
+    // Handle status change confirmation
+    document.getElementById('confirm-status-change').addEventListener('click', function() {
+        if (currentUserId && currentNewStatus) {
+            updateUserStatus(currentUserId, currentNewStatus);
+        }
+    });
+    
+    function updateUserRole(userId, newRole) {
+        // Show loading overlay
+        document.getElementById('loading-overlay').style.display = 'block';
+        
+        // Hide modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('roleChangeModal'));
+        modal.hide();
+        
+        // Make AJAX request
+        fetch(`{{ url_for('admin.update_user_role_ajax', user_id=0) }}`.replace('0', userId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `new_role=${newRole}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hide loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+            
+            if (data.success) {
+                // Update the badge in the table
+                const badge = document.getElementById(`role-badge-${userId}`);
+                if (badge) {
+                    badge.textContent = newRole.charAt(0).toUpperCase() + newRole.slice(1);
+                    badge.className = `badge ${getRoleBadgeClass(newRole)}`;
+                }
+                
+                // Update the dropdown options
+                updateDropdownOptions(userId, newRole);
+                
+                // Show success message
+                showAlert('success', data.message);
+            } else {
+                showAlert('danger', data.message || 'Failed to update user role');
+            }
+        })
+        .catch(error => {
+            // Hide loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+            showAlert('danger', 'An error occurred while updating the user role');
+            console.error('Error:', error);
+        });
+    }
+    
+    function updateUserStatus(userId, newStatus) {
+        // Show loading overlay
+        document.getElementById('loading-overlay').style.display = 'block';
+        
+        // Hide modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('statusChangeModal'));
+        modal.hide();
+        
+        // Make AJAX request
+        fetch(`{{ url_for('admin.update_user_status_ajax', user_id=0) }}`.replace('0', userId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `new_status=${newStatus}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hide loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+            
+            if (data.success) {
+                // Update the status badge in the table
+                const statusBadge = document.getElementById(`status-badge-${userId}`);
+                if (statusBadge) {
+                    statusBadge.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                    statusBadge.className = `badge ${getStatusBadgeClass(newStatus)}`;
+                }
+                
+                // Update the status button
+                const statusBtn = document.getElementById(`status-btn-${userId}`);
+                if (statusBtn) {
+                    statusBtn.dataset.currentStatus = newStatus;
+                    if (newStatus === 'active') {
+                        statusBtn.className = 'btn btn-sm btn-outline-danger status-toggle-btn';
+                        statusBtn.innerHTML = '<i class="fas fa-ban me-1"></i>Deactivate';
+                    } else {
+                        statusBtn.className = 'btn btn-sm btn-outline-success status-toggle-btn';
+                        statusBtn.innerHTML = '<i class="fas fa-check me-1"></i>Activate';
+                    }
+                }
+                
+                // Re-attach event listener to the updated button
+                statusBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    currentUserId = this.dataset.userId;
+                    const userName = this.dataset.userName;
+                    const currentStatus = this.dataset.currentStatus;
+                    currentNewStatus = currentStatus === 'active' ? 'inactive' : 'active';
+                    
+                    const action = currentNewStatus === 'active' ? 'activate' : 'deactivate';
+                    const warning = currentNewStatus === 'active' ? 
+                        'This user will be able to log in and access the system again.' : 
+                        'This user will be unable to log in or access the system.';
+                    
+                    document.getElementById('modal-status-action').textContent = action;
+                    document.getElementById('modal-status-user-name').textContent = userName;
+                    document.getElementById('modal-status-warning').textContent = warning;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('statusChangeModal'));
+                    modal.show();
+                });
+                
+                // Show success message
+                showAlert('success', data.message);
+            } else {
+                showAlert('danger', data.message || 'Failed to update user status');
+            }
+        })
+        .catch(error => {
+            // Hide loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+            showAlert('danger', 'An error occurred while updating the user status');
+            console.error('Error:', error);
+        });
+    }
+    
+    function getRoleBadgeClass(role) {
+        switch(role) {
+            case 'admin': return 'bg-danger';
+            case 'volunteer': return 'bg-info';
+            case 'participant': return 'bg-success';
+            default: return 'bg-secondary';
+        }
+    }
+    
+    function getStatusBadgeClass(status) {
+        switch(status) {
+            case 'active': return 'bg-success';
+            case 'inactive': return 'bg-danger';
+            default: return 'bg-secondary';
+        }
+    }
+    
+    function updateDropdownOptions(userId, newRole) {
+        const dropdown = document.querySelector(`#roleDropdown${userId}`).parentNode.querySelector('.dropdown-menu');
+        const allRoles = ['participant', 'volunteer', 'admin'];
+        
+        // Clear current options
+        dropdown.innerHTML = '';
+        
+        // Add new options (excluding current role)
+        allRoles.forEach(role => {
+            if (role !== newRole) {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a class="dropdown-item role-change-btn" 
+                       href="#" 
+                       data-user-id="${userId}" 
+                       data-user-name="${document.querySelector(`#user-row-${userId} .fw-semibold`).textContent}" 
+                       data-new-role="${role}"
+                       data-current-role="${newRole}">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        Change to ${role.charAt(0).toUpperCase() + role.slice(1)}
+                    </a>
+                `;
+                dropdown.appendChild(li);
+                
+                // Re-attach event listener
+                li.querySelector('.role-change-btn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    currentUserId = this.dataset.userId;
+                    currentNewRole = this.dataset.newRole;
+                    const userName = this.dataset.userName;
+                    const currentRole = this.dataset.currentRole;
+                    
+                    document.getElementById('modal-user-name').textContent = userName;
+                    document.getElementById('modal-current-role').textContent = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
+                    document.getElementById('modal-new-role').textContent = currentNewRole.charAt(0).toUpperCase() + currentNewRole.slice(1);
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('roleChangeModal'));
+                    modal.show();
+                });
+            }
+        });
+    }
+    
+    function showAlert(type, message) {
+        // Create alert element
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // Insert at top of container
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{%extends 'base.html'%} {%block content%}
+
+<!-- title -->
+<div class="container py-5">
+  <!-- Back Button -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('admin.admin_dashboard') }}"
+      class="btn btn-outline-light rounded-3"
+    >
+      <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+  </div>
+  <div class="text-center mb-4">
+    <h1 class="fw-bold text-white">
+      <i class="bi bi-calendar-event me-2"></i>Event Results Overview
+    </h1>
+    <p class="text-light">
+      Review scores, rankings, and performance across all competitions
+    </p>
+  </div>
+</div>
+<!-- body -->
+<div class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+      <div class="card p-4 rounded-3 shadow">
+        <!-- <h2 class="card-title text-center mb-4 fw-bold text-primary">
+          Race Results Overview
+        </h2> -->
+        <!-- <hr /> -->
+        <div class="table-responsive mt-4 rounded-2">
+          <table class="table table-hover table-striped align-middle">
+            <thead class="bg-light">
+              <tr>
+                <th scope="col" class="text-center fw-semibold text-dark">#</th>
+
+                <th scope="col" class="fw-semibold text-dark">
+                  Participant Name
+                </th>
+                <th scope="col" class="fw-semibold text-dark">Event Name</th>
+                <th scope="col" class="fw-semibold text-dark">Location</th>
+                <th scope="col" class="fw-semibold text-dark">Date</th>
+                <th scope="col" class="text-end fw-semibold text-dark">
+                  Total Seconds
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if results %} {% for result in results %}
+              <tr>
+                <th scope="row" class="text-center">{{ loop.index }}</th>
+                <td>{{ result.full_name }}</td>
+                <td>{{ result.event_name }}</td>
+                <td>{{ result.event_location }}</td>
+                <td>
+                  {{ result.event_time.strftime(DateFormat.NZ_NUMERIC.value) if
+                  result.event_time else 'N/A' }}
+                </td>
+                <td class="text-end">{{ result.total_seconds }}</td>
+              </tr>
+              {% endfor %} {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                  No race results available yet.
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+        <!-- <div class="d-flex justify-content-center mt-4">
+          <a href="#" class="btn btn-primary px-4 py-2 rounded-2"
+            >View More Results</a
+          >
+          {# rounded-2 for consistency #}
+        </div> -->
+      </div>
+    </div>
+  </div>
+</div>
+{%endblock%}

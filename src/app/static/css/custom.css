@@ -1,0 +1,55 @@
+:root {
+    --primary-color: #768cef;
+    --secondary-color: #454097;
+    --accent-color: #4895ef;
+    --success-color: #4cc9f0;
+    --soft-white: rgba(255, 255, 255, 0.92);
+    --blue-gradient: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    background: rgb(168, 170, 205);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    /*main {
+        flex: 1;
+    }*/
+
+    .btn {
+        border-radius: 0;
+    }
+
+    .bg-blue-gradient {
+        background: var(--blue-gradient);
+    }
+
+    .text-amber {
+        color: #FFBF00;
+    }
+
+    .text-white {
+        color: white;
+    }
+
+    .text-bordered {
+        color: black;
+        -webkit-text-stroke: 0.5px white;
+    }
+}
+
+.card {
+    background: var(--soft-white);
+    border: none;
+    box-shadow: 0 15px 35px rgba(54, 54, 99, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
+}
+
+.card-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 1em;
+    text-align: center;
+}

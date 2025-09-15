@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                Volunteer Dashboard
+            </h1>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4 class="text-primary">{{ available_opportunities|length }}</h4>
+                            <p class="text-muted mb-0">Available Opportunities</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-success">{{ my_volunteer_roles|length }}</h4>
+                            <p class="text-muted mb-0">My Upcoming Roles</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-warning">{{ past_volunteer_roles|length }}</h4>
+                            <p class="text-muted mb-0">Completed Activities</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-info">
+                                {% set total_spots = available_opportunities | sum(attribute='Available_Spots') %}
+                                {{ total_spots }}
+                            </h4>
+                            <p class="text-muted mb-0">Total Available Spots</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Available Volunteer Opportunities -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                Available Volunteer Opportunities
+                            </h5>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-0">
+                                    <i class="fas fa-search text-muted"></i>
+                                </span>
+                                <input type="text" id="searchEvents" class="form-control border-0" 
+                                       placeholder="Search events, locations, or roles...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if available_opportunities %}
+                        <!-- Filter Controls -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="eventFilter" class="form-label small">Event:</label>
+                                <select id="eventFilter" class="form-select form-select-sm">
+                                    <option value="">All Events</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="dateFilter" class="form-label small">Date:</label>
+                                <select id="dateFilter" class="form-select form-select-sm">
+                                    <option value="">All Dates</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="locationFilter" class="form-label small">Location:</label>
+                                <select id="locationFilter" class="form-select form-select-sm">
+                                    <option value="">All Locations</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="roleFilter" class="form-label small">Role:</label>
+                                <select id="roleFilter" class="form-select form-select-sm">
+                                    <option value="">All Roles</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label small">&nbsp;</label>
+                                <button id="clearFilters" class="btn btn-outline-secondary btn-sm d-block" title="Clear all filters">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table id="opportunitiesTable" class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                        <th>Location</th>
+                                        <th>Role</th>
+                                        <th>Available Spots</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for opportunity in available_opportunities %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ opportunity['Event_Name'] }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                {{ opportunity['Event_Date'].strftime('%d/%m/%Y') }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-map-marker-alt text-muted"></i>
+                                            {{ opportunity['Event_Location'] }}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                {{ opportunity['Role_Name'] }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">
+                                                {{ opportunity['Available_Spots'] }} available
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('volunteer.signup_for_role', event_id=opportunity['Event_ID'], role_id=opportunity['Role_ID']) }}" style="display: inline;">
+                                                <input type="hidden" name="volunteer_id" value="{{ volunteer_id }}">
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-plus"></i> Sign Up
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No volunteer opportunities available</h5>
+                            <p class="text-muted">Check back later for new opportunities!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- My Volunteer Roles -->
+        <div class="col-md-4">
+            <!-- My Upcoming Volunteer Roles -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        My Upcoming Volunteer Roles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if my_volunteer_roles %}
+                        {% for role in my_volunteer_roles %}
+                        <div class="card mb-3 border-success">
+                            <div class="card-body p-3">
+                                <h6 class="card-title text-success">
+                                    {{ role['Event_Name'] }}
+                                </h6>
+                                <p class="card-text small mb-2">
+                                    <strong>Date:</strong> {{ role['Event_Date'].strftime('%d/%m/%Y') }}<br>
+                                    <strong>Location:</strong> {{ role['Event_Location'] }}<br>
+                                    <strong>Role:</strong> 
+                                    <span class="badge bg-secondary">{{ role['Role_Name'] }}</span><br>
+                                    <strong>Signed up:</strong> {{ role['Signup_Date'].strftime('%d/%m/%Y') }}
+                                </p>
+                                <form method="POST" action="{{ url_for('volunteer.cancel_role', event_id=role['Event_ID'], role_id=role['Role_ID']) }}">
+                                    <input type="hidden" name="volunteer_id" value="{{ volunteer_id }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                            onclick="return confirm('Are you sure you want to cancel this volunteer role?')">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-clipboard-list fa-2x text-muted mb-3"></i>
+                            <h6 class="text-muted">No volunteer roles yet</h6>
+                            <p class="text-muted small">Sign up for opportunities to see them here!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- My Past Volunteer Records -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        My Past Volunteer Records
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if past_volunteer_roles %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                        <th>Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in past_volunteer_roles %}
+                                    <tr>
+                                        <td>
+                                            <strong class="small">{{ role['Event_Name'] }}</strong><br>
+                                            <small class="text-muted">{{ role['Event_Location'] }}</small>
+                                        </td>
+                                        <td class="small">{{ role['Event_Date'].strftime('%d/%m/%Y') }}</td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ role['Role_Name'] }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-history fa-2x text-muted mb-2"></i>
+                            <h6 class="text-muted small">No past volunteer records</h6>
+                            <p class="text-muted small">Your completed activities will appear here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add FontAwesome if not already included -->
+{% if not config.get('FONTAWESOME_INCLUDED') %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('#opportunitiesTable tbody');
+    const eventFilter = document.getElementById('eventFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const locationFilter = document.getElementById('locationFilter');
+    const roleFilter = document.getElementById('roleFilter');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const searchBox = document.getElementById('searchEvents');
+    
+    if (!table) return; // Exit if table doesn't exist (no opportunities)
+    
+    const rows = Array.from(table.querySelectorAll('tr'));
+    
+    // Populate filter options
+    function populateFilters() {
+        const events = new Set();
+        const dates = new Set();
+        const locations = new Set();
+        const roles = new Set();
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                events.add(cells[0].textContent.trim());
+                dates.add(cells[1].textContent.trim());
+                locations.add(cells[2].textContent.trim());
+                roles.add(cells[3].textContent.trim());
+            }
+        });
+        
+        // Sort and populate event filter
+        Array.from(events).sort().forEach(event => {
+            const option = document.createElement('option');
+            option.value = event;
+            option.textContent = event;
+            eventFilter.appendChild(option);
+        });
+        
+        // Sort and populate date filter (chronologically from nearest to future)
+        Array.from(dates).sort((a, b) => new Date(a) - new Date(b)).forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            dateFilter.appendChild(option);
+        });
+        
+        // Sort and populate location filter
+        Array.from(locations).sort().forEach(location => {
+            const option = document.createElement('option');
+            option.value = location;
+            option.textContent = location;
+            locationFilter.appendChild(option);
+        });
+        
+        // Sort and populate role filter
+        Array.from(roles).sort().forEach(role => {
+            const option = document.createElement('option');
+            option.value = role;
+            option.textContent = role;
+            roleFilter.appendChild(option);
+        });
+    }
+    
+    // Filter table rows
+    function filterTable() {
+        const eventValue = eventFilter.value;
+        const dateValue = dateFilter.value;
+        const locationValue = locationFilter.value;
+        const roleValue = roleFilter.value;
+        const searchValue = searchBox.value.toLowerCase();
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                const eventText = cells[0].textContent.trim();
+                const dateText = cells[1].textContent.trim();
+                const locationText = cells[2].textContent.trim();
+                const roleText = cells[3].textContent.trim();
+                
+                // Search functionality - check if search term appears in any column
+                const searchMatch = searchValue === '' || 
+                    eventText.toLowerCase().includes(searchValue) ||
+                    dateText.toLowerCase().includes(searchValue) ||
+                    locationText.toLowerCase().includes(searchValue) ||
+                    roleText.toLowerCase().includes(searchValue);
+                
+                // Filter functionality
+                const filterMatch = (
+                    (eventValue === '' || eventText.includes(eventValue)) &&
+                    (dateValue === '' || dateText.includes(dateValue)) &&
+                    (locationValue === '' || locationText.includes(locationValue)) &&
+                    (roleValue === '' || roleText.includes(roleValue))
+                );
+                
+                const showRow = searchMatch && filterMatch;
+                row.style.display = showRow ? '' : 'none';
+            }
+        });
+        
+        // Update visible count
+        const visibleRows = rows.filter(row => row.style.display !== 'none');
+        updateFilterSummary(visibleRows.length, rows.length);
+    }
+    
+    // Update filter summary
+    function updateFilterSummary(visible, total) {
+        let summaryElement = document.getElementById('filterSummary');
+        if (!summaryElement) {
+            summaryElement = document.createElement('div');
+            summaryElement.id = 'filterSummary';
+            summaryElement.className = 'text-muted small mb-2';
+            table.parentNode.insertBefore(summaryElement, table);
+        }
+        
+        if (visible === total) {
+            summaryElement.textContent = `Showing all ${total} opportunities`;
+        } else {
+            summaryElement.textContent = `Showing ${visible} of ${total} opportunities`;
+        }
+    }
+    
+    // Clear all filters
+    function clearAllFilters() {
+        eventFilter.value = '';
+        dateFilter.value = '';
+        locationFilter.value = '';
+        roleFilter.value = '';
+        searchBox.value = '';
+        filterTable();
+    }
+    
+    // Add event listeners
+    eventFilter.addEventListener('change', filterTable);
+    dateFilter.addEventListener('change', filterTable);
+    locationFilter.addEventListener('change', filterTable);
+    roleFilter.addEventListener('change', filterTable);
+    searchBox.addEventListener('input', filterTable);
+    clearFiltersBtn.addEventListener('click', clearAllFilters);
+    
+    // Initialize
+    populateFilters();
+    updateFilterSummary(rows.length, rows.length);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">   
+                Participant Dashboard
+            </h1>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4 class="text-primary">{{ upcoming_events|length }}</h4>
+                            <p class="text-muted mb-0">Upcoming Events</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-success">{{ my_registrations|length }}</h4>
+                            <p class="text-muted mb-0">My Registrations</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-info">{{ my_results|length }}</h4>
+                            <p class="text-muted mb-0">Completed Races</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-warning">
+                                {% if my_results %}
+                                    {% set best_position = my_results | min(attribute='Position') %}
+                                    {{ best_position.Position }}{% if best_position.Position == 1 %}st{% elif best_position.Position == 2 %}nd{% elif best_position.Position == 3 %}rd{% else %}th{% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </h4>
+                            <p class="text-muted mb-0">Best Position</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- My Registrations -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-check"></i> My Upcoming Events
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if my_registrations %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in my_registrations %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ event['Event_Name'] }}</strong><br>
+                                            <small class="text-muted">{{ event['Event_Type'] }}</small>
+                                        </td>
+                                        <td>
+                                            {{ event['Event_Date'].strftime('%d/%m/%Y') }}<br>
+                                            <small class="text-muted">{{ event['Event_Time'] }}</small>
+                                        </td>
+                                        <td>{{ event['Event_Location'] }}</td>
+                                        <td>
+                                            <span class="badge bg-success">{{ event['Registration_Status'].title() }}</span>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('participant.cancel_registration', encoded_participant_id=participant_id, event_id=event['Event_ID']) }}" style="display: inline;">
+                                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to cancel your registration for this event?')">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No upcoming events registered</h6>
+                            <p class="text-muted small">Register for events below to get started!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Events -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-plus"></i> Available Events
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_events %}
+                        <div class="row">
+                            {% for event in upcoming_events[:4] %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card border-light h-100">
+                                    <div class="card-body p-3">
+                                        <h6 class="card-title">{{ event['Event_Name'] }}</h6>
+                                        <p class="card-text small mb-2">
+                                            <strong>Date:</strong> {{ event['Event_Date'].strftime('%d/%m/%Y') }}<br>
+                                            <strong>Location:</strong> {{ event['Event_Location'] }}<br>
+                                            <strong>Type:</strong> {{ event['Event_Type'] }}<br>
+                                            <strong>Available:</strong> {{ event['Available_Spots'] }}/{{ event['Max_Participants'] }} spots
+                                        </p>
+                                        <form method="POST" action="{{ url_for('participant.register_for_event', encoded_participant_id=participant_id, event_id=event['Event_ID']) }}">
+                                            {% if event['Available_Spots'] > 0 %}
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-plus"></i> Register
+                                                </button>
+                                            {% else %}
+                                                <button type="button" class="btn btn-secondary btn-sm" disabled>
+                                                    <i class="fas fa-times"></i> Full
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if upcoming_events|length > 4 %}
+                        <div class="text-center">
+                            <a href="{{ url_for('app.get_events') }}" class="btn btn-outline-primary">
+                                </i> View All Events
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No upcoming events available</h6>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Race Results History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-trophy"></i> My Race Results
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if my_results %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                        <th>Location</th>
+                                        <th>Position</th>
+                                        <th>Start Time</th>
+                                        <th>Finish Time</th>
+                                        <th>Race Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for result in my_results %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ result['Event_Name'] }}</strong><br>
+                                            <small class="text-muted">{{ result['Event_Type'] }}</small>
+                                        </td>
+                                        <td>{{ result['Event_Date'].strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ result['Event_Location'] }}</td>
+                                        <td>
+                                            {% if result['Position'] == 1 %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-trophy"></i> 1st
+                                                </span>
+                                            {% elif result['Position'] == 2 %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-medal"></i> 2nd
+                                                </span>
+                                            {% elif result['Position'] == 3 %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-medal"></i> 3rd
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark">
+                                                    {{ result['Position'] }}/{{ result['Total_Participants'] }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ result['Start_Time'].strftime('%H:%M:%S') if result['Start_Time'] else 'N/A' }}</td>
+                                        <td>{{ result['End_Time'].strftime('%H:%M:%S') if result['End_Time'] else 'N/A' }}</td>
+                                        <td>
+                                            <strong class="text-primary">{{ result['Race_Time'] }}</strong>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-trophy fa-4x text-muted mb-4"></i>
+                            <h4 class="text-muted">No Race Results Yet</h4>
+                            <p class="text-muted">
+                                Once you complete your first race, your results will appear here.<br>
+                                Register for an upcoming event to get started!
+                            </p>
+                            <a href="{{ url_for('app.get_events') }}" class="btn btn-primary">
+                                <i class="fas fa-calendar-plus"></i> Browse Events
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

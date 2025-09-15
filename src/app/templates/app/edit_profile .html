@@ -1,0 +1,206 @@
+{% extends "base.html" %} {% block title %}Edit Profile{% endblock %} {% block
+content %}
+<div class="container mt-5">
+  <h2 class="mb-4"><i class="fas fa-user-cog"></i> Edit Profile</h2>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %} {% if
+  messages %}
+  <div class="mt-2">
+    {% for category, message in messages %}
+    <div
+      class="alert alert-{{ category }} alert-dismissible fade show"
+      role="alert"
+    >
+      {{ message }}
+      <button
+        type="button"
+        class="btn-close"
+        data-bs-dismiss="alert"
+        aria-label="Close"
+      ></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %} {% endwith %}
+
+  <form
+    method="POST"
+    action="{{ url_for('settings.update_settings') }}"
+    enctype="multipart/form-data"
+  >
+    <!-- Profile Picture Upload -->
+    <div class="mb-3">
+      <label for="profile_picture" class="form-label">Profile Picture</label
+      ><br />
+      {% if user.profile_picture %}
+      <img
+        src="{{ url_for('static', filename='uploads/' ~ user.profile_picture) }}"
+        alt="Profile Picture"
+        class="img-thumbnail mb-2"
+        style="max-width: 150px"
+      />
+      {% endif %}
+      <input
+        type="file"
+        name="profile_picture"
+        class="form-control"
+        id="profile_picture"
+        accept="image/*"
+      />
+      <small class="text-muted"
+        >Upload a new profile picture (JPG, PNG, GIF).</small
+      >
+    </div>
+
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input
+        type="text"
+        name="username"
+        class="form-control"
+        id="username"
+        value="{{ user.username }}"
+        required
+      />
+      {% if errors.username %}<small class="text-danger"
+        >{{ errors.username }}</small
+      >{% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label for="email" class="form-label">Email</label>
+      <input
+        type="email"
+        name="email"
+        class="form-control"
+        id="email"
+        value="{{ user.email }}"
+        required
+      />
+      {% if errors.email %}<small class="text-danger">{{ errors.email }}</small
+      >{% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label for="skills" class="form-label">Skills</label>
+      <textarea name="skills" class="form-control" id="skills" rows="2">
+{{ user.skills }}</textarea
+      >
+    </div>
+
+    <div class="mb-3">
+      <label for="bio" class="form-label">Bio</label>
+      <textarea name="bio" class="form-control" id="bio" rows="3">
+{{ user.bio }}</textarea
+      >
+    </div>
+
+    <hr />
+    <h4>Change Password</h4>
+    <div class="mb-3">
+      <label for="current_password" class="form-label">Current Password</label>
+      <input
+        type="password"
+        name="current_password"
+        class="form-control"
+        id="current_password"
+      />
+    </div>
+    <div class="mb-3">
+      <label for="new_password" class="form-label">New Password</label>
+      <input
+        type="password"
+        name="new_password"
+        class="form-control"
+        id="new_password"
+      />
+    </div>
+    <div class="mb-3">
+      <label for="confirm_password" class="form-label"
+        >Confirm New Password</label
+      >
+      <input
+        type="password"
+        name="confirm_password"
+        class="form-control"
+        id="confirm_password"
+      />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+    <a href="{{ dashboard_url }}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+
+<style>
+  body {
+    background: linear-gradient(135deg, #6b46c1 0%, #4c51bf 100%);
+    color: #2d3748;
+    min-height: 100vh;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+  }
+  .card {
+    background-color: #f7fafc;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  .card-header {
+    background-color: #2d3748;
+    color: #fff;
+    padding: 15px;
+    border-bottom: none;
+  }
+  .card-header h3 {
+    margin: 0;
+    font-weight: 600;
+  }
+  .btn-primary {
+    background-color: #6b46c1;
+    border-color: #6b46c1;
+    color: #fff;
+    border-radius: 5px;
+    padding: 10px;
+  }
+  .btn-primary:hover {
+    background-color: #553c9a;
+    border-color: #553c9a;
+  }
+  .btn-secondary {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+    color: #fff;
+    border-radius: 5px;
+    padding: 10px;
+  }
+  .btn-secondary:hover {
+    background-color: #357abd;
+    border-color: #357abd;
+  }
+  .form-control {
+    background-color: #fff;
+    color: #2d3748;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 16px;
+  }
+  .form-control:focus {
+    background-color: #fff;
+    color: #2d3748;
+    border-color: #6b46c1;
+    box-shadow: 0 0 0 0.2rem rgba(107, 70, 193, 0.25);
+  }
+  .text-muted {
+    color: #a0aec0 !important;
+  }
+  .error-msg {
+    color: red;
+    font-size: 0.9rem;
+  }
+</style>
+
+{% endblock %}

@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Processing Results Banner -->
+    {% if session.processing_stats %}
+        {% set stats = session.processing_stats %}
+        {% set msg = session.processing_message %}
+        {% set success = session.processing_success %}
+        
+        {% if success and stats.errors == 0 %}
+            <!-- Success Banner -->
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <h5><i class="fas fa-check-circle"></i> Processing Complete - Success!</h5>
+                <p class="mb-1"><strong>{{ msg }}</strong></p>
+                <ul class="mb-0">
+                    <li><strong>Total rows processed:</strong> {{ stats.processed }}</li>
+                    <li><strong>Events affected:</strong> {{ stats.events_affected }}</li>
+                    <li><strong>Results created/updated:</strong> {{ stats.processed }}</li>
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% elif success and stats.errors > 0 %}
+            <!-- Warning Banner -->
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <h5><i class="fas fa-exclamation-triangle"></i> Processing Complete - With Warnings</h5>
+                <p class="mb-1"><strong>{{ msg }}</strong></p>
+                <ul class="mb-0">
+                    <li><strong>Successfully processed:</strong> {{ stats.processed }} rows</li>
+                    <li><strong>Issues encountered:</strong> {{ stats.errors }} rows</li>
+                    <li><strong>Events affected:</strong> {{ stats.events_affected }}</li>
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% else %}
+            <!-- Error Banner -->
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <h5><i class="fas fa-times-circle"></i> Processing Failed</h5>
+                <p class="mb-1"><strong>{{ msg }}</strong></p>
+                {% if stats.total_rows > 0 %}
+                    <ul class="mb-0">
+                        <li><strong>Total rows checked:</strong> {{ stats.total_rows }}</li>
+                        <li><strong>Rows with issues:</strong> {{ stats.errors }}</li>
+                        <li><strong>Results published:</strong> None (all-or-nothing validation)</li>
+                    </ul>
+                {% endif %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endif %}
+        
+        {# Clear the session data after displaying #}
+        {% set _ = session.pop('processing_stats', None) %}
+        {% set _ = session.pop('processing_message', None) %}
+        {% set _ = session.pop('processing_success', None) %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                Race Results
+            </h1>
+        </div>
+    </div>
+
+    <!-- Event Selection -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        Select Event to View Results
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if events_with_results %}
+                        <div class="row">
+                            {% for event in events_with_results %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card {% if selected_event_id == event['Event_ID'] %}border-primary{% else %}border-light{% endif %}">
+                                    <div class="card-body p-3">
+                                        <h6 class="card-title">{{ event['Event_Name'] }}</h6>
+                                        <p class="card-text small mb-2">
+                                            <strong>Date:</strong> {{ event['Event_Date'].strftime('%d/%m/%Y') }}<br>
+                                            <strong>Location:</strong> {{ event['Event_Location'] }}<br>
+                                            <strong>Type:</strong> {{ event['Event_Type'] }}<br>
+                                            <strong>Results:</strong> {{ event['Result_Count'] }} participants
+                                        </p>
+                                        <a href="{{ url_for('results.public_results', event_id=event['Event_ID']) }}" 
+                                           class="btn btn-primary btn-sm">
+                                            </i> View Results
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No race results available yet</h5>
+                            <p class="text-muted">Results will appear here once events are completed and processed.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upload Section for Volunteers and Admins -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload"></i> 
+                        Results Upload
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Upload race results for any event.</p>
+                    <a href="{{ url_for('results.upload_results') }}" class="btn btn-success">
+                        <i class="fas fa-file-csv"></i> Upload Results CSV
+                    </a>
+                    <hr>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selected Event Results -->
+    {% if selected_event and results %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                {{ selected_event['Event_Name'] }} - Results
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <span class="badge bg-dark me-2">{{ results|length }} Finishers</span>
+                            {% if session.get('role') in ['volunteer', 'admin'] %}
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    data-bs-toggle="modal" data-bs-target="#removeConfirmModal"
+                                    data-event-id="{{ selected_event['Event_ID'] }}"
+                                    data-event-name="{{ selected_event['Event_Name'] }}">
+                                <i class="fas fa-trash-alt"></i> Remove Results
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Event Details -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <strong>Date:</strong> {{ selected_event['Event_Date'].strftime('%d/%m/%Y') }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Location:</strong> {{ selected_event['Event_Location'] }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Type:</strong> {{ selected_event['Event_Type'] }}
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Finishers:</strong> {{ results|length }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Position</th>
+                                    <th>Name</th>
+                                    <th>Town</th>
+                                    <th>Start Time</th>
+                                    <th>Finish Time</th>
+                                    <th>Race Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>
+                                        {% if result['Position'] == 1 %}
+                                            <span class="badge bg-warning text-dark">
+                                                </i> 1st
+                                            </span>
+                                        {% elif result['Position'] == 2 %}
+                                            <span class="badge bg-secondary">
+                                                </i> 2nd
+                                            </span>
+                                        {% elif result['Position'] == 3 %}
+                                            <span class="badge bg-danger">
+                                                </i> 3rd
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">{{ result['Position'] }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ result['First_Name'] }} {{ result['Last_Name'] }}</strong>
+                                    </td>
+                                    <td>{{ result['Town'] }}</td>
+                                    <td>{{ result['Start_Time'].strftime('%H:%M:%S') }}</td>
+                                    <td>{{ result['End_Time'].strftime('%H:%M:%S') }}</td>
+                                    <td>
+                                        <strong class="text-primary">{{ result['Race_Time'] }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Remove Results Confirmation Modal -->
+<div class="modal fade" id="removeConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Removal
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">
+                    <strong>Are you sure you want to remove all race results for this event?</strong>
+                </p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-warning"></i>
+                    This action cannot be undone. All race results for 
+                    <strong id="eventNameToRemove"></strong> will be permanently deleted.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <form method="POST" id="removeResultsForm" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Remove All Results
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle remove results confirmation
+    const removeConfirmModal = document.getElementById('removeConfirmModal');
+    if (removeConfirmModal) {
+        removeConfirmModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const eventId = button.getAttribute('data-event-id');
+            const eventName = button.getAttribute('data-event-name');
+            
+            // Update modal content
+            document.getElementById('eventNameToRemove').textContent = eventName;
+            document.getElementById('removeResultsForm').action = `/results/remove/${eventId}`;
+        });
+    }
+});
+</script>
+
+<!-- Add FontAwesome if not already included -->
+{% if not config.get('FONTAWESOME_INCLUDED') %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endif %}
+{% endblock %}

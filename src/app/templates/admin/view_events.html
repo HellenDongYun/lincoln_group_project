@@ -1,0 +1,228 @@
+{% extends "base.html" %} {% block content %}
+<div class="container py-5">
+     <!-- back button -->
+  <div class="mb-4">
+    <a
+      href="{{ url_for('admin.admin_dashboard') }}"
+      class="btn btn-outline-light rounded-3"
+    >
+      <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+  </div>
+  <div class="text-center mb-4">
+    <h1 class="fw-bold text-white">
+      </i>Event Management 
+    </h1>
+    <p class="text-light">
+      Monitor upcoming events, participants, and volunteer 
+    </p>
+  </div>
+  <!-- Search -->
+  <form method="get" action="{{ url_for('admin.view_events') }}" class="row g-2 mb-4 align-items-center">
+    <!-- search by event name -->
+    <div class="col-md-3 col-sm-6">
+      <input 
+        type="text" 
+        name="name" 
+        value="{{ request.args.get('name', '') }}" 
+        class="form-control" 
+        placeholder="Event name">
+    </div>
+    <!-- search by event location -->
+    <div class="col-md-3 col-sm-6">
+      <input 
+        type="text" 
+        name="town" 
+        value="{{ request.args.get('town', '') }}" 
+        class="form-control" 
+        placeholder="Location">
+    </div>
+    <!-- order by time -->
+    <div class="col-md-3 col-sm-6">
+      <select name="order" class="form-select">
+        <option value="asc" {% if request.args.get('order') == 'asc' %}selected{% endif %}>
+        Earliest
+        </option>
+        <option value="desc" {% if request.args.get('order') == 'desc' %}selected{% endif %}>
+        Latest
+        </option>
+      </select>
+    </div> 
+
+    <!-- search button -->
+    <div class="col-md-1 col-sm-6 d-grid">
+        <button type="submit" class="btn btn-primary">
+        <i class="bi bi-search me-1"></i> search
+        </button>
+    </div>
+
+    <!--clear button -->
+    <div class="col-md-1 col-sm-6 d-grid">
+        <a href="{{ url_for('admin.view_events') }}" class="btn btn-light">
+            <i class="bi bi-x-lg me-1"></i> clear
+        </a>
+    </div>
+    </form>
+  <div class="table-responsive">
+    <table class="table table-hover table-bordered text-white align-middle">
+      <thead class="table-primary">
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Event Name</th>
+          <th scope="col">Location</th>
+          <th scope="col">Date</th>
+          <th scope="col">Time</th>
+          <th scope="col">Participants</th>
+          <th scope="col">Volunteers</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in upcome_events %}
+        <tr {% if event.near_capacity %}class="table-warning"{% elif event.at_capacity %}class="table-danger"{% endif %}>
+          <th scope="row">{{ (page - 1) * per_page + loop.index }}</th>
+          <td>
+            <div class="d-flex align-items-center">
+              {{ event.name }}
+              {% if event.at_capacity %}
+                <span class="badge bg-danger ms-2">
+                  <i class="bi bi-exclamation-triangle"></i> FULL
+                </span>
+              {% elif event.near_capacity %}
+                <span class="badge bg-warning text-dark ms-2">
+                  <i class="bi bi-exclamation-triangle"></i> {{ event.capacity_percentage|round|int }}% FULL
+                </span>
+              {% endif %}
+            </div>
+          </td>
+          <td>{{ event.town }}</td>
+          <td>
+            {{ event.datetime.strftime(DateFormat.NZ_NUMERIC.value) if event.datetime else 'TBD'
+            }}
+          </td>
+          <td>
+            {{ event.datetime.strftime('%I:%M %p') if event.datetime else 'TBD'
+            }}
+          </td>
+          <td>
+            <div class="text-center">
+              <span class="badge {% if event.at_capacity %}bg-danger{% elif event.near_capacity %}bg-warning text-dark{% else %}bg-success{% endif %} fs-6">
+                {{ event.participant_count }}/{{ event.max_participants }}
+              </span>
+              {% if event.capacity_percentage > 0 %}
+                <div class="progress mt-1" style="height: 4px;">
+                  <div class="progress-bar {% if event.at_capacity %}bg-danger{% elif event.near_capacity %}bg-warning{% else %}bg-success{% endif %}" 
+                       role="progressbar" 
+                       style="width: {{ event.capacity_percentage|round|int }}%" 
+                       aria-valuenow="{{ event.capacity_percentage|round|int }}" 
+                       aria-valuemin="0" 
+                       aria-valuemax="100">
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <div class="text-center">
+              <span class="badge bg-info fs-6">
+                {{ event.assigned_volunteers }}/{{ event.volunteer_slots_total }}
+              </span>
+              <small class="text-muted d-block">volunteers</small>
+            </div>
+          </td>
+          <td>
+            <a
+              href="{{ url_for('admin.view_event_details', event_id=event.id) }}"
+              class="btn btn-link text-primary"
+              title="View Details"
+            >
+              <i class="bi bi-search fs-5"></i>
+            </a>
+            <!-- delete event button -->
+            <form
+              method="POST"
+              action="{{ url_for('admin.admin_delete_event', event_id=event.id) }}"
+              class="d-inline"
+            >
+              <button
+                type="submit"
+                class="btn btn-link p-0"
+                style="color: red;"
+                title="Delete Event"
+                onclick="return confirm('Are you sure you want to delete this event?');"
+              >
+                <i class="bi bi-trash fs-5"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted">No Upcoming Events</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    
+    <!-- Capacity Warnings Summary -->
+    {% set high_capacity_events = upcome_events | selectattr('near_capacity') | list %}
+    {% set full_events = upcome_events | selectattr('at_capacity') | list %}
+    {% if high_capacity_events or full_events %}
+    <div class="mt-4">
+      {% if full_events %}
+      <div class="alert alert-danger">
+        <h6 class="alert-heading">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          Events at Full Capacity
+        </h6>
+        <p class="mb-2">The following events have reached their participant limit:</p>
+        <ul class="mb-0">
+          {% for event in full_events %}
+          <li><strong>{{ event.name }}</strong> - {{ event.participant_count }}/{{ event.max_participants }} participants</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      
+      {% if high_capacity_events and not full_events %}
+      <div class="alert alert-warning">
+        <h6 class="alert-heading">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          Events Near Capacity
+        </h6>
+        <p class="mb-2">The following events are approaching their participant limit:</p>
+        <ul class="mb-0">
+          {% for event in high_capacity_events %}
+            {% if not event.at_capacity %}
+            <li><strong>{{ event.name }}</strong> - {{ event.participant_count }}/{{ event.max_participants }} participants ({{ event.capacity_percentage|round|int }}% full)</li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+   <!-- pagination -->
+  <nav>
+    <ul class="pagination justify-content-center">
+      {% if page > 1 %}
+      <li class="page-item">
+        <a class="page-link text-black small" href="?search={{ search }}&page={{ page - 1 }}"> < </a>
+      </li>
+      {% endif %}
+
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link {% if p == page %}text-white bg-primary{% else %}text-dark{% endif %}" href="?search={{ search }}&page={{ p }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      {% if page < total_pages %}
+      <li class="page-item">
+        <a class="page-link text-black fs-6" href="?search={{ search }}&page={{ page + 1 }}">  > </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endblock %}

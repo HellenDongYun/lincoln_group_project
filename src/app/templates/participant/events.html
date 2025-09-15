@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Upcoming Events{% endblock %}
+
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+
+        <div class="card p-0">
+            <div class="card-header">
+                <h3><i class="fas fa-calendar-days"></i> Upcoming Events</h3>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+                    <form method="GET" class="needs-validation" novalidate>
+                            <div class="input-group has-validation">
+                                <input aria-label="Event's type, town or date and time"
+                                       class="form-control"
+                                       id="query"
+                                       name="query"
+                                       placeholder="Search by event type, town, date and time"
+                                       value="{{ query or '' }}"
+                                       required
+                                       type="text"
+                                >
+                                <button class="btn btn-dark" type="submit">Search</button>
+                                <a class="btn btn-outline-dark ms-3" href="{{ request.path }}">Clear search</a>
+                                <div class="invalid-feedback">Please enter your query.</div>
+                            </div>
+                        </form>
+                </div>
+
+                {% if events %}
+                    {% for event in events %}
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <h5><i class="fas fa-calendar-check text-primary"></i> {{ event.name }}</h5>
+                                {% if event.description %}
+                                    <p>{{ event.description }}</p>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt"></i> {{ event.town }}
+                                    <i class="fas fa-clock"></i> {{ event.datetime_str }}
+                                    <br/>
+                                    <i class="fas fa-tag me-1"></i>{{ event.event_type }}
+                                    <br/>
+                                    <span class="badge bg-primary">Max Participants: {{ event.max_participants }}</span>
+                                </small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+            </div>
+        </div>
+
+</div>
+{% endblock %}
