@@ -17,10 +17,10 @@ CREATE TABLE Users (
   status ENUM('active','inactive') NOT NULL DEFAULT 'active'
 );
 
--- Community Groups
+-- Community Groups (renamed from 'Groups' to avoid reserved keyword conflicts)
 -- visibility: public groups discoverable to visitors; private groups hidden except to members/admins
 -- join_type: 'open' allows participants to self-join; 'closed' requires manager or admin addition
-CREATE TABLE Groups (
+CREATE TABLE Community_Groups (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL UNIQUE,
   description TEXT,
@@ -54,13 +54,13 @@ CREATE TABLE Group_Memberships (
   group_role ENUM('manager','member') NOT NULL DEFAULT 'member',
   member_status ENUM('active','inactive') NOT NULL DEFAULT 'active',
   PRIMARY KEY (group_id, user_id),
-  FOREIGN KEY (group_id) REFERENCES Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE INDEX idx_group_memberships_user ON Group_Memberships(user_id);
-CREATE INDEX idx_groups_visibility ON Groups(visibility);
-CREATE INDEX idx_groups_town ON Groups(town);
+CREATE INDEX idx_groups_visibility ON Community_Groups(visibility);
+CREATE INDEX idx_groups_town ON Community_Groups(town);
 
 
 -- Events (now owned by a group)
@@ -75,7 +75,7 @@ CREATE TABLE Events (
   max_participants INT NOT NULL,
   visibility ENUM('public','private') NOT NULL DEFAULT 'public',
   created_by INT NOT NULL,
-  FOREIGN KEY (group_id) REFERENCES Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 CREATE INDEX idx_events_group ON Events(group_id);
@@ -138,7 +138,7 @@ CREATE TABLE Event_Results (
 CREATE OR REPLACE VIEW v_public_events AS
 SELECT e.*, g.name AS group_name
 FROM Events e
-JOIN Groups g ON g.id = e.group_id
+JOIN Community_Groups g ON g.id = e.group_id
 WHERE e.visibility = 'public' AND g.visibility = 'public';
 
 -- View: Group managers
@@ -152,6 +152,6 @@ CREATE OR REPLACE VIEW v_user_volunteer_summary AS
 SELECT g.id AS group_id, a.user_id, COUNT(*) AS assignments
 FROM Event_Task_Assignments a
 JOIN Events e ON e.id = a.event_id
-JOIN Groups g ON g.id = e.group_id
+JOIN Community_Groups g ON g.id = e.group_id
 GROUP BY g.id, a.user_id;
 

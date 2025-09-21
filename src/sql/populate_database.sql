@@ -23,7 +23,7 @@ INSERT INTO Users (email, password_hash, first_name, last_name, town, global_rol
 -- 1 = Super Admin, 2..16 participants
 
 -- Seed Groups
-INSERT INTO Groups (name, description, town, visibility, join_type, status, created_by) VALUES
+INSERT INTO Community_Groups (name, description, town, visibility, join_type, status, created_by) VALUES
  ('Darfield Forest Cycling Group', 'Weekly forest and gravel rides around Darfield area.', 'Christchurch', 'public', 'open', 'active', 1),
  ('Harbour Runners Wellington', 'Inclusive running group focusing on 5k to half-marathon training.', 'Wellington', 'public', 'open', 'active', 1),
  ('Auckland Trail Explorers', 'Trail running & hiking exploration in Auckland region.', 'Auckland', 'public', 'closed', 'active', 1),
@@ -32,7 +32,7 @@ INSERT INTO Groups (name, description, town, visibility, join_type, status, crea
 -- Group Memberships 
 -- Make Violet manager of Auckland Trail Explorers, Bob manager of Harbour Runners, Alice manager of Darfield Cycling, Irene manager of Rotorua Adventure (private)
 INSERT INTO Group_Memberships (group_id, user_id, group_role) VALUES
- (1, 2, 'manager'),  -- Alice (id=2) manager Darfield? (Alice actually id=2) adjust comment
+ (1, 2, 'manager'),  -- Alice manager Darfield
  (1, 3, 'member'),  -- Bob member Darfield
  (1, 4, 'member'),  -- Carol member Darfield
  (1, 11, 'member'), -- Jack member Darfield
