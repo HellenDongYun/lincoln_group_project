@@ -24,6 +24,8 @@ db.init_db(app, dbuser, dbpass, dbhost, dbname, dbport)
 # Register Jinja functions
 app.jinja_env.globals.update(nav_link=nav_link)
 
+
+
 # Register Blueprints
 app.register_blueprint(app_blueprint, url_prefix='/')
 app.register_blueprint(api_blueprint, url_prefix='/api')

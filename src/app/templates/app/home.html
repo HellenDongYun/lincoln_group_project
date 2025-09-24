@@ -1,118 +1,167 @@
-{% extends "base.html" %}
-
-{% block title %}ActiveLoop - Home{% endblock %}
-
-{% block header %}
-    <h2>Welcome to ActiveLoop</h2>
-{% endblock %}
-
-{% block content %}
-
-<div class="row mt-5">
-    <div class="col-md-6 order-1 order-md-2">
-        <div class="lead text-white">
-            <p>
-                ActiveLoop is a community initiative that brings people together for free fitness events like runs, walks, and cycling sessions. Our events are open to all ages and fitness levels, and are powered by volunteers who help make everything run smoothly.
-                With ActiveLoop, you can:
+{% extends "base.html" %} {% block title %}ActiveLoop - Home{% endblock %} {%
+block header %}
+<h2>Welcome to ActiveLoop</h2>
+{% endblock %} {% block content %}
+<div class="position-relative overflow-hidden" style="height: 43vh;">
+  <!-- Background Image -->
+  <img 
+    src="{{ url_for('static', filename='images/fitness.jpg') }}" 
+    class="position-absolute top-0 start-0 w-100 h-100" 
+    style="object-fit: cover; object-position: center right; z-index: 1;"
+    alt="Home page image"
+  />
+  <!-- Overlay -->
+  <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark" style="opacity: 0.5; z-index: 2;"></div>
+  
+  <!-- Content -->
+  <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="z-index: 3;">
+    <div class="container-fluid">
+      <div class="row align-items-center h-100">
+        <div class="col-lg-6 text-white">
+          <div class="px-3 px-lg-5">
+            <!-- Title -->
+            <h1 class="display-2 display-md-1 fw-bold mb-4">Events.Volunteers.</h1>
+            
+            <!-- Description -->
+            <p class="fs-5 fs-md-4 mb-4">
+              Activeloop is a free community fitness platform that holds running events every week、<br class="d-none d-sm-block">
+              No matter what your fitness level is, can you find activities that suit you。
             </p>
-
-            <ul>
-                <li>Find and register for local events near you.</li>
-                <li>Volunteer to support the community by helping with event setup, timing, or cheering on participants.</li>
-                <li>Track your results and see your progress over time.</li>
-            </ul>
+            
+            <!-- Buttons -->
+            {% if not is_logged_in %}
+            <div class="mb-5">
+              <a href="{{ url_for('app.register') }}" 
+                 class="btn btn-warning btn-lg rounded-pill px-4 me-2 me-lg-3 mb-2 mb-sm-0">
+                Register as participant
+              </a>
+              <a href="{{ url_for('app.login') }}" 
+                 class="btn btn-outline-light btn-lg rounded-pill px-4">
+                check events
+              </a>
+            </div>
+            {% endif %}
+            
+            <!-- Stats -->
+            <div class="border-top border-light border-opacity-25 pt-4">
+              <div class="row text-center text-lg-start g-3">
+                <div class="col-4">
+                  <h2 class="display-5 fw-bold text-warning mb-1">500+</h2>
+                  <p class="small text-light mb-0">Participants</p>
+                </div>
+                <div class="col-4">
+                  <h2 class="display-5 fw-bold text-warning mb-1">50+</h2>
+                  <p class="small text-light mb-0">Events</p>
+                </div>
+                <div class="col-4">
+                  <h2 class="display-5 fw-bold text-warning mb-1">100+</h2>
+                  <p class="small text-light mb-0">Volunteers</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {% if not is_logged_in %}
-        <div class="btn-group" role="group" aria-label="Login">
-            <a href="{{ url_for('app.login') }}" class="btn btn-dark">Login</a>
-            <a href="{{ url_for('app.register') }}" class="btn btn-dark ms-2">Register</a>
-        </div>
-        {% endif %}
-    </div>
-
-    <div class="col-md-6 order-2 order-md-1 mt-5 mt-md-0">
-        <img src="{{ url_for('static', filename='images/home.webp') }}" class="img-fluid rounded" alt="Home page image">
-    </div>
-</div>
-
-<!-- Upcoming Events Section -->
-{% if upcoming_events %}
-<div class="row mt-5">
-    <div class="col-12">
-        <h3 class="text-white mb-4">
-            <i class="fas fa-calendar-alt me-2"></i>
-            Next 5 Upcoming Events
-        </h3>
         
+        <div class="col-lg-6 d-none d-lg-block"></div>
+      </div>
+    </div>
+  </div>
+</div>
+  <!-- find your event -->
+<section class="py-5 bg-light text-center">
+    <div class="container-fluid">
         <div class="row">
-            {% for event in upcoming_events %}
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ event['Event_Name'] }}</h5>
-                        <div class="card-text">
-                            <div class="mb-2">
-                                <i class="fas fa-calendar text-primary me-2"></i>
-                                <strong>Date:</strong> {{ event['Event_DateTime'].strftime('%B %d, %Y') }}
+            <div class="col-lg-12">
+                <h2 class="display-6 mb-3 fw-bold">Find the activity that suits you</h2>
+                <p class="text-muted lead fs-5 mb-4">Search for upcoming running, walking and cycling events and join our community fitness program</p>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card p-4 rounded shadow-sm">
+                    <form class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-geo-alt-fill" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg></span>
+                                <input type="text" class="form-control" placeholder="地点" aria-label="Location">
                             </div>
-                            <div class="mb-2">
-                                <i class="fas fa-clock text-primary me-2"></i>
-                                <strong>Time:</strong> {{ event['Event_DateTime'].strftime('%I:%M %p') }}
-                            </div>
-                            <div class="mb-2">
-                                <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                                <strong>Location:</strong> {{ event['Event_Location'] }}
-                            </div>
-                            <div class="mb-2">
-                                <i class="fas fa-running text-primary me-2"></i>
-                                <strong>Type:</strong> {{ event['Event_Type'] }}
-                            </div>
-                            {% if event['Max_Participants'] %}
-                            <div class="mb-2">
-                                <i class="fas fa-users text-primary me-2"></i>
-                                <strong>Participants:</strong> {{ event['Registered_Count'] }}/{{ event['Max_Participants'] }}
-                                {% set capacity_percentage = (event['Registered_Count'] / event['Max_Participants'] * 100) if event['Max_Participants'] > 0 else 0 %}
-                                {% if capacity_percentage >= 90 %}
-                                    <span class="badge bg-danger ms-1">Almost Full</span>
-                                {% elif capacity_percentage >= 75 %}
-                                    <span class="badge bg-warning text-dark ms-1">Filling Up</span>
-                                {% endif %}
-                            </div>
-                            {% endif %}
                         </div>
-                        {% if event['Description'] %}
-                        <p class="card-text small text-muted">{{ event['Description'][:100] }}{% if event['Description']|length > 100 %}...{% endif %}</p>
-                        {% endif %}
-                    </div>
-                    <div class="card-footer">
-                        {% if is_logged_in %}
-                            <a href="{{ url_for('app.get_events') }}?event_id={{ event['Event_ID'] }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-info-circle me-1"></i> View Details
-                            </a>
-                        {% else %}
-                            <a href="{{ url_for('app.login') }}" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-sign-in-alt me-1"></i> Login or Register to view details
-                            </a>
-                        {% endif %}
-                    </div>
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pin-map-fill" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.1 11.2a.5.5 0 0 1 .4-.2H6a.5.5 0 0 1 0 1H3.5L.5 14h13l-3-2.9v-.4a.5.5 0 0 1 .5-.5h2.2a.5.5 0 0 1 .4.2l3 2.9h-4.3a.5.5 0 0 1-.4-.2L8.8 12.3a.5.5 0 0 1-.7 0L.9 14.1a.5.5 0 0 1-.2-.4l2-2.5zM4 4a4 4 0 1 1 8 0 4 4 0 0 1-8 0z"/></svg></span>
+                                <select class="form-select" aria-label="Activity Type">
+                                    <option selected>All Events</option>
+                                    <option value="1">Running</option>
+                                    <option value="2">walking</option>
+                                    <option value="3">Cycling</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-date-fill" viewBox="0 0 16 16"><path d="M12.5 0a.5.5 0 0 1 .5.5v1h-1v-1a.5.5 0 0 1 .5-.5zm-4 0a.5.5 0 0 1 .5.5v1h-1v-1a.5.5 0 0 1 .5-.5zm-4 0a.5.5 0 0 1 .5.5v1h-1v-1a.5.5 0 0 1 .5-.5zM8.5 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-.5.5H8a.5.5 0 0 1-.5-.5V4.5a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-.5.5H12a.5.5 0 0 1-.5-.5V4.5a.5.5 0 0 1 .5-.5zM4.5 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V4.5a.5.5 0 0 1 .5-.5z"/></svg></span>
+                                <input type="text" class="form-control" placeholder="dd/mm/yyyy" aria-label="Date">
+                            </div>
+                        </div>
+                        <div class="col-12 text-center mt-3">
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Search</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="mt-3 text-center">
+                    <p class="text-muted fw-bold">Filter:</p>
+                    <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2">Running for today</a>
+                    <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2">Auckland</a>
+                    <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2">Events in this week</a>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-        
-        <div class="text-center mt-4">
-            <a href="{{ url_for('app.get_events') }}" class="btn btn-outline-light">
-                <i class="fas fa-calendar-alt me-2"></i>
-                View All Events
-            </a>
         </div>
     </div>
+</section>
+  <!-- participant say -->
+<section class="py-5 bg-white text-center">
+    <div class="container">
+        <h2 class="display-6 mb-5 fw-bold">Participants Say</h2>
+        <div class="row g-4">
+            <!-- Testimonial 1 -->
+            <div class="col-md-4">
+                <div class="card p-4 h-100 rounded shadow-sm">
+                    <div class="d-flex justify-content-center mb-3">
+                        <img src="https://placehold.co/100x100" class="rounded-circle" alt="User 1" style="object-fit: cover;">
+                    </div>
+                    <p class="fst-italic lead">"ActiveLoop has rediscovered the joy of sports for me. The community atmosphere here is very friendly!"</p>
+                    <h5 class="fw-bold mb-0 mt-3">Hellen</h5>
+                    <p class="small text-muted">Participant</p>
+                </div>
+            </div>
+            <!-- Testimonial 2 -->
+            <div class="col-md-4">
+                <div class="card p-4 h-100 rounded shadow-sm">
+                    <div class="d-flex justify-content-center mb-3">
+                        <img src="https://placehold.co/100x100" class="rounded-circle" alt="User 2" style="object-fit: cover;">
+                    </div>
+                    <p class="fst-italic lead">"As a volunteer, being able to help others achieve their fitness goals gives me a great sense of accomplishment"</p>
+                    <h5 class="fw-bold mb-0 mt-3">Jade</h5>
+                    <p class="small text-muted">Volunteer</p>
+                </div>
+            </div>
+            <!-- Testimonial 3 -->
+            <div class="col-md-4">
+                <div class="card p-4 h-100 rounded shadow-sm">
+                    <div class="d-flex justify-content-center mb-3">
+                        <img src="https://placehold.co/100x100" class="rounded-circle" alt="User 3" style="object-fit: cover;">
+                    </div>
+                    <p class="fst-italic lead">"From zero foundation to completing a 5K run, ActiveLoop has witnessed my growth journey"</p>
+                    <h5 class="fw-bold mb-0 mt-3">Ken</h5>
+                    <p class="small text-muted">Participant</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+ {% endblock %} {% block footer %}
+  <footer class="lead text-center my-5">
+    <i class="fas fa-circle text-amber"></i> Team Amber
+  </footer>
+  {% endblock %}
 </div>
-{% endif %}
-
-{% endblock %}
-
-{% block footer %}
-<footer class="lead text-center my-5"><i class="fas fa-circle text-amber"></i> Team Amber</footer>
-{% endblock %}
