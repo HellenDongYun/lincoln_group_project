@@ -7,10 +7,10 @@ class EventRepository(Repository):
         sql = """
                    SELECT
                        e.*,
-                       (e.max_participants - COALESCE(COUNT(p.participant_id), 0)) AS available_spaces
+                       (e.max_participants - COALESCE(COUNT(ep.user_id), 0)) AS available_spaces
                    FROM Events e
-                            LEFT JOIN Participants p
-                                      ON p.event_id = e.id AND p.status = 'registered'
+                            LEFT JOIN Event_Participants ep
+                                      ON ep.event_id = e.id AND ep.status = 'registered'
                    WHERE e.datetime > NOW()
                    """
 

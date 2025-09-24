@@ -96,9 +96,8 @@ class ResultsRepository(Repository):
     def get_participant_id_by_email(self, email):
         """Get participant ID by email address"""
         sql = """
-            SELECT p.participant_id
-            FROM Participants p
-            JOIN Users u ON p.participant_id = u.id
+            SELECT u.id as participant_id
+            FROM Users u
             WHERE u.email = %s
         """
         try:
@@ -129,8 +128,8 @@ class ResultsRepository(Repository):
         """Validate that a participant is registered for a specific event"""
         sql = """
             SELECT COUNT(*) as count
-            FROM Participants p
-            WHERE p.event_id = %s AND p.participant_id = %s AND p.status = 'registered'
+            FROM Event_Participants ep
+            WHERE ep.event_id = %s AND ep.user_id = %s AND ep.status = 'registered'
         """
         try:
             print(f"DEBUG REPO: Checking registration for event_id={event_id}, participant_id={participant_id}")

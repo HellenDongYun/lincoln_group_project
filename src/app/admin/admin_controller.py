@@ -4,9 +4,9 @@ from src.app.admin.admin_service import AdminService
 from src.app.common.date_format import DateFormat
 from src.app.common.db.cursor import get_cursor
 from src.app.app_controller import admin_service
-from src.app.auth.route_guard import route_guard
+from src.app.auth.route_guard import require_super_admin
 from src.app.common.nav.encode import decode_id
-from src.app.user.user import Role
+from src.app.user.user import GlobalRole
 from datetime import datetime
 
 import os
@@ -23,7 +23,7 @@ def allowed_file(filename):
 """ Example Repo-Service-Controller """ 
 admin_blueprint = Blueprint('admin', __name__)
 @admin_blueprint.route("<encoded_admin_id>", methods=["GET", "POST"])
-@route_guard(Role.ADMIN)
+@require_super_admin
 def get_admin(encoded_admin_id):
     admin_id = decode_id(encoded_admin_id)
     admin = admin_service.get_admin_by_admin_id(admin_id)
@@ -183,8 +183,8 @@ def update_user_role(event_id, user_id):
         )
             cursor.execute(
             """
-            DELETE FROM participants
-            WHERE event_id = %s AND participant_id = %s
+            DELETE FROM Event_Participants
+            WHERE event_id = %s AND user_id = %s
             """,
             (event_id, user_id),
             )

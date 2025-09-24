@@ -18,7 +18,7 @@ class HomeService(Repository):
             FROM Events e
             LEFT JOIN (
                 SELECT event_id, COUNT(*) as registered
-                FROM Participants 
+                FROM Event_Participants 
                 WHERE status = 'registered'
                 GROUP BY event_id
             ) participant_count ON e.id = participant_count.event_id

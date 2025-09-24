@@ -7,7 +7,7 @@ from src.app.common.file_service import FileService
 from src.app.common.form_group import FormGroup, FormControl
 from src.app.event.event_service import EventService
 from src.app.town.town_service import TownService
-from src.app.user.user import Role
+from src.app.user.user import GlobalRole
 from src.app.user.user_service import UserService
 from src.app.home_service import HomeService
 
@@ -85,14 +85,12 @@ def login():
         user = user_service.validate_user(email, password)
 
         if user:
-            auth_service.login(user.id, user.role)
+            auth_service.login(user.id, user.global_role)
             flash("Login successful.", "success")
 
             # Redirect based on role
-            if auth_service.is_admin():
+            if auth_service.is_super_admin():
                 return redirect(url_for("admin.admin_dashboard", encoded_admin_id=user.encoded_user_id))
-            elif auth_service.is_volunteer():
-                return redirect(url_for("volunteer.dashboard", encoded_volunteer_id=user.encoded_user_id))
             elif auth_service.is_participant():
                 return redirect(url_for("participant.dashboard", encoded_participant_id=user.encoded_user_id))
             else:

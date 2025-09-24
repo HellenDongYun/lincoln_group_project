@@ -2,7 +2,7 @@ import os
 from flask import session
 from typing import Optional
 
-from src.app.user.user import Role
+from src.app.user.user import GlobalRole, Role
 from src.app.common.nav.encode import encode_id
 
 
@@ -20,10 +20,9 @@ class AuthService:
             cls._instance = super(AuthService, cls).__new__(cls)
         return cls._instance
 
-    def login(self, user_id: int, role: Role):
+    def login(self, user_id: int, global_role: GlobalRole):
         session['user_id'] = user_id
-        session['role'] = role.value
-
+        session['global_role'] = global_role.value
 
     def logout(self):
         session.clear()
@@ -34,27 +33,38 @@ class AuthService:
     def get_user_id(self) -> int:
         return session.get('user_id')
 
-
     def get_user_resource_id(self) -> str:
         "Get the encoded user ID for resource access control"
         user_id = self.get_user_id()
         return encode_id(user_id) if user_id else None
 
-
-    def get_user_role(self) -> Role:
-        role_str = session.get('role')
+    def get_global_role(self) -> GlobalRole:
+        role_str = session.get('global_role')
         if role_str:
-            return Role(role_str)
+            return GlobalRole(role_str)
+        return None
+
+    def is_super_admin(self) -> bool:
+        return self.get_global_role() == GlobalRole.SUPER_ADMIN
+
+    def is_participant(self) -> bool:
+        return self.get_global_role() == GlobalRole.PARTICIPANT
+
+    # Legacy methods for backward compatibility
+    def get_user_role(self) -> Role:
+        global_role = self.get_global_role()
+        if global_role == GlobalRole.SUPER_ADMIN:
+            return Role.ADMIN
+        elif global_role == GlobalRole.PARTICIPANT:
+            return Role.PARTICIPANT
         return None
 
     def is_admin(self) -> bool:
-        return self.get_user_role() == Role.ADMIN
-
-    def is_participant(self) -> bool:
-        return self.get_user_role() == Role.PARTICIPANT
+        return self.is_super_admin()
 
     def is_volunteer(self) -> bool:
-        return self.get_user_role() == Role.VOLUNTEER
+        # Volunteering is now task-based, not a global role
+        return False
     
 auth_service = AuthService()    
     
