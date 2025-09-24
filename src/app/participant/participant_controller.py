@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 
-from src.app.auth.route_guard import route_guard
+from src.app.auth.route_guard import require_login
 from src.app.common.nav.encode import decode_id
-from src.app.user.user import Role
+from src.app.user.user import GlobalRole
 from src.app.participant.participant_service import ParticipantService
 
 participant_service = ParticipantService()
@@ -10,7 +10,7 @@ participant_blueprint = Blueprint('participant', __name__)
 
 
 @participant_blueprint.route("<encoded_participant_id>", methods=["GET"])
-@route_guard(Role.PARTICIPANT)
+@require_login
 def dashboard(encoded_participant_id):
     participant_id = decode_id(encoded_participant_id)
     
@@ -31,7 +31,7 @@ def dashboard(encoded_participant_id):
 
 
 @participant_blueprint.route("<encoded_participant_id>/register/<int:event_id>", methods=["POST"])
-@route_guard(Role.PARTICIPANT)
+@require_login
 def register_for_event(encoded_participant_id, event_id):
     participant_id = decode_id(encoded_participant_id)
     
@@ -49,7 +49,7 @@ def register_for_event(encoded_participant_id, event_id):
 
 
 @participant_blueprint.route("<encoded_participant_id>/cancel/<int:event_id>", methods=["POST"])
-@route_guard(Role.PARTICIPANT)
+@require_login
 def cancel_registration(encoded_participant_id, event_id):
     participant_id = decode_id(encoded_participant_id)
     

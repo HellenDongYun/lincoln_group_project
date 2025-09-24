@@ -7,6 +7,7 @@ from src.app.app_controller import app_blueprint, auth_service
 from src.app.volunteer.volunteer_controller import volunteer_blueprint
 from src.app.results.results_controller import results_blueprint
 from src.app.participant.participant_controller import participant_blueprint
+from src.app.group.group_controller import group_blueprint
 
 
 
@@ -30,6 +31,7 @@ app.register_blueprint(admin_blueprint, url_prefix='/admins')
 app.register_blueprint(volunteer_blueprint, url_prefix='/volunteers')
 app.register_blueprint(results_blueprint, url_prefix='/results')
 app.register_blueprint(participant_blueprint, url_prefix='/participants')
+app.register_blueprint(group_blueprint, url_prefix='/groups')
 
 
 @app.context_processor

@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 
-from src.app.auth.route_guard import route_guard
+from src.app.auth.route_guard import require_login
 from src.app.common.nav.encode import decode_id
-from src.app.user.user import Role
+from src.app.user.user import GlobalRole
 from src.app.volunteer.volunteer_service import VolunteerService
 
 volunteer_service = VolunteerService()
@@ -10,7 +10,7 @@ volunteer_blueprint = Blueprint('volunteer', __name__)
 
 
 @volunteer_blueprint.route("<encoded_volunteer_id>", methods=["GET"])
-@route_guard(Role.VOLUNTEER)
+@require_login
 def dashboard(encoded_volunteer_id):
     volunteer_id = decode_id(encoded_volunteer_id)
     
@@ -31,7 +31,7 @@ def dashboard(encoded_volunteer_id):
 
 
 @volunteer_blueprint.route("signup/<int:event_id>/<int:role_id>", methods=["POST"])
-@route_guard(Role.VOLUNTEER)
+@require_login
 def signup_for_role(event_id, role_id):
     # Get volunteer ID from the URL parameter
     encoded_volunteer_id = request.form.get('volunteer_id')
@@ -48,7 +48,7 @@ def signup_for_role(event_id, role_id):
 
 
 @volunteer_blueprint.route("cancel/<int:event_id>/<int:role_id>", methods=["POST"])
-@route_guard(Role.VOLUNTEER)
+@require_login
 def cancel_role(event_id, role_id):
     # Get volunteer ID from the URL parameter
     encoded_volunteer_id = request.form.get('volunteer_id')

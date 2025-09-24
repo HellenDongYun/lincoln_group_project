@@ -18,12 +18,12 @@ class ParticipantRepository(Repository):
                 COALESCE(COUNT(p.participant_id), 0) as Current_Registrations,
                 (e.max_participants - COALESCE(COUNT(p.participant_id), 0)) as Available_Spots
             FROM Events e
-            LEFT JOIN Participants p ON e.id = p.event_id AND p.status = 'registered'
+            LEFT JOIN Event_Participants ep ON e.id = ep.event_id AND ep.status = 'registered'
             WHERE DATE(e.datetime) >= CURDATE()
             AND e.id NOT IN (
                 SELECT event_id 
-                FROM Participants 
-                WHERE participant_id = %s AND status = 'registered'
+                FROM Event_Participants 
+                WHERE user_id = %s AND status = 'registered'
             )
             GROUP BY e.id, e.name, DATE(e.datetime), TIME(e.datetime), e.town, e.event_type, e.description, e.max_participants
             ORDER BY DATE(e.datetime) ASC, TIME(e.datetime) ASC
@@ -45,11 +45,11 @@ class ParticipantRepository(Repository):
                 e.town as Event_Location,
                 e.event_type as Event_Type,
                 e.description as Event_Description,
-                p.status as Registration_Status
-            FROM Participants p
-            JOIN Events e ON p.event_id = e.id
-            WHERE p.participant_id = %s
-            AND p.status = 'registered'
+                ep.status as Registration_Status
+            FROM Event_Participants ep
+            JOIN Events e ON ep.event_id = e.id
+            WHERE ep.user_id = %s
+            AND ep.status = 'registered'
             AND DATE(e.datetime) >= CURDATE()
             ORDER BY DATE(e.datetime) ASC, TIME(e.datetime) ASC
         """
@@ -100,8 +100,8 @@ class ParticipantRepository(Repository):
         # First check if already registered (only active registrations)
         check_sql = """
             SELECT COUNT(*) as count 
-            FROM Participants 
-            WHERE participant_id = %s AND event_id = %s AND status = 'registered'
+            FROM Event_Participants 
+            WHERE user_id = %s AND event_id = %s AND status = 'registered'
         """
         
         try:
@@ -113,9 +113,9 @@ class ParticipantRepository(Repository):
             capacity_sql = """
                 SELECT 
                     e.max_participants,
-                    COUNT(p.participant_id) as current_registrations
+                    COUNT(ep.user_id) as current_registrations
                 FROM Events e
-                LEFT JOIN Participants p ON e.id = p.event_id AND p.status = 'registered'
+                LEFT JOIN Event_Participants ep ON e.id = ep.event_id AND ep.status = 'registered'
                 WHERE e.id = %s
                 GROUP BY e.id, e.max_participants
             """
@@ -129,8 +129,8 @@ class ParticipantRepository(Repository):
             # First check if there's a cancelled registration we can reactivate
             cancelled_check_sql = """
                 SELECT COUNT(*) as count 
-                FROM Participants 
-                WHERE participant_id = %s AND event_id = %s AND status = 'cancelled'
+                FROM Event_Participants 
+                WHERE user_id = %s AND event_id = %s AND status = 'cancelled'
             """
             
             cancelled_record = self.fetchone(cancelled_check_sql, (participant_id, event_id))
@@ -138,15 +138,15 @@ class ParticipantRepository(Repository):
             if cancelled_record and cancelled_record['count'] > 0:
                 # Reactivate cancelled registration
                 reactivate_sql = """
-                    UPDATE Participants 
+                    UPDATE Event_Participants 
                     SET status = 'registered'
-                    WHERE participant_id = %s AND event_id = %s AND status = 'cancelled'
+                    WHERE user_id = %s AND event_id = %s AND status = 'cancelled'
                 """
                 result = self.execute(reactivate_sql, (participant_id, event_id))
             else:
                 # Create new registration
                 register_sql = """
-                    INSERT INTO Participants (participant_id, event_id, status)
+                    INSERT INTO Event_Participants (user_id, event_id, status)
                     VALUES (%s, %s, 'registered')
                 """
                 result = self.execute(register_sql, (participant_id, event_id))
@@ -163,8 +163,8 @@ class ParticipantRepository(Repository):
             # Check if the participant is registered for this event
             check_sql = """
                 SELECT COUNT(*) as count 
-                FROM Participants 
-                WHERE participant_id = %s AND event_id = %s AND status = 'registered'
+                FROM Event_Participants 
+                WHERE user_id = %s AND event_id = %s AND status = 'registered'
             """
             
             existing = self.fetchone(check_sql, (participant_id, event_id))
@@ -173,9 +173,9 @@ class ParticipantRepository(Repository):
             
             # Update the registration status to cancelled
             cancel_sql = """
-                UPDATE Participants 
+                UPDATE Event_Participants 
                 SET status = 'cancelled'
-                WHERE participant_id = %s AND event_id = %s
+                WHERE user_id = %s AND event_id = %s
             """
             
             result = self.execute(cancel_sql, (participant_id, event_id))

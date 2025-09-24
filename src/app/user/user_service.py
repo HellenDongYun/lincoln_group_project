@@ -3,8 +3,7 @@ import re
 from email_validator import validate_email, EmailNotValidError
 from flask_bcrypt import check_password_hash
 
-from src.app.user.user import User, Role
-from src.app.user.user import User
+from src.app.user.user import User, GlobalRole
 from src.app.user.user_repository import UserRepository
 
 NAME_REGEX = r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$"
@@ -90,12 +89,12 @@ class UserService:
             return None
 
 
-        # Convert role string to Role enum
-        if 'role' in user_data and user_data['role']:
+        # Convert global_role string to GlobalRole enum
+        if 'global_role' in user_data and user_data['global_role']:
             try:
-                user_data['role'] = Role(user_data['role'])
+                user_data['global_role'] = GlobalRole(user_data['global_role'])
             except ValueError:
-                user_data['role'] = Role.PARTICIPANT  # Default fallback
+                user_data['global_role'] = GlobalRole.PARTICIPANT  # Default fallback
 
         # Return user object
         return User(**user_data)
