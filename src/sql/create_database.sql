@@ -1,110 +1,135 @@
+-- SQL script to create the activeloop database schema
 DROP DATABASE IF EXISTS activeloop;
 CREATE DATABASE activeloop;
-
 USE activeloop;
 
--- Users
+-- Core Users & Roles
+-- Global roles simplified to: super_admin, participant
+-- (group-level manager/volunteer responsibilities handled via membership tables)
 CREATE TABLE Users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    town VARCHAR(100),
-    role ENUM('participant','volunteer','admin') NOT NULL DEFAULT 'participant',
-    status ENUM('active','inactive') NOT NULL DEFAULT 'active'
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  first_name VARCHAR(50) NOT NULL,
+  last_name VARCHAR(50) NOT NULL,
+  town VARCHAR(100),
+  global_role ENUM('super_admin','participant') NOT NULL DEFAULT 'participant',
+  status ENUM('active','inactive') NOT NULL DEFAULT 'active'
 );
 
--- Events
+-- Community Groups (renamed from 'Groups' to avoid reserved keyword conflicts)
+-- visibility: public groups discoverable to visitors; private groups hidden except to members/admins
+-- join_type: 'open' allows participants to self-join; 'closed' requires manager or admin addition
+CREATE TABLE Community_Groups (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL UNIQUE,
+  description TEXT,
+  town VARCHAR(100),
+  visibility ENUM('public','private') NOT NULL DEFAULT 'public',
+  join_type ENUM('open','closed') NOT NULL DEFAULT 'open',
+  status ENUM('active','inactive','pending') NOT NULL DEFAULT 'active',
+  created_by INT NOT NULL,
+  FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- Applications to create new groups submitted by participants; reviewed by super admin
+CREATE TABLE Group_Applications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  applicant_id INT NOT NULL,
+  proposed_name VARCHAR(150) NOT NULL,
+  proposed_description TEXT,
+  proposed_town VARCHAR(100),
+  visibility ENUM('public','private') NOT NULL DEFAULT 'public',
+  join_type ENUM('open','closed') NOT NULL DEFAULT 'open',
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  decision_by INT NULL,
+  FOREIGN KEY (applicant_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (decision_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Memberships linking users to groups; role reflects group-level responsibility
+CREATE TABLE Group_Memberships (
+  group_id INT NOT NULL,
+  user_id INT NOT NULL,
+  group_role ENUM('manager','member') NOT NULL DEFAULT 'member',
+  member_status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+  PRIMARY KEY (group_id, user_id),
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_group_memberships_user ON Group_Memberships(user_id);
+CREATE INDEX idx_groups_visibility ON Community_Groups(visibility);
+CREATE INDEX idx_groups_town ON Community_Groups(town);
+
+
+-- Events (now owned by a group)
 CREATE TABLE Events (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    datetime DATETIME NOT NULL,
-    town VARCHAR(100) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    event_type VARCHAR(100) NOT NULL,
-    description TEXT,
-    max_participants INT NOT NULL
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  group_id INT NOT NULL,
+  datetime DATETIME NOT NULL,
+  town VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  event_type VARCHAR(100) NOT NULL,
+  description TEXT,
+  max_participants INT NOT NULL,
+  visibility ENUM('public','private') NOT NULL DEFAULT 'public',
+  created_by INT NOT NULL,
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+CREATE INDEX idx_events_group ON Events(group_id);
+CREATE INDEX idx_events_datetime ON Events(datetime);
+CREATE INDEX idx_events_town ON Events(town);
+
+
+-- Volunteer Tasks (formerly volunteer roles; global catalogue)
+CREATE TABLE Volunteer_Tasks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(80) NOT NULL UNIQUE,
+  description VARCHAR(255)
 );
 
--- Volunteer_Roles
-CREATE TABLE Volunteer_Roles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(255)
+-- Planned task capacity per event
+CREATE TABLE Event_Task_Vacancies (
+  event_id INT NOT NULL,
+  task_id INT NOT NULL,
+  spots INT NOT NULL,
+  PRIMARY KEY (event_id, task_id),
+  FOREIGN KEY (event_id) REFERENCES Events(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (task_id) REFERENCES Volunteer_Tasks(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- Vacancies
-CREATE TABLE Vacancies (
-    event_id INT NOT NULL,
-    role_id INT NOT NULL,
-    spots INT NOT NULL,
-    PRIMARY KEY (event_id, role_id),
-    FOREIGN KEY (event_id) REFERENCES Events(id)
-       ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (role_id) REFERENCES Volunteer_Roles(id)
-       ON DELETE RESTRICT ON UPDATE CASCADE
+-- Task assignments (any participant who is a member of the event's group)
+CREATE TABLE Event_Task_Assignments (
+  event_id INT NOT NULL,
+  task_id INT NOT NULL,
+  user_id INT NOT NULL,
+  PRIMARY KEY (event_id, task_id, user_id),
+  FOREIGN KEY (event_id) REFERENCES Events(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (task_id) REFERENCES Volunteer_Tasks(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- Event_Volunteers
-CREATE TABLE Event_Volunteers (
-    event_id INT NOT NULL,
-    role_id INT NOT NULL,
-    volunteer_id INT NOT NULL,
-    PRIMARY KEY (event_id, role_id, volunteer_id),
-    FOREIGN KEY (event_id) REFERENCES Events(id)
-      ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (role_id) REFERENCES Volunteer_Roles(id)
-      ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (volunteer_id) REFERENCES Users(id)
-      ON DELETE RESTRICT ON UPDATE CASCADE
+-- Participant registrations (attendees) independent of volunteer tasks
+CREATE TABLE Event_Participants (
+  event_id INT NOT NULL,
+  user_id INT NOT NULL,
+  status ENUM('registered','cancelled') NOT NULL DEFAULT 'registered',
+  PRIMARY KEY (event_id, user_id),
+  FOREIGN KEY (event_id) REFERENCES Events(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- Participants
-CREATE TABLE Participants (
-    event_id INT NOT NULL,
-    participant_id INT NOT NULL,
-    status ENUM('registered','cancelled') NOT NULL DEFAULT 'registered',
-    PRIMARY KEY (event_id, participant_id),
-    FOREIGN KEY (event_id) REFERENCES Events(id)
-      ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (participant_id) REFERENCES Users(id)
-      ON DELETE RESTRICT ON UPDATE CASCADE
+-- Performance results (optional for timed events)
+CREATE TABLE Event_Results (
+  event_id INT NOT NULL,
+  user_id INT NOT NULL,
+  start_time DATETIME NOT NULL,
+  end_time DATETIME NOT NULL,
+  total_seconds INT GENERATED ALWAYS AS (TIMESTAMPDIFF(SECOND, start_time, end_time)) STORED,
+  PRIMARY KEY (event_id, user_id),
+  CHECK (end_time >= start_time),
+  FOREIGN KEY (event_id) REFERENCES Events(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
-
--- Race_Results
-CREATE TABLE Race_Results (
-    event_id INT NOT NULL,
-    participant_id INT NOT NULL,
-    start_time DATETIME NOT NULL,
-    end_time DATETIME NOT NULL,
-    total_seconds INT GENERATED ALWAYS AS (TIMESTAMPDIFF(SECOND, start_time, end_time)) STORED,
-    PRIMARY KEY (event_id, participant_id),
-    CHECK (end_time >= start_time),
-    FOREIGN KEY (event_id) REFERENCES Events(id)
-     ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (participant_id) REFERENCES Users(id)
-     ON DELETE RESTRICT ON UPDATE CASCADE
-);
--- Groups
-CREATE TABLE Groups (
-    group_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    visibility ENUM('public', 'private') DEFAULT 'public',
-    created_by INT, -- Super Admin ID
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES Users(id)
-);
--- User Groups
-CREATE TABLE User_groups (
-    user_id INT NOT NULL,
-    group_id INT NOT NULL,
-    role ENUM('participant', 'manager') DEFAULT 'participant',
-    PRIMARY KEY (user_id, group_id),
-    FOREIGN KEY (user_id) REFERENCES Users(id),
-    FOREIGN KEY (group_id) REFERENCES groups(group_id)
-);
-
---add new column in the event table
-ALTER TABLE Events ADD COLUMN group_id INT AFTER id;
-ALTER TABLE Events ADD FOREIGN KEY (group_id) REFERENCES Groups(group_id);

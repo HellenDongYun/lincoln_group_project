@@ -35,9 +35,9 @@ class AdminRepository(Repository):
                    COALESCE(SUM(v.spots), 0) as volunteer_slots_total,
                    COUNT(DISTINCT ev.volunteer_id) as assigned_volunteers
             FROM Events e
-            LEFT JOIN Participants p ON e.id = p.event_id
-            LEFT JOIN Vacancies v ON e.id = v.event_id
-            LEFT JOIN Event_Volunteers ev ON e.id = ev.event_id
+            LEFT JOIN Event_Participants ep ON e.id = ep.event_id
+            LEFT JOIN Event_Task_Vacancies etv ON e.id = etv.event_id
+            LEFT JOIN Event_Task_Assignments eta ON e.id = eta.event_id
             WHERE e.datetime > CURRENT_DATE
         """
         params = []
@@ -72,7 +72,7 @@ class AdminRepository(Repository):
     @staticmethod
     def delete_event(cursor, event_id: int):
         # delete events
-        cursor.execute("DELETE FROM Vacancies WHERE event_id = %s", (event_id,))
+        cursor.execute("DELETE FROM Event_Task_Vacancies WHERE event_id = %s", (event_id,))
         cursor.execute("DELETE FROM Events WHERE id = %s", (event_id,))
     
     
@@ -89,21 +89,21 @@ class AdminRepository(Repository):
     @staticmethod
     def get_event_participants(cursor, event_id):
         cursor.execute("""
-            SELECT u.first_name, u.last_name, u.town, u.email, u.role, p.status,p.participant_id,p.event_id
+            SELECT u.first_name, u.last_name, u.town, u.email, u.global_role, ep.status, ep.user_id, ep.event_id
             FROM Users u
-            JOIN Participants p ON u.id = p.participant_id
-            WHERE p.event_id = %s
+            JOIN Event_Participants ep ON u.id = ep.user_id
+            WHERE ep.event_id = %s
         """, (event_id,))
         return cursor.fetchall()
     
     @staticmethod
     def count_event_participants(cursor, event_id):
-        cursor.execute("SELECT COUNT(*) as count FROM Participants WHERE event_id = %s", (event_id,))
+        cursor.execute("SELECT COUNT(*) as count FROM Event_Participants WHERE event_id = %s", (event_id,))
         return cursor.fetchone()['count']
     
     @staticmethod
     def sum_volunteer_spots(cursor, event_id):
-        cursor.execute("SELECT COALESCE(SUM(spots), 0) as total_spots FROM Vacancies WHERE event_id = %s", (event_id,))
+        cursor.execute("SELECT COALESCE(SUM(spots), 0) as total_spots FROM Event_Task_Vacancies WHERE event_id = %s", (event_id,))
         return cursor.fetchone()['total_spots']
         
     @staticmethod
@@ -280,7 +280,7 @@ class AdminRepository(Repository):
     @staticmethod
     def update_participant_status(user_id: int, event_id: int, status: str):
         with get_cursor() as cursor:
-            query = "UPDATE Participants SET status = %s WHERE participant_id = %s AND event_id = %s"
+            query = "UPDATE Event_Participants SET status = %s WHERE user_id = %s AND event_id = %s"
             cursor.execute(query, (status, user_id, event_id))
             return cursor.rowcount  
     
@@ -318,7 +318,7 @@ class AdminRepository(Repository):
             ) e
             LEFT JOIN (
                 SELECT event_id, COUNT(*) as registered_participants
-                FROM Participants 
+                FROM Event_Participants 
                 WHERE status = 'registered'
                 GROUP BY event_id
             ) p_count ON e.id = p_count.event_id
@@ -326,7 +326,7 @@ class AdminRepository(Repository):
             LEFT JOIN Volunteer_Roles vr ON v.role_id = vr.id
             LEFT JOIN (
                 SELECT event_id, role_id, COUNT(*) as assigned_volunteers
-                FROM Event_Volunteers
+                FROM Event_Task_Assignments
                 GROUP BY event_id, role_id
             ) ev_count ON v.event_id = ev_count.event_id AND v.role_id = ev_count.role_id
             ORDER BY e.datetime ASC, vr.name
@@ -350,8 +350,8 @@ class AdminRepository(Repository):
         e.datetime AS event_datetime,
         e.id AS event_id
         FROM Users u
-        LEFT JOIN Participants p ON u.id = p.participant_id
-        LEFT JOIN Events e ON p.event_id = e.id
+        LEFT JOIN Event_Participants ep ON u.id = ep.user_id
+        LEFT JOIN Events e ON ep.event_id = e.id
         WHERE 1=1
         '''
         params = []
@@ -385,8 +385,8 @@ class AdminRepository(Repository):
         query = '''
         SELECT COUNT(*) as count
         FROM Users u
-        LEFT JOIN Participants p ON u.id = p.participant_id
-        LEFT JOIN Events e ON p.event_id = e.id
+        LEFT JOIN Event_Participants ep ON u.id = ep.user_id
+        LEFT JOIN Events e ON ep.event_id = e.id
         WHERE 1=1
         '''
         params = []

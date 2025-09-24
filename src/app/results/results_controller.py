@@ -4,8 +4,8 @@ import csv
 import io
 from datetime import datetime
 
-from src.app.auth.route_guard import route_guard
-from src.app.user.user import Role
+from src.app.auth.route_guard import require_super_admin
+from src.app.user.user import GlobalRole
 from src.app.results.results_service import ResultsService
 
 results_service = ResultsService()
@@ -41,7 +41,7 @@ def public_results():
 
 
 @results_blueprint.route("/upload", methods=["GET", "POST"])
-@route_guard(Role.ADMIN, Role.VOLUNTEER)
+@require_super_admin
 def upload_results():
     """Upload CSV results - admins and volunteers only"""
     if request.method == "GET":
@@ -146,7 +146,7 @@ def upload_results():
 
 
 @results_blueprint.route("/upload/confirm", methods=["POST"])
-@route_guard(Role.ADMIN, Role.VOLUNTEER)
+@require_super_admin
 def confirm_overwrite():
     """Confirm overwriting existing results"""
     action = request.form.get('action')
@@ -186,7 +186,7 @@ def confirm_overwrite():
 
 
 @results_blueprint.route("/upload/confirm_unregistered", methods=["POST"])
-@route_guard(Role.ADMIN, Role.VOLUNTEER)
+@require_super_admin
 def confirm_unregistered():
     """Handle unregistered participant confirmation"""
     action = request.form.get('action')
@@ -247,7 +247,7 @@ def confirm_unregistered():
 
 
 @results_blueprint.route("/remove/<int:event_id>", methods=["POST"])
-@route_guard(Role.ADMIN, Role.VOLUNTEER)
+@require_super_admin
 def remove_results(event_id):
     """Remove all results for an event"""
     try:

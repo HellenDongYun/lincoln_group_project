@@ -1,10 +1,10 @@
 from flask import url_for
 
-from src.app.user.user import Role
+from src.app.user.user import GlobalRole
 from src.app.common.nav.encode import encode_id
 
 
-def left_nav_items(user_id: int, user_role: Role):
+def left_nav_items(user_id: int, user_role: GlobalRole):
 
     nav_items = []
     
@@ -23,21 +23,21 @@ def left_nav_items(user_id: int, user_role: Role):
     if not user_id:
         return nav_items
       
-    if user_role == Role.PARTICIPANT:
+    if user_role == GlobalRole.PARTICIPANT:
         encoded_participant_id = encode_id(user_id)
         nav_items.append({
             "label": "My Dashboard",
             "url": url_for('participant.dashboard', encoded_participant_id=encoded_participant_id)
         })
     
-    if user_role == Role.VOLUNTEER:
-        encoded_volunteer_id = encode_id(user_id)
+    # Groups navigation for all logged-in users
+    if user_id:
         nav_items.append({
-            "label": "Volunteer Dashboard",
-            "url": url_for('volunteer.dashboard', encoded_volunteer_id=encoded_volunteer_id)
+            "label": "Community Groups",
+            "url": url_for('groups.index')
         })
     
-    if user_role == Role.ADMIN:
+    if user_role == GlobalRole.SUPER_ADMIN:
         encoded_admin_id = encode_id(user_id)
         nav_items.append({
             "label": "Admin Dashboard",
@@ -73,7 +73,7 @@ def right_nav_items():
         {% endfor %}
     </div>
 </nav>"""
-def right_nav_items(user_id: int, user_role: Role):
+def right_nav_items(user_id: int, user_role: GlobalRole):
 
     if not user_id:
         return []

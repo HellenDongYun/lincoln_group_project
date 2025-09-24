@@ -18,25 +18,16 @@ class UserRepository(Repository):
     def create_user(self, user: tuple) -> bool:
         try:
             first_name, last_name, town, email, password_hash, *rest = user
-            role = rest[0] if rest else None
+            global_role = rest[0] if rest else 'participant'
 
             with get_cursor() as cursor:
-                if role is None:
-                    cursor.execute(
-                        """
-                        INSERT INTO Users (first_name, last_name, town, email, password_hash)
-                        VALUES (%s, %s, %s, %s, %s)
-                        """,
-                        (first_name, last_name, town, email, password_hash)
-                    )
-                else:
-                    cursor.execute(
-                        """
-                        INSERT INTO Users (first_name, last_name, town, email, password_hash, role)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        """,
-                        (first_name, last_name, town, email, password_hash, role)
-                    )
+                cursor.execute(
+                    """
+                    INSERT INTO Users (first_name, last_name, town, email, password_hash, global_role)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (first_name, last_name, town, email, password_hash, global_role)
+                )
             return True
         except Exception as exception:
             print(f"Create user failed: {exception}")
@@ -64,7 +55,7 @@ class UserRepository(Repository):
             values = []
             
             for field, value in update_data.items():
-                if field in ['first_name', 'last_name', 'town', 'email', 'password_hash']:
+                if field in ['first_name', 'last_name', 'town', 'email', 'password_hash', 'global_role']:
                     set_clauses.append(f"{field} = %s")
                     values.append(value)
             
