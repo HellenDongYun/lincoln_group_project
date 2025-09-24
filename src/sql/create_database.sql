@@ -85,3 +85,26 @@ CREATE TABLE Race_Results (
     FOREIGN KEY (participant_id) REFERENCES Users(id)
      ON DELETE RESTRICT ON UPDATE CASCADE
 );
+-- Groups
+CREATE TABLE Groups (
+    group_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    visibility ENUM('public', 'private') DEFAULT 'public',
+    created_by INT, -- Super Admin ID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES Users(id)
+);
+-- User Groups
+CREATE TABLE User_groups (
+    user_id INT NOT NULL,
+    group_id INT NOT NULL,
+    role ENUM('participant', 'manager') DEFAULT 'participant',
+    PRIMARY KEY (user_id, group_id),
+    FOREIGN KEY (user_id) REFERENCES Users(id),
+    FOREIGN KEY (group_id) REFERENCES groups(group_id)
+);
+
+--add new column in the event table
+ALTER TABLE Events ADD COLUMN group_id INT AFTER id;
+ALTER TABLE Events ADD FOREIGN KEY (group_id) REFERENCES Groups(group_id);
