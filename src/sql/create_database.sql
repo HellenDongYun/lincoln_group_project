@@ -17,16 +17,14 @@ CREATE TABLE Users (
   status ENUM('active','inactive') NOT NULL DEFAULT 'active'
 );
 
--- Community Groups (renamed from 'Groups' to avoid reserved keyword conflicts)
 -- visibility: public groups discoverable to visitors; private groups hidden except to members/admins
--- join_type: 'open' allows participants to self-join; 'closed' requires manager or admin addition
+
 CREATE TABLE Community_Groups (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL UNIQUE,
   description TEXT,
   town VARCHAR(100),
   visibility ENUM('public','private') NOT NULL DEFAULT 'public',
-  join_type ENUM('open','closed') NOT NULL DEFAULT 'open',
   status ENUM('active','inactive','pending') NOT NULL DEFAULT 'active',
   created_by INT NOT NULL,
   FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -40,7 +38,6 @@ CREATE TABLE Group_Applications (
   proposed_description TEXT,
   proposed_town VARCHAR(100),
   visibility ENUM('public','private') NOT NULL DEFAULT 'public',
-  join_type ENUM('open','closed') NOT NULL DEFAULT 'open',
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   decision_by INT NULL,
   FOREIGN KEY (applicant_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
