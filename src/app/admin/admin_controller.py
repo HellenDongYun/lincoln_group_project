@@ -5,6 +5,7 @@ from src.app.common.date_format import DateFormat
 from src.app.common.db.cursor import get_cursor
 from src.app.app_controller import admin_service
 from src.app.auth.route_guard import require_super_admin
+from src.app.auth.auth_service import auth_service
 from src.app.common.nav.encode import decode_id
 from src.app.user.user import GlobalRole
 from datetime import datetime
@@ -218,7 +219,7 @@ def update_user_role(event_id, user_id):
                 SET role = %s
                 WHERE id = %s
                 """,
-                ('Admin',user_id),
+                ('super_admin',user_id),
             )  
         flash("User role updated successfully.", "success")
         return redirect(url_for("admin.view_event_details", event_id=event_id))           
@@ -227,24 +228,119 @@ def update_user_role(event_id, user_id):
 @admin_blueprint.route('/')
 # @route_guard(Role.ADMIN)
 def admin_dashboard():
-    # Get upcoming events with volunteer requirements
-    filters = {
-        "name": None,
-        "town": None,
-        "order": "asc",
-        "page": 1,
-        "per_page": 10
+    event_filters_form = {
+        "type": request.args.get("event_type", "").strip(),
+        "town": request.args.get("event_town", "").strip(),
+        "timeframe": request.args.get("event_timeframe", "30").strip() or "30",
+        "search": request.args.get("event_search", "").strip(),
     }
-    
-    # Get upcoming events only (filter by date in the future)
-    upcoming_events = AdminService.get_upcoming_events_with_volunteers()
-    
-    # Get all available volunteer roles for the dropdown
+    event_filters_query = {
+        "type": event_filters_form["type"] or None,
+        "town": event_filters_form["town"] or None,
+        "timeframe": event_filters_form["timeframe"] or "30",
+        "search": event_filters_form["search"] or None,
+    }
+
+    group_filters_form = {
+        "search": request.args.get("group_search", "").strip(),
+        "visibility": request.args.get("group_visibility", "").strip(),
+        "status": request.args.get("group_status", "").strip(),
+        "town": request.args.get("group_town", "").strip(),
+        "has_events": request.args.get("group_has_events", "").strip(),
+    }
+    group_filters_query = {
+        "search": group_filters_form["search"] or None,
+        "visibility": group_filters_form["visibility"] or None,
+        "status": group_filters_form["status"] or None,
+        "town": group_filters_form["town"] or None,
+        "has_events": group_filters_form["has_events"] or None,
+    }
+
+    monitoring_timeframe = request.args.get("monitoring_timeframe", "30").strip() or "30"
+    try:
+        monitoring_days = max(1, int(monitoring_timeframe))
+    except ValueError:
+        monitoring_days = 30
+        monitoring_timeframe = "30"
+
+    upcoming_events = AdminService.get_upcoming_events_with_volunteers(event_filters_query)
     volunteer_roles = AdminService.fetch_all_volunteer_roles()
-    
-    return render_template("admin/dashboard.html", 
-                         upcoming_events=upcoming_events,
-                         volunteer_roles=volunteer_roles)
+    groups_overview = AdminService.get_group_overview(group_filters_query)
+    pending_applications = AdminService.get_pending_group_applications()
+    group_filter_options = AdminService.get_group_filter_options()
+    event_filter_options = AdminService.get_event_filter_options()
+    monitoring_metrics = AdminService.get_monitoring_metrics(monitoring_days)
+
+    return render_template(
+        "admin/dashboard.html",
+        upcoming_events=upcoming_events,
+        volunteer_roles=volunteer_roles,
+        groups_overview=groups_overview,
+        pending_applications=pending_applications,
+        group_filter_options=group_filter_options,
+        event_filter_options=event_filter_options,
+        monitoring_metrics=monitoring_metrics,
+        event_filters=event_filters_form,
+        group_filters=group_filters_form,
+        monitoring_filters={"timeframe": monitoring_timeframe},
+    )
+
+
+@admin_blueprint.route('/groups/<int:group_id>/assign-manager', methods=['POST'])
+@require_super_admin
+def assign_group_manager(group_id):
+    manager_email = request.form.get('manager_email', '').strip()
+
+    try:
+        result = AdminService.assign_group_manager(group_id, manager_email)
+        flash(f"Assigned {result['full_name']} ({result['email']}) as group manager.", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        flash(f"Unable to assign manager: {str(exc)}", "danger")
+
+    return redirect(url_for('admin.admin_dashboard') + '#groups-insights')
+
+
+@admin_blueprint.route('/groups/create', methods=['POST'])
+@require_super_admin
+def create_group():
+    name = request.form.get('group_name', '').strip()
+    description = request.form.get('group_description', '').strip()
+    town = request.form.get('group_town', '').strip()
+    visibility = request.form.get('group_visibility', 'public').strip() or 'public'
+    join_type = request.form.get('group_join_type', 'open').strip() or 'open'
+    manager_email = request.form.get('group_manager_email', '').strip()
+
+    created_by = auth_service.get_user_id()
+
+    try:
+        result = AdminService.create_group(
+            name=name,
+            description=description,
+            town=town,
+            visibility=visibility,
+            join_type=join_type,
+            created_by=created_by,
+            manager_email=manager_email
+        )
+
+        flash(f"Community group '{name}' created successfully.", "success")
+        manager_result = result.get('manager')
+        if manager_result:
+            flash(
+                f"Assigned {manager_result['full_name']} ({manager_result['email']}) as group manager.",
+                "success",
+            )
+        elif result.get('manager_warning'):
+            flash(result['manager_warning'], "warning")
+
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        flash(f"Unable to create group: {str(exc)}", "danger")
+
+    return redirect(url_for('admin.admin_dashboard') + '#groups-insights')
 
 @admin_blueprint.route("/remove_volunteer_role_dashboard", methods=["POST"])
 # @route_guard(Role.ADMIN)
@@ -304,7 +400,10 @@ def view_all_volunteers():
 def delete_volunteer_role(event_id,role_id):
     try:
         with get_cursor() as cursor:
-            cursor.execute("DELETE FROM Vacancies WHERE event_id = %s and role_id = %s", (event_id,role_id))
+            cursor.execute(
+                "DELETE FROM Event_Task_Vacancies WHERE event_id = %s AND task_id = %s",
+                (event_id, role_id)
+            )
         flash(f"Volunteer role with ID {role_id} has been deleted.", "success")
     except Exception as e:
         flash(f"Error deleting volunteer role: {str(e)}", "danger")
@@ -396,13 +495,14 @@ def manage_user_roles():
 
 @admin_blueprint.route('/users/<int:user_id>/role', methods=['POST'])
 # @route_guard(Role.ADMIN)
+@require_super_admin
 def update_user_role_ajax(user_id):
     """Update user role via AJAX"""
     try:
         new_role = request.form.get('new_role')
         
         # Validate role
-        valid_roles = ['participant', 'volunteer', 'admin']
+        valid_roles = ['participant', 'group_manager', 'super_admin']
         if new_role not in valid_roles:
             return {'success': False, 'message': 'Invalid role specified'}, 400
         
@@ -425,6 +525,7 @@ def update_user_role_ajax(user_id):
 
 @admin_blueprint.route('/users/<int:user_id>/status', methods=['POST'])
 # @route_guard(Role.ADMIN)
+@require_super_admin
 def update_user_status_ajax(user_id):
     """Update user status via AJAX"""
     try:

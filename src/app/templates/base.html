@@ -69,26 +69,22 @@
       </nav>
     </header>
 
-    <main>
+    <main class="container-fluid p-0">
       <section>
-        {% if header %}
-        <header>{% block header %}{% endblock %}</header>
-        {% endif %} {% with messages =
-        get_flashed_messages(with_categories=true) %} {% if messages %} {% for
-        category, message in messages %}
-        <div
-          class="alert alert-{{ category }} alert-dismissible fade show"
-          role="alert"
-        >
-          {{ message }}
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="alert"
-            aria-label="Close"
-          ></button>
-        </div>
-        {% endfor %} {% endif %} {% endwith %} {% block content %}{% endblock %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="container my-3">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
       </section>
     </main>
 

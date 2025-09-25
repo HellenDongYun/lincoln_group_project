@@ -138,6 +138,6 @@ class GroupApplication:
 
 # Legacy Role enum for backward compatibility during migration
 class Role(Enum):
-    ADMIN = 'admin'
+    ADMIN = 'super_admin'
     PARTICIPANT = 'participant'
-    VOLUNTEER = 'volunteer'
+    GROUP_MANAGER = 'group_manager'
