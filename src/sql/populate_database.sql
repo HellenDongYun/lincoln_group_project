@@ -79,6 +79,8 @@ INSERT INTO Group_Memberships (group_id, user_id, group_role, member_status) VAL
 INSERT INTO Group_Applications (applicant_id, proposed_name, proposed_description, proposed_town, visibility, status, decision_by)
 VALUES
 (5, 'Hamilton Fitness Collective', 'Local mixed-discipline fitness and running events.', 'Hamilton', 'public', 'pending', NULL),
+(2, 'Auckland Run', 'Local running events.', 'Auckland', 'public', 'pending', NULL),
+(6, 'Auckland Fitness Collective', 'Local mixed-discipline fitness and running events.', 'Auckland', 'private', 'pending', NULL),
 (7, 'Napier Coastal Walkers', 'Social coastal walking group.', 'Napier', 'public', 'approved', 1),
 (8, 'Queenstown Mountain Riders', 'Mountain terrain cycling crew.', 'Queenstown', 'private', 'rejected', 1);
 
