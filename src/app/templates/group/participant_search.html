@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Find Groups & Events{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="card p-0">
+        <div class="card-header">
+            <h3><i class="fas fa-search"></i> Find Groups & Events</h3>
+        </div>
+
+        <div class="card-body">
+            <!-- Search & Filter Form -->
+            <div class="row">
+                <form method="GET" class="needs-validation" novalidate>
+                    <!-- Search by name and description -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="search" class="form-label">Search</label>
+                            <div class="input-group">
+                                <input aria-label="Search groups and events"
+                                       class="form-control"
+                                       id="search"
+                                       name="search"
+                                       placeholder="Search groups and events by name or description"
+                                       value="{{ current_filters.search or '' }}"
+                                       type="text">
+                                <button class="btn btn-dark" type="submit">Search</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters row -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="location" class="form-label">Location</label>
+                            <select class="form-select" id="location" name="location">
+                                <option value="">All Locations</option>
+                                {% for location in filter_options.locations %}
+                                    <option value="{{ location }}"
+                                            {% if current_filters.location == location %}selected{% endif %}>
+                                        {{ location }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="date" class="form-label">Date Range</label>
+                            <select class="form-select" id="date" name="date">
+                                <option value="">All Upcoming</option>
+                                <option value="next_2_weeks" {% if current_filters.date == 'next_2_weeks' %}selected{% endif %}>Next 2 Weeks</option>
+                                <option value="next_month" {% if current_filters.date == 'next_month' %}selected{% endif %}>Next Month</option>
+                                <option value="upcoming" {% if current_filters.date == 'upcoming' %}selected{% endif %}>All Upcoming Events</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="type" class="form-label">Event Type</label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="">All Types</option>
+                                {% for event_type in filter_options.event_types %}
+                                    <option value="{{ event_type }}"
+                                            {% if current_filters.type == event_type %}selected{% endif %}>
+                                        {{ event_type }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="sort" class="form-label">Sort By</label>
+                            <select class="form-select" id="sort" name="sort">
+                                <option value="popularity" {% if current_filters.sort == 'popularity' %}selected{% endif %}>Popularity</option>
+                                <option value="alphabetical" {% if current_filters.sort == 'alphabetical' %}selected{% endif %}>Name (A-Z)</option>
+                                <option value="date" {% if current_filters.sort == 'date' %}selected{% endif %}>Event Date</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <a class="btn btn-outline-dark" href="{{ url_for('groups.participant_search') }}">Clear All Filters</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            {% if has_filters %}
+                <hr class="my-4">
+                <h5>Search Results</h5>
+            {% endif %}
+
+            {% if results %}
+                {% for result in results %}
+                    {% if result.result_type == 'group' %}
+                        <!-- Group Card -->
+                        <div class="card mt-4 border-primary">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-primary me-2">GROUP</span>
+                                            <h5 class="mb-0"><i class="fas fa-users text-primary"></i> {{ result.group_name }}</h5>
+                                        </div>
+
+                                        {% if result.group_description %}
+                                            <p class="text-muted">{{ result.group_description }}</p>
+                                        {% endif %}
+
+                                        <small class="text-muted">
+                                            <i class="fas fa-map-marker-alt"></i> {{ result.town }}
+                                            <br>
+                                            <i class="fas fa-users"></i> {{ result.member_count }} members
+                                            {% if result.upcoming_events > 0 %}
+                                                <br><i class="fas fa-calendar"></i> {{ result.upcoming_events }} upcoming events
+                                            {% endif %}
+                                        </small>
+                                    </div>
+
+                                    <div class="col-md-4 text-end">
+                                        {% if result.visibility == 'private' %}
+                                            <span class="badge bg-warning text-dark mb-2">Private Group</span><br>
+                                        {% endif %}
+
+                                        {% if result.join_action == 'manage' %}
+                                            <a href="{{ url_for('groups.manage_group', group_id=result.group_id) }}"
+                                               class="btn btn-success btn-sm">
+                                                <i class="fas fa-cog"></i> Manage
+                                            </a>
+                                        {% elif result.join_action == 'member' %}
+                                            <span class="badge bg-success">Member</span>
+                                            <a href="{{ url_for('groups.view_group', group_id=result.group_id) }}"
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye"></i> View Group
+                                            </a>
+                                        {% elif result.join_action == 'join' %}
+                                            <form method="POST" action="{{ url_for('groups.join_group', group_id=result.group_id) }}" style="display: inline;">
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-plus"></i> Join Group
+                                                </button>
+                                            </form>
+                                        {% elif result.join_action == 'apply' %}
+                                            <span class="badge bg-warning text-dark mb-1">Application Required</span><br>
+                                            <a href="{{ url_for('groups.apply_for_group') }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-edit"></i> Apply to Join
+                                            </a>
+                                        {% elif result.join_action == 'closed' %}
+                                            <span class="badge bg-secondary">Closed Group</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif result.result_type == 'event' %}
+                        <!-- Event Card -->
+                        <div class="card mt-4 border-success">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-success me-2">EVENT</span>
+                                            <h5 class="mb-0"><i class="fas fa-calendar-check text-success"></i> {{ result.event_name }}</h5>
+                                        </div>
+
+                                        <p class="text-muted mb-1">
+                                            <small>From group: <strong>{{ result.group_name }}</strong></small>
+                                        </p>
+
+                                        {% if result.event_description %}
+                                            <p class="text-muted">{{ result.event_description }}</p>
+                                        {% endif %}
+
+                                        <small class="text-muted">
+                                            <i class="fas fa-map-marker-alt"></i> {{ result.town }}
+                                            <br>
+                                            <i class="fas fa-clock"></i> {{ result.formatted_datetime }}
+                                            <br>
+                                            <i class="fas fa-tag"></i> {{ result.event_type }}
+                                            {% if result.available_spaces is defined %}
+                                                <br><i class="fas fa-users"></i> {{ result.available_spaces }} spaces available
+                                            {% endif %}
+                                        </small>
+                                    </div>
+
+                                    <div class="col-md-4 text-end">
+                                        {% if result.register_action == 'registered' %}
+                                            <span class="badge bg-success mb-2">Registered</span>
+                                        {% elif result.register_action == 'full' %}
+                                            <span class="badge bg-danger mb-2">Full</span>
+                                        {% elif result.register_action == 'register' %}
+                                            {% if result.available_spaces and result.available_spaces > 0 %}
+                                                <span class="badge bg-primary mb-2">{{ result.available_spaces }} available</span><br>
+                                                <button class="btn btn-success btn-sm">
+                                                    <i class="fas fa-plus"></i> Register
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-success btn-sm">
+                                                    <i class="fas fa-plus"></i> Register
+                                                </button>
+                                            {% endif %}
+                                        {% endif %}
+
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('groups.view_group', group_id=result.group_id) }}"
+                                               class="btn btn-outline-secondary btn-sm">
+                                                <i class="fas fa-eye"></i> View Group
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+            {% else %}
+                {% if has_filters %}
+                    <!-- No Results Message -->
+                    <div class="text-center mt-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Results Found</h4>
+                        <p class="text-muted">Try adjusting your search criteria or browse all available groups.</p>
+                        <a href="{{ url_for('groups.participant_search') }}" class="btn btn-primary">
+                            <i class="fas fa-list"></i> View All Groups & Events
+                        </a>
+                    </div>
+                {% else %}
+                    <!-- Welcome Message -->
+                    <div class="text-center mt-4">
+                        <i class="fas fa-compass fa-3x text-primary mb-3"></i>
+                        <h4>Discover Groups & Events</h4>
+                        <p class="text-muted">Use the search and filters above to find groups to join and events to participate in.</p>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

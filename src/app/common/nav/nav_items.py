@@ -3,7 +3,6 @@ from flask import url_for
 from src.app.user.user import GlobalRole
 from src.app.common.nav.encode import encode_id
 
-
 def left_nav_items(user_id: int, user_role: GlobalRole):
 
     nav_items = []
@@ -29,7 +28,11 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "My Dashboard",
             "url": url_for('participant.dashboard', encoded_participant_id=encoded_participant_id)
         })
-    
+        nav_items.append({
+            "label": "Find Groups & Events",
+            "url": url_for('groups.participant_search')
+        })
+ 
     # Groups navigation for all logged-in users
     if user_id:
         nav_items.append({

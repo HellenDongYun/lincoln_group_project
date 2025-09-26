@@ -194,10 +194,64 @@ def my_groups():
     user_id = auth_service.get_user_id()
     groups = GroupService.get_user_groups(user_id)
     managed_groups = GroupService.get_user_managed_groups(user_id)
-    
+
     return render_template('group/my_groups.html', 
                          groups=groups,
                          managed_groups=managed_groups)
+
+
+@group_blueprint.route('/participant-search')
+@require_login
+def participant_search():
+    """Participant-specific search for groups and events"""
+    user_id = auth_service.get_user_id()
+
+    # Only allow participants to use this search
+    if not auth_service.is_participant():
+        flash('This search feature is for participants only', 'error')
+        return redirect(url_for('groups.index'))
+
+    # Extract search parameters
+    search_term = request.args.get('search', '').strip()
+    location_filter = request.args.get('location', '').strip()
+    date_filter = request.args.get('date', '').strip()
+    type_filter = request.args.get('type', '').strip()
+    sort_by = request.args.get('sort', 'popularity').strip()
+
+    # Get participant-specific search results
+    try:
+        results = GroupService.search_for_participants(
+            user_id,
+            search_term if search_term else None,
+            location_filter if location_filter else None,
+            date_filter if date_filter else None,
+            type_filter if type_filter else None,
+            sort_by
+        )
+    except Exception as e:
+        flash('Error performing search. Please try again.', 'error')
+        results = []
+
+    # Get filter options for dropdowns
+    try:
+        filter_options = GroupService.get_participant_search_filter_options()
+    except Exception as e:
+        filter_options = {'locations': [], 'event_types': []}
+
+    # Prepare current filters for template
+    current_filters = {
+        'search': search_term,
+        'location': location_filter,
+        'date': date_filter,
+        'type': type_filter,
+        'sort': sort_by
+    }
+
+    return render_template('group/participant_search.html',
+                         results=results,
+                         filter_options=filter_options,
+                         current_filters=current_filters,
+                         has_filters=bool(search_term or location_filter or date_filter or type_filter))
 
 
 # Super Admin Routes

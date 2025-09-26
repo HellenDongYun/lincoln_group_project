@@ -183,3 +183,101 @@ class GroupService:
         with get_cursor() as cursor:
             groups = GroupRepository.get_user_groups(cursor, user_id)
             return [group for group in groups if group['group_role'] == 'manager']
+
+    @staticmethod
+    def search_for_participants(participant_id, search_term=None, location_filter=None,
+                              date_filter=None, type_filter=None, sort_by='popularity'):
+        """Get search results specifically for participants with join/register context"""
+        with get_cursor() as cursor:
+            results = GroupRepository.search_groups_and_events_for_participants(
+                cursor, participant_id, search_term, location_filter,
+                date_filter, type_filter, sort_by
+            )
+
+            # Process results to add additional context for participants
+            processed_results = []
+            for result in results:
+                processed_result = dict(result)
+
+                # Determine join/register status and actions available
+                if processed_result['result_type'] == 'group':
+                    processed_result['can_join'] = GroupService._can_participant_join_group(processed_result)
+                    processed_result['join_action'] = GroupService._get_group_join_action(processed_result)
+                elif processed_result['result_type'] == 'event':
+                    processed_result['can_register'] = GroupService._can_participant_register_for_event(processed_result)
+                    processed_result['register_action'] = GroupService._get_event_register_action(processed_result)
+
+                # Format datetime for display
+                if processed_result.get('datetime'):
+                    processed_result['formatted_datetime'] = processed_result['datetime'].strftime('%Y-%m-%d %H:%M')
+
+                # Calculate available spaces for events
+                if processed_result['result_type'] == 'event' and processed_result.get('max_participants'):
+                    registered = processed_result.get('registered_participants', 0)
+                    processed_result['available_spaces'] = processed_result['max_participants'] - registered
+
+                processed_results.append(processed_result)
+
+            return processed_results
+
+    @staticmethod
+    def get_participant_search_filter_options():
+        """Get filter options for participant search (locations, event types, etc.)"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_participant_search_filter_options(cursor)
+
+    @staticmethod
+    def _can_participant_join_group(group_result):
+        """Helper to determine if participant can join a group"""
+        # Already a member
+        if group_result.get('participant_group_role'):
+            return False
+
+        # Can join if group is open
+        if group_result.get('join_type') == 'open':
+            return True
+
+        # Private groups require application
+        return group_result.get('visibility') == 'private'
+
+    @staticmethod
+    def _get_group_join_action(group_result):
+        """Helper to get the appropriate join action for a group"""
+        if group_result.get('participant_group_role') == 'manager':
+            return 'manage'
+        elif group_result.get('participant_group_role') == 'member':
+            return 'member'
+        elif group_result.get('join_type') == 'open':
+            return 'join'
+        elif group_result.get('visibility') == 'private':
+            return 'apply'
+        else:
+            return 'closed'
+
+    @staticmethod
+    def _can_participant_register_for_event(event_result):
+        """Helper to determine if participant can register for an event"""
+        # Already registered
+        if event_result.get('participant_event_status') == 'registered':
+            return False
+
+        # Check if event is full
+        if event_result.get('max_participants'):
+            registered = event_result.get('registered_participants', 0)
+            if registered >= event_result['max_participants']:
+                return False
+
+        # Can register if event is in the future
+        return True
+
+    @staticmethod
+    def _get_event_register_action(event_result):
+        """Helper to get the appropriate register action for an event"""
+        if event_result.get('participant_event_status') == 'registered':
+            return 'registered'
+        elif event_result.get('max_participants'):
+            registered = event_result.get('registered_participants', 0)
+            if registered >= event_result['max_participants']:
+                return 'full'
+
+        return 'register'
