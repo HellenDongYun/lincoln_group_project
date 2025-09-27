@@ -1,14 +1,183 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}ActiveLoop - Registration{% endblock
+%} {% block header %}
+<!--<h2>Registration</h2>-->
+{% endblock %} {% block content %}
 
-{% block title %}ActiveLoop - Registration{% endblock %}
+<section
+  class="bg-light d-flex align-items-center justify-content-center vh-100"
+>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
+            <!-- title -->
+            <h4 class="fw-bold text-center mb-1">ActiveLoop Sign up</h4>
+            <p class="text-center mb-4 text-muted">Community fitness events</p>
+            <!-- register form -->
+            <form method="POST" class="needs-validation" novalidate>
+              <!-- First Name -->
+              <div class="mb-3">
+                <label for="first_name" class="form-label"
+                  >First name <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  name="first_name"
+                  id="first_name"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('first_name').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('first_name').value }}"
+                />
+                {% if not form_group.get('first_name').errors %}
+                <div class="invalid-feedback">
+                  Please enter your first name.
+                </div>
+                {% endif %} {% for error in form_group.get('first_name').errors
+                %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+              </div>
 
-{% block header %}
-    <!--<h2>Registration</h2>-->
-{% endblock %}
+              <!-- Last Name -->
+              <div class="mb-3">
+                <label for="last_name" class="form-label"
+                  >Last name <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  name="last_name"
+                  id="last_name"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('last_name').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('last_name').value }}"
+                />
+                {% if not form_group.get('last_name').errors %}
+                <div class="invalid-feedback">Please enter your last name.</div>
+                {% endif %} {% for error in form_group.get('last_name').errors
+                %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+              </div>
 
-{% block content %}
+              <!-- Town -->
+              <div class="mb-3">
+                <label for="input-town-name" class="form-label"
+                  >Town <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  name="town"
+                  id="input-town-name"
+                  required
+                  aria-required="true"
+                  autocomplete="off"
+                  data-filter="/api/new-zealand-town-names?q=#QUERY#"
+                  class="form-control {% if form_group.get('town').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('town').value }}"
+                />
+                {% if not form_group.get('town').errors %}
+                <div class="invalid-feedback">Please enter your town.</div>
+                {% endif %} {% for error in form_group.get('town').errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+              </div>
 
-<div class="row justify-content-center mt-5">
+              <!-- Email -->
+              <div class="mb-3">
+                <label for="email" class="form-label"
+                  >Email <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  name="email"
+                  id="email"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('email').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('email').value }}"
+                />
+                {% if not form_group.get('email').errors %}
+                <div class="invalid-feedback">Please enter your email.</div>
+                {% endif %} {% for error in form_group.get('email').errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- Password -->
+              <div class="mb-3">
+                <label for="password" class="form-label"
+                  >Password <span class="text-danger">*</span></label
+                >
+                <input
+                  type="password"
+                  name="password"
+                  id="password"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('password').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('password').value }}"
+                />
+                {% if not form_group.get('password').errors %}
+                <div class="invalid-feedback">Please enter your password.</div>
+                {% endif %} {% for error in form_group.get('password').errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- Confirm Password -->
+              <div class="mb-3">
+                <label for="password_confirmation" class="form-label"
+                  >Confirm Password <span class="text-danger">*</span></label
+                >
+                <input
+                  type="password"
+                  name="password_confirmation"
+                  id="password_confirmation"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('password_confirmation').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('password_confirmation').value }}"
+                />
+                {% if not form_group.get('password_confirmation').errors %}
+                <div class="invalid-feedback">
+                  Please enter your password again.
+                </div>
+                {% endif %} {% for error in
+                form_group.get('password_confirmation').errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" class="btn btn-dark w-100">Register</button>
+            </form>
+
+            <!-- login reminder -->
+            <div class="text-center mt-3">
+              <small class="text-muted">Already have an account?</small>
+              <a href="{{ url_for('app.login') }}" class="text-decoration-none"
+                >Log in</a
+              >
+            </div>
+          </div>
+        </div>
+        <!-- return to home page -->
+        <div class="text-center mt-3">
+          <a
+            href="{{ url_for('app.home') }}"
+            class="text-muted small text-decoration-none"
+            >Home</a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- <div class="row justify-content-center mt-5">
     <div class="col-md-9 col-lg-6">
         <div class="card">
 
@@ -153,6 +322,6 @@
             </div>
         </div>
     </div>
-</div>
+</div> -->
 
 {% endblock %}

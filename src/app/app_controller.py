@@ -286,6 +286,7 @@ def home_filter_events():
     event_type = request.args.get("event_type", "").strip()
     date_str = request.args.get("date", "").strip()
     formatted_date = ""
+    limit = 9
     if date_str:
         try:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
@@ -295,7 +296,7 @@ def home_filter_events():
     filter_event_results = []
     filter_group_results = []
     if filter_type == "events":
-        filter_event_results = HomeService.home_filter_events(location, event_type, date_str)
+        filter_event_results = HomeService.home_filter_events(limit,location, event_type, date_str)
     elif filter_type == "groups":
         filter_group_results = HomeService.home_filter_groups()
     print("events=", filter_event_results)

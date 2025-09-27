@@ -1,66 +1,173 @@
-{% extends "base.html" %}
-{% block title %}User Login{% endblock %}
+{% extends "base.html" %} {% block title %}User Login{% endblock %} {% block
+content %}
+<section
+  class="bg-light d-flex align-items-center justify-content-center vh-100"
+>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
+            <!-- title -->
+            <h4 class="fw-bold text-center mb-1">ActiveLoop Login</h4>
+            <p class="text-center mb-4 text-muted">Community fitness events</p>
 
+            <!-- login form -->
+            <form method="POST" class="needs-validation" novalidate>
+              <!-- Email -->
+              <div class="mb-3">
+                <label for="email" class="form-label"
+                  >Email <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  name="email"
+                  id="email"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('email').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('email').value }}"
+                />
+                {% if form_group.get('email').errors %} {% for error in
+                form_group.get('email').errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %} {% else %}
+                <div class="invalid-feedback">Please enter your email.</div>
+                {% endif %}
+              </div>
 
-{% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-9 col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-user"></i> User Login</h3>
+              <!-- Password -->
+              <div class="mb-3">
+                <label for="password" class="form-label"
+                  >Password <span class="text-danger">*</span></label
+                >
+                <input
+                  type="password"
+                  name="password"
+                  id="password"
+                  required
+                  aria-required="true"
+                  class="form-control {% if form_group.get('password').errors %}is-invalid{% endif %}"
+                  value="{{ form_group.get('password').value }}"
+                />
+                {% if not form_group.get('email').errors %}
+                <div class="invalid-feedback">Please enter your email.</div>
+                {% endif %} {% for error in form_group.get('email').errors %}
+                <div class="invalid-feedback">{{error}}</div>
+                {% endfor %}
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" class="btn btn-dark w-100">Log in</button>
+            </form>
+
+            <!-- sign up reminder -->
+            <div class="text-center mt-3">
+              <small class="text-muted">Don't have an account yet?</small>
+              <a
+                href="{{ url_for('app.register') }}"
+                class="text-decoration-none"
+                >Sign up</a
+              >
             </div>
 
-            <div class="card-body">
-                <form method="POST" class="needs-validation" novalidate>
-                    <div class="mt-2">
-                        <label for="email">Email <span class="text-danger">*</span></label>
-                        <input aria-required="true"
-                               class="form-control form-control-lg {% if form_group.get('email').errors %}is-invalid{% endif %}"
-                               id="email"
-                               name="email"
-                               required
-                               type="text"
-                               value="{{form_group.get('email').value}}"
-                        >
-
-                        {% if not form_group.get('email').errors %}
-                        <div class="invalid-feedback">Please enter your email.</div>
-                        {% endif %}
-
-                        {% for error in form_group.get('email').errors %}
-                        <div class="invalid-feedback">{{error}}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mt-2">
-                        <label for="password">Password <span class="text-danger">*</span></label>
-                        <input aria-required="true"
-                               class="form-control form-control-lg {% if form_group.get('password').errors %}is-invalid{% endif %}"
-                               id="password"
-                               name="password"
-                               required
-                               type="password"
-                               value="{{form_group.get('password').value}}"
-                        >
-
-                        {% if not form_group.get('password').errors %}
-                        <div class="invalid-feedback">Please enter your password.</div>
-                        {% endif %}
-
-                        {% for error in form_group.get('password').errors %}
-                        <div class="invalid-feedback">{{error}}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="d-grid mt-5">
-                        <button type="submit" class="btn btn-dark">Log in</button>
-                        <div class="text-center mt-2">
-                            <a href="{{ url_for('app.register') }}">Register new account</a>
-                        </div>
-                    </div>
-                </form>
+            <!-- Demo account -->
+            <div class="mt-4">
+              <h6 class="fw-semibold">Demo account</h6>
+              <ul class="list-unstyled small text-muted">
+                <li>
+                  Super Admin: super.admin@platform.org, Password:
+                  <em>Super123!</em>
+                </li>
+                <li>
+                  Participant: alice.wong@gmail.com, Password:
+                  <em>Alice123!</em>
+                </li>
+                <li>
+                  Volunteer: vanna.patel@gmail.com, Password: <em>Vanna123!</em>
+                </li>
+              </ul>
             </div>
+          </div>
         </div>
+        <!-- return to home page -->
+        <div class="text-center mt-3">
+          <a
+            href="{{ url_for('app.home') }}"
+            class="text-muted small text-decoration-none"
+            >Home</a
+          >
+        </div>
+      </div>
     </div>
-</div>
+  </div>
+</section>
+<!-- <div class="row justify-content-center mt-5">
+  <div class="col-md-9 col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-user"></i> User Login</h3>
+      </div>
+
+      <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+          <div class="mt-2">
+            <label for="email">Email <span class="text-danger">*</span></label>
+            <input
+              aria-required="true"
+              class="form-control form-control-lg {% if form_group.get('email').errors %}is-invalid{% endif %}"
+              id="email"
+              name="email"
+              required
+              type="text"
+              value="{{form_group.get('email').value}}"
+            />
+
+            {% if not form_group.get('email').errors %}
+            <div class="invalid-feedback">Please enter your email.</div>
+            {% endif %} {% for error in form_group.get('email').errors %}
+            <div class="invalid-feedback">{{error}}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mt-2">
+            <label for="password"
+              >Password <span class="text-danger">*</span></label
+            >
+            <input
+              aria-required="true"
+              class="form-control form-control-lg {% if form_group.get('password').errors %}is-invalid{% endif %}"
+              id="password"
+              name="password"
+              required
+              type="password"
+              value="{{form_group.get('password').value}}"
+            />
+
+            {% if not form_group.get('password').errors %}
+            <div class="invalid-feedback">Please enter your password.</div>
+            {% endif %} {% for error in form_group.get('password').errors %}
+            <div class="invalid-feedback">{{error}}</div>
+            {% endfor %}
+          </div>
+
+          <div class="d-grid mt-5">
+            <button type="submit" class="btn btn-dark">Log in</button>
+            <div class="text-center mt-2">
+              <a href="{{ url_for('app.register') }}">Register new account</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="mt-4">
+    <h6 class="fw-semibold">Demo account</h6>
+    <ul class="list-unstyled small text-muted">
+      <li>Admin: nick.singh@lincoln.ac.nz, Password:<em>Admin123!</em></li>
+      <li>Participant: alice.wong@gmail.com,Password:<em>Alice123!</em></li>
+      <li>Volunteer: vanna.patel@gmail.com,Password:<em>Vanna123!</em></li>
+    </ul>
+  </div>
+</div> -->
 {% endblock %}

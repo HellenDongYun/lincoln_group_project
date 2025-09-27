@@ -18,7 +18,7 @@ class Repository:
         with get_cursor() as cursor:
             result = cursor.execute(query, params)
             return result
-    def home_filter_events(location="", event_type="", date_str=""):
+    def home_filter_events(limit,location="", event_type="", date_str=""):
         base_query = "SELECT * FROM Events WHERE 1=1"
         params = []
         if location:
@@ -34,9 +34,8 @@ class Repository:
                 params.append(date_obj.date())
             except ValueError:
                 pass
-        base_query += " ORDER BY datetime ASC"
+        base_query += " ORDER BY datetime ASC LIMIT {}".format(int(limit))
         with get_cursor() as cursor:
-            print("SQL:", base_query, "params:", params)
             cursor.execute(base_query, params)
             return cursor.fetchall()     
     def home_filter_groups():
