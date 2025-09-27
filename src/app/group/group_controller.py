@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
-from src.app.user.user import GroupVisibility, GroupJoinType
+from src.app.user.user import GroupVisibility, GroupJoinType, GroupStatus
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -41,20 +41,25 @@ def view_group(group_id):
             return redirect(url_for('groups.index'))
     
     members = GroupService.get_group_members(group_id)
+    upcoming_events = GroupService.get_group_events(group_id)
     
-    # Check if current user can join
+    # Check if current user can join/manage
     can_join = False
     is_member = False
+    can_manage = False
     if auth_service.is_logged_in():
         user_id = auth_service.get_user_id()
         is_member = GroupService.is_group_member(group_id, user_id)
         can_join = not is_member and GroupService.can_user_join_group(group_id, user_id)
+        can_manage = GroupService.can_user_manage_group(group_id, user_id, auth_service.is_super_admin())
     
     return render_template('group/view_group.html', 
                          group=group, 
                          members=members,
                          can_join=can_join,
-                         is_member=is_member)
+                         is_member=is_member,
+                         can_manage=can_manage,
+                         upcoming_events=upcoming_events)
 
 
 @group_blueprint.route('/<int:group_id>/join', methods=['POST'])
@@ -108,10 +113,35 @@ def manage_group(group_id):
     
     group = GroupService.get_group_by_id(group_id)
     members = GroupService.get_group_members(group_id)
+    upcoming_events = GroupService.get_group_events(group_id)
+    visibility_options = [option.value for option in GroupVisibility]
+    status_options = [option.value for option in GroupStatus]
     
     return render_template('group/manage_group.html', 
                          group=group, 
-                         members=members)
+                         members=members,
+                         upcoming_events=upcoming_events,
+                         visibility_options=visibility_options,
+                         status_options=status_options,
+                         is_super_admin=is_super_admin)
+
+
+@group_blueprint.route('/<int:group_id>/manage/settings', methods=['POST'])
+@require_super_admin
+def update_group_settings(group_id):
+    """Super admin can update visibility and status"""
+    visibility = request.form.get('visibility')
+    status = request.form.get('status')
+
+    try:
+        GroupService.update_group_settings(group_id, visibility, status)
+        flash('Group settings updated successfully', 'success')
+    except ValueError as error:
+        flash(str(error), 'error')
+    except Exception:
+        flash('Failed to update group settings', 'error')
+
+    return redirect(url_for('groups.manage_group', group_id=group_id))
 
 
 @group_blueprint.route('/<int:group_id>/manage/members/<int:member_id>/role', methods=['POST'])

@@ -1,359 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Create Event - ActiveLoop{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4895ef;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --success-color: #4cc9f0;
-            --card-bg: rgba(255, 255, 255, 0.92);
-        }
+{% extends "base.html" %}
 
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+{% block title %}Create Event - ActiveLoop{% endblock %}
 
-        .container {
-            flex: 1;
-            max-width: 1200px;
-        }
-
-        .card {
-            border: none;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
-            background: var(--card-bg);
-            backdrop-filter: blur(10px);
-            margin-bottom: 30px;
-        }
-
-        .card-header {
-            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-            color: white;
-            border: none;
-            padding: 25px 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card-header::before {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
-            transform: rotate(30deg);
-        }
-
-        .card-header h2, .card-header h3 {
-            position: relative;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin: 0;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-body {
-            padding: 30px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 8px;
-        }
-
-        .form-control {
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 14px 15px;
-            font-size: 16px;
-            transition: all 0.3s;
-            background-color: #f8f9fa;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
-            margin-bottom: 25px;
-        }
-
-        .form-control:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(72, 149, 239, 0.15);
-            background-color: white;
-        }
-
-        textarea.form-control {
-            min-height: 120px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 17px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
-            width: 100%;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
-            background: linear-gradient(to right, var(--secondary-color), var(--primary-color));
-        }
-
-        .btn-outline-secondary {
-            border-radius: 10px;
-            padding: 10px 15px;
-        }
-
-        .list-group-item {
-            border-radius: 10px !important;
-            margin-bottom: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            transition: all 0.3s;
-        }
-
-        .list-group-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 14px;
-        }
-
-        .footer a {
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        .search-form {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 5px;
-        }
-
-        .search-form .form-control {
-            background: rgba(255, 255, 255, 0.9);
-            margin-bottom: 0;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.8s ease-out;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .card-body {
-                padding: 20px;
-            }
-            
-            .card-header {
-                padding: 20px 15px;
-            }
-            
-            .form-control {
-                padding: 12px 15px;
-            }
-            
-            .card-header h2 {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container fade-in">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, msg in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ msg }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Card for Create Event -->
-        <div class="card shadow-lg">
-            <div class="card-header">
-                <h2><i class="fas fa-calendar-plus me-2"></i>Create New Event</h2>
+{% block content %}
+<div class="hero-section-dark">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 text-white">Create New Event</h1>
+                <p class="lead text-white-50">Fill out the form below to add a new event to the system.</p>
             </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('admin.create_event') }}">
-                    <div class="form-group">
-                        <label class="form-label">Event Name</label>
-                        <input type="text" class="form-control" name="name" required placeholder="Enter event name">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Date</label>
-                                <input type="date" class="form-control" name="event_date" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Time</label>
-                                <input type="time" class="form-control" name="event_time" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Location (City/Town)</label>
-                        <input type="text" class="form-control" name="location" required placeholder="Enter location">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Event Type</label>
-                        <select class="form-control" name="event_type" required>
-                            <option value="">Select event type</option>
-                            <option value="5km_run">5km Run</option>
-                            <option value="5km_walk">5km Walk</option>
-                            <option value="cycling">Cycling</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control" name="description" rows="3" placeholder="Event details..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Max Participants</label>
-                        <input type="number" class="form-control" name="max_participants" min="1" value="50" required placeholder="Maximum attendees">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary mt-3">
-                        <i class="fas fa-save me-2"></i>Save Event
-                    </button>
-                </form>
-            </div>
+            <a href="{{ url_for('admin.view_events') }}" class="btn btn-outline-light">
+                <i class="bi bi-arrow-left me-2"></i>Back to Events
+            </a>
         </div>
+    </div>
+</div>
 
-        <!-- Event List -->
-        <div class="card shadow-lg">
-            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-center">
-                <h3><i class="fas fa-calendar-alt me-2"></i>Upcoming Events</h3>
-                <form method="GET" action="{{ url_for('admin.view_events') }}" class="search-form mt-3 mt-md-0">
-                    <div class="input-group">
-                        <input type="text" name="search" class="form-control" placeholder="Search events..." value="{{ search_query }}">
-                        <button type="submit" class="btn btn-outline-secondary">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                </form>
-            </div>
-            <div class="card-body">
-                {% if events %}
-                    <div class="list-group">
-                        {% for event in events %}
-                            <div class="list-group-item">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <h5 class="mb-1"><i class="fas fa-calendar-check me-2 text-primary"></i>{{ event.event_name }}</h5>
-                                        <small class="text-muted">
-                                            <i class="fas fa-map-marker-alt me-1"></i>{{ event.location }} • 
-                                            <i class="fas fa-clock me-1"></i>{{ event.formatted_datetime if event.formatted_datetime else 'Date not set' }}
-                                        </small>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="badge bg-primary rounded-pill">
-                                            <i class="fas fa-users me-1"></i>{{ event.max_participants }}
-                                        </span>
-                                        <div class="mt-2">
-                                            <a href="{{ url_for('admin.view_event_details', event_id=event.event_id) }}" class="btn btn-sm btn-outline-primary me-1">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <form action="{{ url_for('admin.admin_delete_event', event_id=event.event_id) }}" method="POST" class="d-inline">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this event?')">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if event.description %}
-                                    <p class="mt-2 mb-0">{{ event.description }}</p>
-                                {% endif %}
-                                <div class="mt-2">
-                                    <span class="badge bg-secondary">{{ event.event_type }}</span>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No events found.</p>
-                        {% if search_query %}
-                            <a href="{{ url_for('admin.view_events') }}" class="btn btn-primary">Clear Search</a>
-                        {% endif %}
-                    </div>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, msg in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ msg }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
                 {% endif %}
+            {% endwith %}
+
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
+                    <form method="POST" novalidate>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" name="name" class="form-control" placeholder="Event Name" required>
+                                    <label class="form-label">Event Name</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select name="event_type" class="form-select" required>
+                                        <option value="" selected>Select Event Type</option>
+                                        <option value="5km_run">5km Run</option>
+                                        <option value="5km_walk">5km Walk</option>
+                                        <option value="cycling">Cycling</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                    <label class="form-label">Event Type</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="date" name="event_date" class="form-control" required>
+                                    <label class="form-label">Event Date</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="time" name="event_time" class="form-control" required>
+                                    <label class="form-label">Event Time</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" name="location" class="form-control" placeholder="Event Location" required>
+                                    <label class="form-label">Location</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="number" name="max_participants" class="form-control" placeholder="Max Participants" min="1" value="50" required>
+                                    <label class="form-label">Max Participants</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <textarea name="description" class="form-control" placeholder="Description" style="height: 120px;"></textarea>
+                                    <label class="form-label">Description</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-plus-circle me-2"></i>Create Event
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="footer">
-        <p>&copy; 2025 ActiveLoop. All rights reserved.</p>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Set minimum date to today
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.querySelector('input[type="date"]').min = today;
-            
-            // Set default time to next hour
-            const now = new Date();
-            const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
-            const hours = nextHour.getHours().toString().padStart(2, '0');
-            const minutes = nextHour.getMinutes().toString().padStart(2, '0');
-            document.querySelector('input[type="time"]').value = `${hours}:${minutes}`;
-        });
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

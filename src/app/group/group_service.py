@@ -1,6 +1,13 @@
 from src.app.common.db.cursor import get_cursor
 from src.app.group.group_repository import GroupRepository
-from src.app.user.user import CommunityGroup, GroupMembership, GroupApplication
+from src.app.event.event import Event
+from src.app.user.user import (
+    CommunityGroup,
+    GroupMembership,
+    GroupApplication,
+    GroupVisibility,
+    GroupStatus,
+)
 
 
 class GroupService:
@@ -185,6 +192,7 @@ class GroupService:
             return [group for group in groups if group['group_role'] == 'manager']
 
     @staticmethod
+
     def search_for_participants(participant_id, search_term=None, location_filter=None,
                               date_filter=None, type_filter=None, sort_by='popularity'):
         """Get search results specifically for participants with join/register context"""

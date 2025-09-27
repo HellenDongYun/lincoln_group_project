@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Propose a New Community Group{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-dark text-white position-relative overflow-hidden">
+  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.85), rgba(13, 110, 253, 0.65)); opacity: 0.95; z-index: 1;"></div>
+  <div class="container position-relative" style="z-index: 2;">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <p class="text-uppercase small mb-2 fw-semibold text-warning">Community driven</p>
+        <h1 class="display-5 fw-bold mb-3">Submit a new group idea</h1>
+        <p class="lead text-white-50 mb-0">Share your concept and our super administrators will review your proposal. If approved, you'll become a group manager to lead the journey.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4 p-lg-5">
+            <h2 class="h4 fw-bold mb-4">Application form</h2>
+            <form method="post" class="row g-4">
+              <div class="col-12">
+                <label for="proposed_name" class="form-label fw-semibold">Group name<span class="text-danger ms-1">*</span></label>
+                <input type="text" id="proposed_name" name="proposed_name" class="form-control form-control-lg" required maxlength="120" placeholder="e.g. Auckland Sunrise Runners" />
+              </div>
+
+              <div class="col-12">
+                <label for="proposed_description" class="form-label fw-semibold">Group mission</label>
+                <textarea id="proposed_description" name="proposed_description" class="form-control" rows="5" placeholder="Tell us what this group will focus on and who it is for."></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label for="proposed_town" class="form-label fw-semibold">Town<span class="text-danger ms-1">*</span></label>
+                <input type="text" id="proposed_town" name="proposed_town" class="form-control" required placeholder="Where will you meet?" />
+              </div>
+
+              <div class="col-md-3">
+                <label for="visibility" class="form-label fw-semibold">Visibility</label>
+                <select id="visibility" name="visibility" class="form-select">
+                  <option value="public" selected>Public (anyone can view)</option>
+                  <option value="private">Private (invite only)</option>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label for="join_type" class="form-label fw-semibold">Join type</label>
+                <select id="join_type" name="join_type" class="form-select">
+                  <option value="open" selected>Instant join</option>
+                  <option value="closed">Requires approval</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <div class="alert alert-info mb-4" role="alert">
+                  <i class="bi bi-info-circle me-2"></i>
+                  After submitting, a super admin will review your application. You'll be notified once a decision is made.
+                </div>
+              </div>
+
+              <div class="col-12 d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('groups.index') }}" class="btn btn-outline-secondary">Back to discovery</a>
+                <button type="submit" class="btn btn-warning btn-lg fw-semibold">Submit application</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block footer %}
+<footer class="text-center text-muted py-4 small">
+  <i class="bi bi-lightning-charge-fill text-warning me-2"></i>Fueling new communities every week
+</footer>
+{% endblock %}

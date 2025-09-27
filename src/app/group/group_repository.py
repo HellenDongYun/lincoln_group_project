@@ -247,6 +247,39 @@ class GroupRepository(Repository):
         """, (group_id, user_id))
         return cursor.fetchone() is not None
 
+    @staticmethod
+    def update_group_settings(cursor, group_id, visibility, status):
+        """Update visibility and status of a group"""
+        cursor.execute("""
+            UPDATE Community_Groups
+            SET visibility = %s, status = %s
+            WHERE id = %s
+        """, (visibility, status, group_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def get_group_events(cursor, group_id, include_past=False, limit=None):
+        """Fetch events associated with a group"""
+        query = """
+            SELECT e.id, e.group_id, e.datetime, e.town, e.name, e.event_type,
+                   e.description, e.max_participants, e.visibility, e.created_by
+            FROM Events e
+            WHERE e.group_id = %s
+        """
+        params = [group_id]
+
+        if not include_past:
+            query += " AND e.datetime >= NOW()"
+
+        query += " ORDER BY e.datetime ASC"
+
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
     # Group Applications
     @staticmethod
     def create_group_application(cursor, applicant_id, proposed_name, proposed_description, 

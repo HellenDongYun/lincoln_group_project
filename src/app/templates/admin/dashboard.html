@@ -1,109 +1,116 @@
 {% extends "base.html" %}
 
-{% block title %}ActiveLoop - Admin Dashboard{% endblock %}
+{% block title %}ActiveLoop - Super Admin Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="mb-4">
-                Admin Dashboard
-            </h1>
-            <p class="lead text-muted mb-4">
-                Manage users, events, volunteers, and view system reports from your control center.
-            </p>
-        </div>
-    </div>
+{% set events_dict = {} %}
+{% if upcoming_events %}
+    {% for event in upcoming_events %}
+        {% if event.event_id not in events_dict %}
+            {% set _ = events_dict.update({event.event_id: {
+                'event_name': event.event_name,
+                'event_datetime': event.event_datetime,
+                'event_location': event.event_location,
+                'event_type': event.event_type,
+                'description': event.description,
+                'max_participants': event.max_participants,
+                'registered_participants': event.registered_participants,
+                'volunteer_roles': []
+            }}) %}
+        {% endif %}
+        {% if event.volunteer_role %}
+            {% set _ = events_dict[event.event_id]['volunteer_roles'].append({
+                'role_name': event.volunteer_role,
+                'spots_needed': event.volunteer_spots_needed,
+                'assigned_volunteers': event.assigned_volunteers
+            }) %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
 
-    <!-- Management Overview -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h3 class="mb-3">
-                Management Overview
-            </h3>
-            
-            <div class="row">
-                <!-- User Management Card -->
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card h-100 border-primary">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">
-                                </i>User Management
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text small">
-                                View, edit, and organize participant profiles and user roles.
-                            </p>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <a href="{{url_for('admin.manage_event_participant')}}" class="btn btn-primary btn-sm">
-                                    </i>Manage Event Participants
-                                </a>
-                                <a href="{{url_for('admin.manage_user_roles')}}" class="btn btn-primary btn-sm">
-                                    </i>Manage Roles
-                                </a>
-                            </div>
+{% set stats = namespace(participants=0, volunteer_needed=0, volunteer_filled=0) %}
+{% for event_id, event_data in events_dict.items() %}
+    {% set stats.participants = stats.participants + (event_data.registered_participants or 0) %}
+    {% for role in event_data.volunteer_roles %}
+        {% set stats.volunteer_needed = stats.volunteer_needed + (role.spots_needed or 0) %}
+        {% set stats.volunteer_filled = stats.volunteer_filled + (role.assigned_volunteers or 0) %}
+    {% endfor %}
+{% endfor %}
+{% set total_events = events_dict|length %}
+{% set open_roles = stats.volunteer_needed - stats.volunteer_filled %}
+{% if open_roles < 0 %}
+    {% set open_roles = 0 %}
+{% endif %}
+{% if stats.volunteer_needed > 0 %}
+    {% set volunteer_fill_rate = (stats.volunteer_filled / stats.volunteer_needed * 100) %}
+{% else %}
+    {% set volunteer_fill_rate = 0 %}
+{% endif %}
+{% set volunteer_fill_percent = volunteer_fill_rate|round(0, 'floor') %}
+
+{% set monitoring = monitoring_metrics or {} %}
+{% set total_groups = monitoring.total_groups or 0 %}
+{% set active_groups = monitoring.active_groups or 0 %}
+{% set pending_apps = monitoring.pending_applications or 0 %}
+{% set active_managers = monitoring.active_managers or 0 %}
+{% set active_members = monitoring.active_members or 0 %}
+{% set events_window = monitoring.upcoming_events_window or 0 %}
+{% set events_with_participants = monitoring.events_with_participants or 0 %}
+
+{% set group_filters_values = group_filters or {} %}
+{% set event_filters_values = event_filters or {} %}
+{% set monitoring_filter_values = monitoring_filters or {} %}
+
+<div class="hero-section-dark" style="--hero-image: url('{{ url_for('static', filename='images/fitness.jpg') }}');">
+    <div class="hero-content container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <span class="badge-soft mb-3">Super admin command centre</span>
+                <h1 class="display-4 fw-bold text-white mb-3">Community governance dashboard</h1>
+                <p class="lead text-white-50 mb-4">
+                    Approve new community groups, assign trusted managers, and monitor platform health in real time.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="#groups-insights" class="btn btn-warning px-4">
+                        <i class="bi bi-diagram-3 me-2"></i>Group oversight
+                    </a>
+                    <a href="#applications" class="btn btn-outline-light px-4">
+                        <i class="bi bi-inboxes me-2"></i>Pending applications
+                    </a>
+                    <a href="#events-overview" class="btn btn-outline-light px-4">
+                        <i class="bi bi-calendar-event me-2"></i>Event coverage
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="row g-3 hero-stat-grid">
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Active groups</span>
+                            <span class="stat-number">{{ active_groups }}</span>
+                            <span class="stat-meta text-white-50">of {{ total_groups }} total</span>
                         </div>
                     </div>
-                </div>
-
-                <!-- Event Management Card -->
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card h-100 border-success">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">
-                                </i>Event Management
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text small">
-                                Create, update, and monitor upcoming fitness events and activities.
-                            </p>
-                            <a href="{{ url_for('admin.view_events') }}" class="btn btn-success btn-sm">
-                                </i>Manage Events
-                            </a>
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Pending reviews</span>
+                            <span class="stat-number">{{ pending_apps }}</span>
+                            <span class="stat-meta text-white-50">Awaiting super admin decision</span>
                         </div>
                     </div>
-                </div>
-
-                <!-- Volunteer Management Card -->
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card h-100 border-info">
-                        <div class="card-header bg-info text-white">
-                            <h6 class="card-title mb-0">
-                                </i>Volunteer Roles
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text small">
-                                Assign and manage volunteer roles for events.
-                            </p>
-                            <a href="{{url_for('admin.view_all_volunteers')}}" class="btn btn-info btn-sm">
-                                </i>Manage Volunteers
-                            </a>
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Group managers</span>
+                            <span class="stat-number">{{ active_managers }}</span>
+                            <span class="stat-meta text-white-50">Trusted leaders in place</span>
                         </div>
                     </div>
-                </div>
-
-                <!-- Results Management Card -->
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card h-100 border-warning">
-                        <div class="card-header bg-warning text-white">
-                            <h6 class="card-title mb-0">
-                                </i>Race Results
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text small">
-                                View and manage race results, upload CSV data files.
-                            </p>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <a href="{{url_for('admin.view_event_results')}}" class="btn btn-warning btn-sm">
-                                    </i>View Results
-                                </a>
-                                <a href="{{url_for('results.upload_results')}}" class="btn btn-warning btn-sm">
-                                    </i>Upload Results
-                                </a>
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Volunteer fill rate</span>
+                            <span class="stat-number">{{ volunteer_fill_percent }}%</span>
+                            <div class="progress progress-compact mt-3">
+                                <div class="progress-bar bg-warning" role="progressbar" data-progress="{{ volunteer_fill_percent }}" aria-valuenow="{{ volunteer_fill_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         </div>
                     </div>
@@ -111,215 +118,603 @@
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Upcoming Events Overview -->
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="mb-0">
-                    Next 5 Upcoming Events
-                </h3>
-                <a href="{{ url_for('admin.create_event') }}" class="btn btn-success">
-                    <i class="bi bi-plus-circle me-2"></i>
-                    Create Event
+<section class="dashboard-section">
+    <div class="container">
+        <div class="section-heading text-center text-md-start">
+            <span class="section-eyebrow">Quick launch</span>
+            <h2 class="section-title">Admin toolkit</h2>
+            <p class="lead text-muted mb-0">Jump straight into the workflows you use most frequently.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-xl-3 col-lg-6">
+                <a href="#groups-insights" class="quick-action-card">
+                    <div class="icon-wrapper bg-primary-subtle text-primary">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h5 class="fw-semibold mb-2">Community groups</h5>
+                    <p class="small">Review group health and launch new communities.</p>
+                    <span class="stretched-link-icon">Open oversight <i class="bi bi-arrow-right-short"></i></span>
                 </a>
             </div>
-            
-            <div class="events-container">
-            {% if upcoming_events %}
-                {% set events_dict = {} %}
-                {% for event in upcoming_events %}
-                    {% if event.event_id not in events_dict %}
-                        {% set _ = events_dict.update({event.event_id: {
-                            'event_name': event.event_name,
-                            'event_datetime': event.event_datetime,
-                            'event_location': event.event_location,
-                            'event_type': event.event_type,
-                            'description': event.description,
-                            'max_participants': event.max_participants,
-                            'registered_participants': event.registered_participants,
-                            'volunteer_roles': []
-                        }}) %}
-                    {% endif %}
-                    {% if event.volunteer_role %}
-                        {% set _ = events_dict[event.event_id]['volunteer_roles'].append({
-                            'role_name': event.volunteer_role,
-                            'spots_needed': event.volunteer_spots_needed,
-                            'assigned_volunteers': event.assigned_volunteers
-                        }) %}
-                    {% endif %}
-                {% endfor %}
+            <div class="col-xl-3 col-lg-6">
+                <a href="#applications" class="quick-action-card">
+                    <div class="icon-wrapper bg-warning-subtle text-warning">
+                        <i class="bi bi-inboxes"></i>
+                    </div>
+                    <h5 class="fw-semibold mb-2">Group applications</h5>
+                    <p class="small">Approve or reject new groups with a single click and optional notes.</p>
+                    <span class="stretched-link-icon">Review queue <i class="bi bi-arrow-right-short"></i></span>
+                </a>
+            </div>
+            <div class="col-xl-3 col-lg-6">
+                <a href="{{ url_for('admin.manage_user_roles') }}" class="quick-action-card">
+                    <div class="icon-wrapper bg-success-subtle text-success">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <h5 class="fw-semibold mb-2">User permissions</h5>
+                    <p class="small">Elevate trusted members to managers or return access to participants.</p>
+                    <span class="stretched-link-icon">Manage roles <i class="bi bi-arrow-right-short"></i></span>
+                </a>
+            </div>
+            <div class="col-xl-3 col-lg-6">
+                <a href="#monitoring" class="quick-action-card">
+                    <div class="icon-wrapper bg-info-subtle text-info">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <h5 class="fw-semibold mb-2">Monitoring tools</h5>
+                    <p class="small">Filter by timeframe, region, or event type to spot emerging trends.</p>
+                    <span class="stretched-link-icon">Open analytics <i class="bi bi-arrow-right-short"></i></span>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
 
-                {% for event_id, event_data in events_dict.items() %}
-                    <!-- Capacity Warning Alert -->
-                    {% set participant_count = event_data.registered_participants or 0 %}
-                    {% set max_participants = event_data.max_participants %}
-                    {% set capacity_percentage = (participant_count / max_participants * 100) if max_participants > 0 else 0 %}
-                    {% set near_capacity = capacity_percentage >= 80 %}
-                    {% set at_capacity = capacity_percentage >= 100 %}
-                    
-                    {% if at_capacity %}
-                    <div class="alert alert-danger border-danger mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-exclamation-triangle-fill text-danger fs-4 me-3"></i>
-                            <div>
-                                <h6 class="alert-heading mb-1">Event at Full Capacity!</h6>
-                                <p class="mb-0"><strong>{{ event_data.event_name }}</strong> has reached its maximum capacity of {{ max_participants }} participants.</p>
-                            </div>
+<section id="monitoring" class="dashboard-section pt-0">
+    <div class="container">
+        <div class="section-heading d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center">
+            <div>
+                <span class="section-eyebrow">Platform health</span>
+                <h2 class="section-title mb-0">Monitoring snapshot</h2>
+                <p class="text-muted mb-0">Use advanced filters to track engagement and pipeline pressure.</p>
+            </div>
+            <form method="get" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="group_search" value="{{ group_filters_values.get('search', '') }}">
+                <input type="hidden" name="group_visibility" value="{{ group_filters_values.get('visibility', '') }}">
+                <input type="hidden" name="group_status" value="{{ group_filters_values.get('status', '') }}">
+                <input type="hidden" name="group_town" value="{{ group_filters_values.get('town', '') }}">
+                <input type="hidden" name="group_has_events" value="{{ group_filters_values.get('has_events', '') }}">
+                <input type="hidden" name="event_type" value="{{ event_filters_values.get('type', '') }}">
+                <input type="hidden" name="event_town" value="{{ event_filters_values.get('town', '') }}">
+                <input type="hidden" name="event_timeframe" value="{{ event_filters_values.get('timeframe', '30') }}">
+                <input type="hidden" name="event_search" value="{{ event_filters_values.get('search', '') }}">
+                <label for="monitoring_timeframe" class="text-muted small mb-0">Timeframe</label>
+                <select id="monitoring_timeframe" name="monitoring_timeframe" class="form-select form-select-sm">
+                    {% for option in ['7','14','30','60','90'] %}
+                        <option value="{{ option }}" {% if monitoring_filter_values.get('timeframe','30') == option %}selected{% endif %}>Next {{ option }} days</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm">Update</button>
+            </form>
+        </div>
+
+        <div class="row g-4 align-items-stretch">
+            <div class="col-lg-8">
+                <div class="card bg-white text-dark border-0 shadow-lg h-100">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning text-black">Live metrics</span>
+                            <span class="text-muted text-uppercase small">Last update: now</span>
                         </div>
+                        <span class="text-muted small">{{ monitoring_filter_values.get('timeframe','30') }} day focus</span>
                     </div>
-                    {% elif near_capacity %}
-                    <div class="alert alert-warning border-warning mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-exclamation-triangle-fill text-warning fs-4 me-3"></i>
-                            <div>
-                                <h6 class="alert-heading mb-1">Event Near Capacity!</h6>
-                                <p class="mb-0"><strong>{{ event_data.event_name }}</strong> is {{ capacity_percentage|round|int }}% full ({{ participant_count }}/{{ max_participants }} participants).</p>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="card mb-4 border-2 {% if at_capacity %}border-danger{% elif near_capacity %}border-warning{% else %}border-success{% endif %}">
-                        <div class="card-header bg-light">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <h5 class="card-title mb-0 text-dark">
-                                        <i class=" {% if at_capacity %}text-danger{% elif near_capacity %}text-warning{% else %}text-success{% endif %} me-2"></i>
-                                        {{ event_data.event_name }}
-                                        {% if at_capacity %}
-                                            <span class="badge bg-danger ms-2">FULL</span>
-                                        {% elif near_capacity %}
-                                            <span class="badge bg-warning text-dark ms-2">{{ capacity_percentage|round|int }}% FULL</span>
-                                        {% endif %}
-                                    </h5>
-                                    <small class="text-muted">
-                                        <i class="bi bi-calendar me-1"></i>
-                                        {{ event_data.event_datetime.strftime('%B %d, %Y at %I:%M %p') }}
-                                        <i class="bi bi-geo-alt ms-3 me-1"></i>
-                                        {{ event_data.event_location }}
-                                    </small>
+                    <div class="card-body">
+                        <div class="row row-cols-1 row-cols-sm-2 g-3">
+                            <div class="col">
+                                <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-uppercase small text-muted">Member footprint</span>
+                                        <i class="bi bi-people text-warning fs-4"></i>
+                                    </div>
+                                    <div class="display-5 fw-bold text-black">{{ active_members }}</div>
+                                    <p class="text-muted small mt-3 mb-0">Group managers: <span class="fw-semibold text-black">{{ active_managers }}</span></p>
                                 </div>
-                                <div class="col-md-4 text-end">
-                                    <div class="d-flex flex-column align-items-end">
-                                        <span class="badge {% if at_capacity %}bg-danger{% elif near_capacity %}bg-warning text-dark{% else %}bg-info{% endif %} fs-6 mb-2">
-                                            {{ participant_count }}/{{ event_data.max_participants }} participants
-                                        </span>
-                                        {% if max_participants > 0 %}
-                                        <div class="progress" style="width: 120px; height: 8px;">
-                                            <div class="progress-bar {% if at_capacity %}bg-danger{% elif near_capacity %}bg-warning{% else %}bg-success{% endif %}" 
-                                                 role="progressbar" 
-                                                 style="width: {{ capacity_percentage|round|int }}%" 
-                                                 aria-valuenow="{{ capacity_percentage|round|int }}" 
-                                                 aria-valuemin="0" 
-                                                 aria-valuemax="100">
-                                            </div>
+                            </div>
+                            <div class="col">
+                                <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-uppercase small text-muted">Event pipeline</span>
+                                        <i class="bi bi-calendar-event text-warning fs-4"></i>
+                                    </div>
+                                    <div class="display-5 fw-bold text-black">{{ events_window }}</div>
+                                    <p class="text-muted small mt-3 mb-0">Events with participants: <span class="fw-semibold text-black">{{ events_with_participants }}</span></p>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-uppercase small text-muted">Volunteer coverage</span>
+                                        <i class="bi bi-shield-check text-warning fs-4"></i>
+                                    </div>
+                                    <div class="display-5 fw-bold text-black">{{ open_roles }}</div>
+                                    <p class="text-muted small mt-3 mb-0">Registered volunteers: <span class="fw-semibold text-black">{{ stats.volunteer_filled }}</span></p>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-uppercase small text-muted">Fill rate</span>
+                                        <i class="bi bi-graph-up-arrow text-warning fs-4"></i>
+                                    </div>
+                                    <div class="d-flex align-items-baseline gap-2 mb-3">
+                                        <div class="display-5 fw-bold text-black mb-0">{{ volunteer_fill_percent }}%</div>
+                                        <span class="text-muted small">volunteer roles filled</span>
+                                    </div>
+                                    <div class="progress" style="height: 0.5rem;">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ volunteer_fill_percent }}%;" aria-valuenow="{{ volunteer_fill_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <p class="text-muted small mt-3 mb-0">Open roles remaining: <span class="fw-semibold text-black">{{ open_roles }}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card bg-warning-subtle border border-warning-subtle h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div>
+                            <span class="text-uppercase small text-black-50">Trend watch</span>
+                            <h5 class="fw-semibold text-black mb-2">Operational alerts</h5>
+                            <p class="text-black-50 small mb-0">Surface the hotspots needing a super admin decision today.</p>
+                        </div>
+                        <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+                            <li class="d-flex gap-3 align-items-start">
+                                <span class="badge bg-dark text-warning rounded-pill mt-1"><i class="bi bi-diagram-3"></i></span>
+                                <div>
+                                    <div class="fw-semibold text-black">{{ active_groups }} / {{ total_groups }} groups active</div>
+                                    <div class="small text-black-50">Keep visibility fresh and sunset inactive spaces promptly.</div>
+                                </div>
+                            </li>
+                            <li class="d-flex gap-3 align-items-start">
+                                <span class="badge bg-dark text-warning rounded-pill mt-1"><i class="bi bi-envelope-open"></i></span>
+                                <div>
+                                    <div class="fw-semibold text-black">{{ pending_apps }} pending applications</div>
+                                    <div class="small text-black-50">Prioritise approvals to unlock new member communities.</div>
+                                </div>
+                            </li>
+                            <li class="d-flex gap-3 align-items-start">
+                                <span class="badge bg-dark text-warning rounded-pill mt-1"><i class="bi bi-flag"></i></span>
+                                <div>
+                                    <div class="fw-semibold text-black">{{ open_roles }} roles still open</div>
+                                    <div class="small text-black-50">Escalate to managers to close the last volunteer gaps.</div>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="#groups-insights" class="btn btn-dark w-100">
+                                <i class="bi bi-lightning-charge me-2"></i>Jump to group actions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="groups-insights" class="py-5 bg-dark text-white">
+    <div class="container">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-4">
+            <div>
+                <span class="text-warning text-uppercase small fw-semibold">Governance</span>
+                <h2 class="fw-bold mb-1">Community groups oversight</h2>
+                <p class="mb-0 text-white-50">Filter and launch groups with the right insights.</p>
+            </div>
+            <button class="btn btn-warning text-black px-4 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#create-group-panel" aria-expanded="false" aria-controls="create-group-panel">
+                <i class="bi bi-plus-circle me-2"></i>Create community group
+            </button>
+        </div>
+
+        <div class="collapse mb-4" id="create-group-panel">
+            <div class="card bg-secondary border border-warning-subtle text-white shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                        <div>
+                            <span class="text-warning text-uppercase small fw-semibold">Quick create</span>
+                            <h5 class="mb-1 fw-semibold">Launch a new community space</h5>
+                            <p class="text-white-50 small mb-0">Capture the essentials and go live instantly.</p>
+                        </div>
+                    </div>
+                    <form method="post" action="{{ url_for('admin.create_group') }}" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-uppercase small text-white-50">Group name</label>
+                            <input type="text" name="group_name" class="form-control bg-dark text-white border-secondary" required placeholder="Eg. Harbour Runners">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-uppercase small text-white-50">Town / region</label>
+                            <input type="text" name="group_town" class="form-control bg-dark text-white border-secondary" required placeholder="Eg. Wellington">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-uppercase small text-white-50">Visibility</label>
+                            <select name="group_visibility" class="form-select bg-dark text-white border-secondary" required>
+                                {% for option in group_filter_options.visibilities %}
+                                    <option value="{{ option }}">{{ option.replace('_',' ')|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-uppercase small text-white-50">Join type</label>
+                            <select name="group_join_type" class="form-select bg-dark text-white border-secondary" required>
+                                {% for option in group_filter_options.join_types %}
+                                    <option value="{{ option }}">{{ option.replace('_',' ')|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-uppercase small text-white-50">Description</label>
+                            <textarea name="group_description" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Purpose, meeting cadence, notable details..."></textarea>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-warning text-black px-4">
+                                <i class="bi bi-save me-2"></i>Create group
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-secondary border border-secondary text-white mb-4 shadow-sm">
+            <div class="card-body">
+            <form method="get" class="row gy-2 gx-3 align-items-end">
+                <input type="hidden" name="event_type" value="{{ event_filters_values.get('type', '') }}">
+                <input type="hidden" name="event_town" value="{{ event_filters_values.get('town', '') }}">
+                <input type="hidden" name="event_timeframe" value="{{ event_filters_values.get('timeframe', '30') }}">
+                <input type="hidden" name="event_search" value="{{ event_filters_values.get('search', '') }}">
+                <input type="hidden" name="monitoring_timeframe" value="{{ monitoring_filter_values.get('timeframe','30') }}">
+
+                <div class="col-md-3">
+                    <label class="form-label text-uppercase small text-white-50">Search</label>
+                    <input type="text" name="group_search" value="{{ group_filters_values.get('search','') }}" class="form-control bg-dark text-white border-secondary" placeholder="Group name or keyword">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-uppercase small text-white-50">Visibility</label>
+                    <select name="group_visibility" class="form-select bg-dark text-white border-secondary">
+                        <option value="">All</option>
+                        {% for option in group_filter_options.visibilities %}
+                            <option value="{{ option }}" {% if group_filters_values.get('visibility') == option %}selected{% endif %}>{{ option|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-uppercase small text-white-50">Status</label>
+                    <select name="group_status" class="form-select bg-dark text-white border-secondary">
+                        <option value="">All</option>
+                        {% for option in group_filter_options.statuses %}
+                            <option value="{{ option }}" {% if group_filters_values.get('status') == option %}selected{% endif %}>{{ option|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-uppercase small text-white-50">Town</label>
+                    <select name="group_town" class="form-select bg-dark text-white border-secondary">
+                        <option value="">All</option>
+                        {% for town in group_filter_options.towns %}
+                            <option value="{{ town }}" {% if group_filters_values.get('town') == town %}selected{% endif %}>{{ town }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-uppercase small text-white-50">Upcoming events</label>
+                    <select name="group_has_events" class="form-select bg-dark text-white border-secondary">
+                        <option value="">Any</option>
+                        <option value="yes" {% if group_filters_values.get('has_events') == 'yes' %}selected{% endif %}>Only groups with events</option>
+                    </select>
+                </div>
+                <div class="col-md-1 text-md-end">
+                    <button type="submit" class="btn btn-warning text-black w-100">
+                        <i class="bi bi-funnel me-1"></i>Filter
+                    </button>
+                </div>
+            </form>
+            </div>
+        </div>
+
+        {% if groups_overview %}
+            <div class="row g-4">
+                {% for group in groups_overview %}
+                    {% set status_variant = {
+                        'active': 'bg-success-subtle text-success',
+                        'inactive': 'bg-secondary-subtle text-dark',
+                        'pending': 'bg-warning-subtle text-dark'
+                    }.get(group.status, 'bg-secondary text-white') %}
+                    <div class="col-xl-4 col-lg-6">
+                        <div class="card bg-dark border border-secondary h-100 d-flex flex-column shadow-sm">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="mb-0 text-white">{{ group.name }}</h5>
+                                    <span class="badge bg-warning text-black text-uppercase">{{ group.status }}</span>
+                                </div>
+                                <p class="text-white-50 small mb-3">{{ group.description or 'No description provided yet.' }}</p>
+                                <div class="d-flex flex-wrap gap-3 text-white-50 small mb-4">
+                                    <span><i class="bi bi-geo-alt me-1 text-warning"></i>{{ group.town or 'N/A' }}</span>
+                                    <span><i class="bi bi-eye me-1 text-warning"></i>{{ group.visibility|title }}</span>
+                                    <span><i class="bi bi-calendar-event me-1 text-warning"></i>{{ group.upcoming_events_count }} upcoming</span>
+                                </div>
+                                <div class="rounded-3 border border-secondary-subtle p-3 mb-3 bg-dark">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="fw-semibold text-white-50">Members</span>
+                                        <span class="fw-semibold text-white">{{ group.member_count }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="fw-semibold text-white-50">Managers</span>
+                                        <div class="mt-2 d-flex flex-wrap gap-2">
+                                            {% if group.manager_names %}
+                                                {% for manager in group.manager_names %}
+                                                    <span class="badge bg-warning text-black">{{ manager }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="badge bg-secondary text-white">None assigned</span>
+                                            {% endif %}
                                         </div>
-                                        {% endif %}
                                     </div>
                                 </div>
+                                <div class="mt-auto"></div>
+                                <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{{ url_for('groups.manage_group', group_id=group.group_id) }}" class="btn btn-warning text-black btn-sm shadow-sm">
+                                            <i class="bi bi-gear me-1"></i>Manage
+                                        </a>
+                                        <a href="{{ url_for('groups.view_group', group_id=group.group_id) }}" class="btn btn-outline-light btn-sm">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i>View
+                                        </a>
+                                    </div>
+                                    <span class="badge bg-warning text-black">{{ group.upcoming_events_count }} event{{ 's' if group.upcoming_events_count != 1 else '' }}</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="card-body bg-white">
-                            <p class="card-text text-dark">{{ event_data.description }}</p>
-                            
-                            <!-- Volunteer Requirements Section -->
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="text-primary mb-0">
-                                    Volunteer Requirements:
-                                </h6>
-                                <a href="{{ url_for('admin.manage_volunteer_roles', event_id=event_id) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-plus-circle me-1"></i>
-                                    Manage Volunteers
-                                </a>
-                            </div>
-                            
-                            {% if event_data.volunteer_roles %}
-                                <ul class="list-group list-group-flush">
-                                    {% for role in event_data.volunteer_roles %}
-                                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong class="text-primary">
-                                                    {{ role.role_name }}
-                                                </strong>
-                                                <div class="text-muted small mt-1">
-                                                    Required: {{ role.spots_needed or 0 }} spots |
-                                                    Assigned: {{ role.assigned_volunteers or 0 }} volunteers
-                                                </div>
-                                            </div>
-                                            <div class="d-flex align-items-center">
-                                                <span class="badge bg-{% if (role.assigned_volunteers or 0) >= (role.spots_needed or 0) %}success{% else %}warning text-dark{% endif %} fs-6 me-2">
-                                                    {{ role.assigned_volunteers or 0 }}/{{ role.spots_needed or 0 }}
-                                                </span>
-                                                <!-- Remove button -->
-                                                <form method="POST" action="{{ url_for('admin.remove_volunteer_role_dashboard') }}" class="d-inline" 
-                                                      onsubmit="return confirm('Are you sure you want to remove this volunteer role requirement?')">
-                                                    <input type="hidden" name="event_id" value="{{ event_id }}">
-                                                    <input type="hidden" name="role_name" value="{{ role.role_name }}">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove volunteer role">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                                
-                                <!-- Quick Add Volunteer Role Form -->
-                                <div class="mt-3">
-                                    <div class="card border-info">
-                                        <div class="card-header">
-                                            <h6 class="card-title mb-0">
-                                                <i class="bi bi-plus-square me-2"></i>
-                                                Add Volunteer Role
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <form method="POST" action="{{ url_for('admin.manage_volunteer_roles', event_id=event_id) }}" class="row g-2">
-                                                <input type="hidden" name="from_dashboard" value="true">
-                                                <div class="col-md-6">
-                                                    <select name="role_id" class="form-select form-select-sm" required>
-                                                        <option value="">Select Volunteer Role...</option>
-                                                        {% if volunteer_roles %}
-                                                            {% for role in volunteer_roles %}
-                                                                <option value="{{ role.id }}">{{ role.name }}</option>
-                                                            {% endfor %}
-                                                        {% endif %}
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <input type="number" name="spots" class="form-control form-control-sm" placeholder="# needed" min="1" max="20" required>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <button type="submit" class="btn btn-sm btn-success w-100">
-                                                        <i class="bi bi-plus-circle me-1"></i>
-                                                        Add Role
-                                                    </button>
-                                                </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card bg-dark border border-secondary text-center text-white p-5">
+                <h4 class="fw-semibold mb-2">No groups match your filters</h4>
+                <p class="text-white-50 mb-3">Adjust search criteria or create a new community group to get started.</p>
+                <button class="btn btn-warning text-black" type="button" data-bs-toggle="collapse" data-bs-target="#create-group-panel" aria-expanded="true">
+                    <i class="bi bi-plus-circle me-2"></i>Create a community group
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<section id="applications" class="py-5 bg-white">
+    <div class="container">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-4">
+            <div>
+                <span class="text-uppercase small fw-semibold text-warning">Approval queue</span>
+                <h2 class="fw-bold mb-1 text-black">Pending group applications</h2>
+                <p class="mb-0 text-secondary">Review proposed communities and decide if they fit the platform.</p>
+            </div>
+            <a href="{{ url_for('groups.admin_applications') }}" class="btn btn-warning text-black shadow-sm">
+                <i class="bi bi-box-arrow-up-right me-2"></i>Open full review workspace
+            </a>
+        </div>
+
+        <div class="card border border-dark shadow-sm">
+            <div class="card-body p-0">
+            {% if pending_applications %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped table-hover align-middle mb-0">
+                        <thead class="border-bottom border-warning">
+                            <tr>
+                                <th>Proposed group</th>
+                                <th>Applicant</th>
+                                <th>Visibility</th>
+                                <th>Town</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for app in pending_applications %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold text-warning">{{ app.proposed_name }}</div>
+                                        <div class="text-white-50 small">{{ app.proposed_description or 'No description provided.' }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ app.first_name }} {{ app.last_name }}</div>
+                                        <div class="text-white-50 small">{{ app.email }}</div>
+                                    </td>
+                                    <td class="text-white-50">{{ app.visibility|title }} • {{ app.join_type|title }}</td>
+                                    <td class="text-white-50">{{ app.proposed_town or '—' }}</td>
+                                    <td class="text-end">
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <form method="post" action="{{ url_for('groups.approve_application', application_id=app.id) }}">
+                                                <button type="submit" class="btn btn-warning text-black btn-sm">
+                                                    <i class="bi bi-check-lg me-1"></i>Approve
+                                                </button>
+                                            </form>
+                                            <form method="post" action="{{ url_for('groups.reject_application', application_id=app.id) }}">
+                                                <button type="submit" class="btn btn-outline-light border-0 btn-sm">
+                                                    <i class="bi bi-x-lg me-1"></i>Reject
+                                                </button>
                                             </form>
                                         </div>
-                                    </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inboxes display-5 text-warning"></i>
+                    <p class="text-secondary mt-3 mb-0">There are no pending applications right now. New submissions will appear instantly here.</p>
+                </div>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="events-overview" class="py-5 bg-dark text-white">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+            <div>
+                <span class="text-warning text-uppercase small fw-semibold">Event staffing</span>
+                <h2 class="fw-bold mb-1">Upcoming events & volunteer coverage</h2>
+                <p class="mb-0 text-white-50">Track capacity, staffing gaps, and operational readiness.</p>
+            </div>
+            <a href="{{ url_for('admin.create_event') }}" class="btn btn-warning text-black px-4 shadow-sm">
+                <i class="bi bi-plus-circle me-2"></i>Create new event
+            </a>
+        </div>
+
+        <div class="card bg-secondary border border-secondary text-white mb-4 shadow-sm">
+            <div class="card-body">
+                <form method="get" class="row gy-2 gx-3 align-items-end">
+                    <input type="hidden" name="group_search" value="{{ group_filters_values.get('search', '') }}">
+                    <input type="hidden" name="group_visibility" value="{{ group_filters_values.get('visibility', '') }}">
+                    <input type="hidden" name="group_status" value="{{ group_filters_values.get('status', '') }}">
+                    <input type="hidden" name="group_town" value="{{ group_filters_values.get('town', '') }}">
+                    <input type="hidden" name="group_has_events" value="{{ group_filters_values.get('has_events', '') }}">
+                    <input type="hidden" name="monitoring_timeframe" value="{{ monitoring_filter_values.get('timeframe','30') }}">
+
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label text-uppercase small text-white-50">Event type</label>
+                        <select name="event_type" class="form-select bg-dark text-white border-secondary">
+                            <option value="">All</option>
+                            {% for event_type in event_filter_options.event_types %}
+                                <option value="{{ event_type }}" {% if event_filters_values.get('type') == event_type %}selected{% endif %}>{{ event_type|replace('_',' ')|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label text-uppercase small text-white-50">Town</label>
+                        <select name="event_town" class="form-select bg-dark text-white border-secondary">
+                            <option value="">All</option>
+                            {% for town in event_filter_options.event_towns %}
+                                <option value="{{ town }}" {% if event_filters_values.get('town') == town %}selected{% endif %}>{{ town }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label text-uppercase small text-white-50">Timeframe</label>
+                        <select name="event_timeframe" class="form-select bg-dark text-white border-secondary">
+                            <option value="7" {% if event_filters_values.get('timeframe','30') == '7' %}selected{% endif %}>Next 7 days</option>
+                            <option value="14" {% if event_filters_values.get('timeframe','30') == '14' %}selected{% endif %}>Next 14 days</option>
+                            <option value="30" {% if event_filters_values.get('timeframe','30') == '30' %}selected{% endif %}>Next 30 days</option>
+                            <option value="60" {% if event_filters_values.get('timeframe','30') == '60' %}selected{% endif %}>Next 60 days</option>
+                            <option value="all" {% if event_filters_values.get('timeframe','30') == 'all' %}selected{% endif %}>Entire calendar</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label text-uppercase small text-white-50">Search</label>
+                        <input type="text" name="event_search" value="{{ event_filters_values.get('search','') }}" class="form-control bg-dark text-white border-secondary" placeholder="Name or keyword">
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-warning text-black">
+                            <i class="bi bi-funnel me-1"></i>Apply filters
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if events_dict %}
+            {% for event_id, event_data in events_dict.items() %}
+                {% set participant_count = event_data.registered_participants or 0 %}
+                {% set max_participants = event_data.max_participants %}
+                {% if max_participants > 0 %}
+                    {% set capacity_percentage = (participant_count / max_participants * 100) %}
+                {% else %}
+                    {% set capacity_percentage = 0 %}
+                {% endif %}
+                {% set near_capacity = capacity_percentage >= 80 %}
+                {% set at_capacity = capacity_percentage >= 100 %}
+                {% set capacity_percent = capacity_percentage|round(0, 'floor') %}
+
+                <div class="event-card card bg-dark border border-secondary text-white mb-4 shadow-sm">
+                    <div class="card-header bg-transparent border-bottom border-secondary">
+                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                            <div>
+                                <h4 class="mb-2 text-warning">{{ event_data.event_name }}</h4>
+                                <div class="event-meta text-white-50 small d-flex flex-wrap gap-3">
+                                    <span><i class="bi bi-calendar-event me-1 text-warning"></i>{{ event_data.event_datetime.strftime('%B %d, %Y') }}</span>
+                                    <span><i class="bi bi-clock me-1 text-warning"></i>{{ event_data.event_datetime.strftime('%I:%M %p') }}</span>
+                                    <span><i class="bi bi-geo-alt me-1 text-warning"></i>{{ event_data.event_location }}</span>
+                                    <span><i class="bi bi-tag me-1 text-warning"></i>{{ event_data.event_type }}</span>
                                 </div>
-                            {% else %}
-                                <div class="alert alert-warning">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>
-                                    No volunteer requirements set for this event.
+                            </div>
+                            <div class="d-flex flex-column align-items-md-end gap-2 w-100 w-md-auto">
+                                <span class="badge bg-warning text-black px-3 py-2">
+                                    <i class="bi bi-people-fill me-1"></i>{{ participant_count }}/{{ event_data.max_participants }} registered
+                                </span>
+                                {% if max_participants > 0 %}
+                                <div class="progress w-100 bg-dark border border-secondary" style="height: 8px;">
+                                    <div class="progress-bar {% if at_capacity %}bg-danger{% elif near_capacity %}bg-warning{% else %}bg-success{% endif %}" role="progressbar" data-progress="{{ capacity_percent }}" aria-valuenow="{{ capacity_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
-                                
-                                <!-- Add First Volunteer Role Form -->
-                                <div class="card border-info">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">
-                                            <i class="bi bi-plus-square me-2"></i>
-                                            Add First Volunteer Role
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-white-50 mb-4">{{ event_data.description or 'No description provided yet.' }}</p>
+
+                        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+                            <h6 class="mb-0 text-warning text-uppercase small">Volunteer requirements</h6>
+                            <div class="event-actions d-flex flex-wrap gap-2">
+                                <a href="{{ url_for('admin.manage_volunteer_roles', event_id=event_id) }}" class="btn btn-warning text-black btn-sm shadow-sm">
+                                    <i class="bi bi-person-add me-1"></i>Manage volunteers
+                                </a>
+                                <a href="{{ url_for('admin.view_event_details', event_id=event_id) }}" class="btn btn-outline-light btn-sm">
+                                    <i class="bi bi-eye me-1"></i>View event details
+                                </a>
+                            </div>
+                        </div>
+
+                        {% if event_data.volunteer_roles %}
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    <ul class="list-group list-group-flush bg-transparent">
+                                        {% for role in event_data.volunteer_roles %}
+                                            <li class="list-group-item bg-transparent px-0 text-white">
+                                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                                    <div>
+                                                        <h6 class="mb-1 text-white">{{ role.role_name }}</h6>
+                                                        <p class="small text-white-50 mb-0">
+                                                            Required: {{ role.spots_needed or 0 }} • Assigned: {{ role.assigned_volunteers or 0 }}
+                                                        </p>
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge {% if (role.assigned_volunteers or 0) >= (role.spots_needed or 0) %}bg-success text-white{% else %}bg-warning text-black{% endif %} px-3 py-2">
+                                                            {{ role.assigned_volunteers or 0 }}/{{ role.spots_needed or 0 }}
+                                                        </span>
+                                                        <form method="POST" action="{{ url_for('admin.remove_volunteer_role_dashboard') }}" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this volunteer role requirement?');">
+                                                            <input type="hidden" name="event_id" value="{{ event_id }}">
+                                                            <input type="hidden" name="role_name" value="{{ role.role_name }}">
+                                                            <button type="submit" class="btn btn-link text-white-50 btn-sm">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <div class="col-lg-5">
+                                    <div class="card bg-dark border border-secondary text-white p-3 h-100">
+                                        <h6 class="fw-semibold mb-3 text-warning">Add volunteer role</h6>
                                         <form method="POST" action="{{ url_for('admin.manage_volunteer_roles', event_id=event_id) }}" class="row g-2">
                                             <input type="hidden" name="from_dashboard" value="true">
-                                            <div class="col-md-6">
-                                                <select name="role_id" class="form-select form-select-sm" required>
-                                                    <option value="">Select Volunteer Role...</option>
+                                            <div class="col-12">
+                                                <select name="role_id" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                                                    <option value="">Select volunteer role…</option>
                                                     {% if volunteer_roles %}
                                                         {% for role in volunteer_roles %}
                                                             <option value="{{ role.id }}">{{ role.name }}</option>
@@ -327,32 +722,71 @@
                                                     {% endif %}
                                                 </select>
                                             </div>
-                                            <div class="col-md-3">
-                                                <input type="number" name="spots" class="form-control form-control-sm" placeholder="# needed" min="1" max="20" required>
+                                            <div class="col-6">
+                                                <input type="number" name="spots" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="# needed" min="1" max="20" required>
                                             </div>
-                                            <div class="col-md-3">
-                                                <button type="submit" class="btn btn-sm btn-success w-100">
-                                                    <i class="bi bi-plus-circle me-1"></i>
-                                                    Add Role
+                                            <div class="col-6">
+                                                <button type="submit" class="btn btn-warning text-black btn-sm w-100">
+                                                    <i class="bi bi-plus-circle me-1"></i>Add role
                                                 </button>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
-                                </div>
-                            {% endif %}
-                        </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning bg-transparent border border-warning text-warning mb-3">
+                                <i class="bi bi-exclamation-triangle me-2"></i>No volunteer requirements set for this event yet.
+                            </div>
+                            <div class="card bg-dark border border-secondary text-white p-3">
+                                <h6 class="fw-semibold mb-3 text-warning">Add the first volunteer role</h6>
+                                <form method="POST" action="{{ url_for('admin.manage_volunteer_roles', event_id=event_id) }}" class="row g-2">
+                                    <input type="hidden" name="from_dashboard" value="true">
+                                    <div class="col-12">
+                                        <select name="role_id" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                                            <option value="">Select volunteer role…</option>
+                                            {% if volunteer_roles %}
+                                                {% for role in volunteer_roles %}
+                                                    <option value="{{ role.id }}">{{ role.name }}</option>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" name="spots" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="# needed" min="1" max="20" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <button type="submit" class="btn btn-warning text-black btn-sm w-100">
+                                            <i class="bi bi-plus-circle me-1"></i>Add role
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        {% endif %}
                     </div>
-                {% endfor %}
-            </div>
-            {% else %}
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>
-                    No upcoming events found. 
-                    <a href="{{ url_for('admin.view_events') }}" class="alert-link">Create a new event</a> to get started.
                 </div>
-            {% endif %}
-        </div>
+            {% endfor %}
+        {% else %}
+            <div class="card bg-dark border border-secondary text-center text-white p-5">
+                <h4 class="fw-semibold mb-2">No events match your filters</h4>
+                <p class="text-white-50 mb-4">Adjust the filters above or create a new event to populate this view.</p>
+                <a href="{{ url_for('admin.create_event') }}" class="btn btn-warning text-black">
+                    <i class="bi bi-plus-circle me-2"></i>Plan your next event
+                </a>
+            </div>
+        {% endif %}
     </div>
-</div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-progress]').forEach(function (bar) {
+        var value = parseFloat(bar.dataset.progress);
+        if (!isNaN(value)) {
+            var clamped = Math.max(0, Math.min(100, value));
+            bar.style.width = clamped + '%';
+        }
+    });
+});
+</script>
 {% endblock %}

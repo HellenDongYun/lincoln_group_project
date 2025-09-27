@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} · Community Group{% endblock %}
+
+{% block content %}
+<style>
+  .avatar-circle {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+<div class="position-relative overflow-hidden" style="height: 32vh;">
+  <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark" style="opacity: 0.65; z-index: 1;"></div>
+  <img
+    src="{{ url_for('static', filename='images/fitness.jpg') }}"
+    class="position-absolute top-0 start-0 w-100 h-100"
+    style="object-fit: cover; object-position: center; z-index: 0;"
+    alt="Group banner image"
+  />
+  <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="z-index: 2;">
+    <div class="container py-4">
+      <div class="row align-items-center">
+        <div class="col-lg-9 text-white">
+          <p class="text-uppercase small mb-2 fw-semibold text-warning">Community Group</p>
+          <h1 class="display-4 fw-bold mb-3">{{ group.name }}</h1>
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="badge rounded-pill bg-warning text-dark px-3 py-2 text-uppercase">{{ group.visibility }}</span>
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2">{{ group.town }}</span>
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2"><i class="bi bi-people-fill me-1"></i>{{ group.member_count }} members</span>
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2">Join type: {{ group.join_type|capitalize }}</span>
+          </div>
+        </div>
+        <div class="col-lg-3 mt-4 mt-lg-0 d-flex justify-content-lg-end">
+          <div class="d-flex flex-column flex-sm-row gap-2 w-100">
+            {% if can_join %}
+            <form action="{{ url_for('groups.join_group', group_id=group.id) }}" method="post" class="w-100">
+              <button type="submit" class="btn btn-warning w-100 fw-semibold">Join group</button>
+            </form>
+            {% elif is_member %}
+            <form action="{{ url_for('groups.leave_group', group_id=group.id) }}" method="post" class="w-100">
+              <button type="submit" class="btn btn-outline-light w-100 fw-semibold">Leave group</button>
+            </form>
+            {% endif %}
+            {% if can_manage %}
+            <a href="{{ url_for('groups.manage_group', group_id=group.id) }}" class="btn btn-outline-light fw-semibold w-100">
+              Manage group
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <h2 class="h4 fw-bold mb-3">About this group</h2>
+            <p class="text-muted mb-4">{{ group.description or 'This group has not added a description yet.' }}</p>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="d-flex align-items-start gap-3">
+                  <span class="text-warning fs-4"><i class="bi bi-geo-alt-fill"></i></span>
+                  <div>
+                    <h3 class="h6 fw-semibold mb-1">Town</h3>
+                    <p class="mb-0 text-muted">{{ group.town }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex align-items-start gap-3">
+                  <span class="text-warning fs-4"><i class="bi bi-person-badge"></i></span>
+                  <div>
+                    <h3 class="h6 fw-semibold mb-1">Created by</h3>
+                    <p class="mb-0 text-muted">{{ group.first_name }} {{ group.last_name }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex align-items-start gap-3">
+                  <span class="text-warning fs-4"><i class="bi bi-unlock"></i></span>
+                  <div>
+                    <h3 class="h6 fw-semibold mb-1">Visibility</h3>
+                    <p class="mb-0 text-muted text-capitalize">{{ group.visibility }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="d-flex align-items-start gap-3">
+                  <span class="text-warning fs-4"><i class="bi bi-door-open"></i></span>
+                  <div>
+                    <h3 class="h6 fw-semibold mb-1">Join type</h3>
+                    <p class="mb-0 text-muted text-capitalize">{{ group.join_type }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <h2 class="h5 fw-bold mb-4">Membership snapshot</h2>
+            <div class="d-flex flex-column gap-3">
+              <div class="p-3 rounded bg-white border">
+                <p class="text-muted mb-1">Total members</p>
+                <p class="h4 fw-bold mb-0"><i class="bi bi-people-fill text-warning me-2"></i>{{ group.member_count }}</p>
+              </div>
+              <div class="p-3 rounded bg-white border">
+                <p class="text-muted mb-1">Join availability</p>
+                <p class="fw-semibold mb-0 text-capitalize">{{ group.join_type }}</p>
+              </div>
+              <div class="p-3 rounded bg-white border">
+                <p class="text-muted mb-1">Group status</p>
+                <p class="fw-semibold mb-0 text-capitalize">{{ group.status }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="h4 fw-bold mb-0">Upcoming events</h2>
+      <span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>{{ upcoming_events|length }}</span>
+    </div>
+
+    {% if upcoming_events %}
+    <div class="row g-4">
+      {% for event in upcoming_events %}
+      <div class="col-md-6 col-xl-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <h3 class="h5 fw-bold mb-1">{{ event.name }}</h3>
+                <p class="text-muted small mb-0">{{ event.town }}</p>
+              </div>
+              <span class="badge bg-primary-subtle text-primary text-capitalize">{{ event.visibility }}</span>
+            </div>
+            <p class="text-muted mb-4"><i class="bi bi-clock text-warning me-1"></i>{{ event.datetime_str or event.datetime }}</p>
+            <p class="text-muted small mb-0">Max participants: {{ event.max_participants }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4 text-center text-muted">
+        <i class="bi bi-calendar2-week fs-3 d-block mb-2"></i>
+        <p class="mb-0">No upcoming events are scheduled for this group yet.</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h2 class="h4 fw-bold mb-0">Members</h2>
+      <span class="badge bg-warning text-dark">
+        <i class="bi bi-people me-1"></i>{{ members|length }} active
+      </span>
+    </div>
+
+    {% if members %}
+    <div class="row g-3">
+      {% for member in members %}
+      <div class="col-md-6 col-xl-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-circle bg-warning text-dark fw-bold">
+                {{ member.first_name[0] }}{{ member.last_name[0] }}
+              </div>
+              <div>
+                <p class="fw-semibold mb-1">{{ member.first_name }} {{ member.last_name }}</p>
+                <p class="text-muted small mb-1">{{ member.email }}</p>
+                <span class="badge rounded-pill {% if member.group_role == 'manager' %}bg-success-subtle text-success{% else %}bg-primary-subtle text-primary{% endif %}">
+                  {{ member.group_role|capitalize }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4 text-center text-muted">
+        <i class="bi bi-emoji-smile fs-3 d-block mb-2"></i>
+        <p class="mb-0">No members listed yet. Be the first to join!</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block footer %}
+<footer class="text-center text-muted py-4 small">
+  <i class="bi bi-circle-fill text-warning me-2"></i>ActiveLoop community groups
+</footer>
+{% endblock %}
