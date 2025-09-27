@@ -71,7 +71,7 @@ def update_settings():
 
 def get_dashboard_url():
     """ return to dashboard"""
-    if current_user.role == "admin":
+    if current_user.role == "super_admin":
         return url_for("admin.dashboard")
     elif current_user.role == "volunteer":
         return url_for("volunteer.dashboard")
