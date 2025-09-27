@@ -29,7 +29,16 @@ TeamAmberProject2
 ![Home page avatar 2] [Unsplash](https://unsplash.com/photos/closeup-photography-of-woman-smiling-mEZ3PoFGs_k)
 *Photo by [Michael Dam](https://unsplash.com/@michaeldam) *
 
-![Home page avatar 2] [Unsplash](https://unsplash.com/photos/woman-in-white-crew-neck-shirt-smiling-IF9TK5Uy-KI)
-*Photo by [Jake Nackos](https://unsplash.com/@jakenackos) *
+![Home page about us1] [Unsplash](https://unsplash.com/photos/man-in-black-t-shirt-and-black-shorts-running-on-road-during-daytime-J154nEkpzlQ)
+*Photo by [Gabin Vallet](https://unsplash.com/@gabinvallet) *
+
+![Home page about us2] [Unsplash](https://unsplash.com/photos/silhouette-photography-of-woman-doing-yoga-F2qh3yjz6Jk)
+*Photo by [kike vega](https://unsplash.com/@kikekiks) *
+
+![Home page about us3] [Unsplash](https://unsplash.com/photos/a-person-walking-on-a-rock-in-the-woods-R5mkpdyqzY8)
+*Photo by [Markus Spiske](https://unsplash.com/@markusspiske) *
+
+![Home pageabout us4] [Unsplash](https://unsplash.com/photos/woman-in-black-tank-top-and-black-leggings-lying-on-black-floor-u76Gd0hP5w4)
+*Photo by [LOGAN WEAVER | @LGNWVR](https://unsplash.com/@lgnwvr) *
 
 
