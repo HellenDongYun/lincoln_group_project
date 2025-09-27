@@ -31,9 +31,122 @@ class GroupRepository(Repository):
         if limit:
             query += " LIMIT %s OFFSET %s"
             params.extend([limit, offset])
-            
+
         cursor.execute(query, params)
         return cursor.fetchall()
+
+    @staticmethod
+    def search_groups_and_events_for_participants(cursor, participant_id, search_term=None,
+                                                location_filter=None, date_filter=None,
+                                                type_filter=None, sort_by='popularity'):
+        """Participant-specific search combining groups and events with join/register context"""
+        query = """
+            SELECT
+                g.id as group_id, g.name as group_name, g.description as group_description,
+                g.town, g.visibility, g.join_type, g.status as group_status,
+                COUNT(DISTINCT gm.user_id) as member_count,
+                COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END) as upcoming_events,
+
+                e.id as event_id, e.name as event_name, e.description as event_description,
+                e.datetime, e.event_type, e.max_participants,
+                COUNT(DISTINCT ep_all.user_id) as registered_participants,
+
+                CASE WHEN participant_gm.user_id IS NOT NULL THEN participant_gm.group_role
+                     ELSE NULL END as participant_group_role,
+                CASE WHEN participant_ep.user_id IS NOT NULL THEN 'registered'
+                     ELSE 'available' END as participant_event_status,
+
+                CASE WHEN e.id IS NOT NULL THEN 'event'
+                     ELSE 'group' END as result_type,
+
+                (COUNT(DISTINCT gm.user_id) + COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END)) as popularity_score
+
+            FROM Community_Groups g
+            LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
+            LEFT JOIN Events e ON g.id = e.group_id
+            LEFT JOIN Event_Participants ep_all ON e.id = ep_all.event_id AND ep_all.status = 'registered'
+            LEFT JOIN Group_Memberships participant_gm ON g.id = participant_gm.group_id
+                     AND participant_gm.user_id = %s AND participant_gm.member_status = 'active'
+            LEFT JOIN Event_Participants participant_ep ON e.id = participant_ep.event_id
+                     AND participant_ep.user_id = %s AND participant_ep.status = 'registered'
+
+            WHERE g.status = 'active'
+        """
+
+        params = [participant_id, participant_id]
+
+        if search_term and search_term.strip():
+            search_pattern = f"%{search_term.strip()}%"
+            query += " AND (g.name LIKE %s OR g.description LIKE %s OR e.name LIKE %s OR e.description LIKE %s)"
+            params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+
+        if location_filter and location_filter.strip():
+            query += " AND g.town = %s"
+            params.append(location_filter.strip())
+
+        if date_filter and date_filter.strip():
+            if date_filter.strip() == "next_2_weeks":
+                query += " AND (e.datetime IS NULL OR e.datetime <= DATE_ADD(NOW(), INTERVAL 2 WEEK))"
+            elif date_filter.strip() == "next_month":
+                query += " AND (e.datetime IS NULL OR e.datetime <= DATE_ADD(NOW(), INTERVAL 1 MONTH))"
+            elif date_filter.strip() == "upcoming":
+                query += " AND (e.datetime IS NULL OR e.datetime > NOW())"
+
+        if type_filter and type_filter.strip():
+            query += " AND (e.event_type = %s OR e.id IS NULL)"
+            params.append(type_filter.strip())
+
+        query += """
+            GROUP BY g.id, e.id
+            HAVING result_type = 'group' OR (result_type = 'event' AND e.datetime > NOW())
+        """
+
+        if sort_by == 'popularity':
+            query += " ORDER BY popularity_score DESC, g.name ASC"
+        elif sort_by == 'alphabetical':
+            query += " ORDER BY g.name ASC, e.name ASC"
+        elif sort_by == 'date':
+            query += " ORDER BY e.datetime ASC, g.name ASC"
+        else:
+            query += " ORDER BY popularity_score DESC, g.name ASC"
+
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_participant_search_filter_options(cursor):
+        """Get filter options for participant search dropdowns"""
+        # Get unique locations from both groups and events
+        cursor.execute("""
+            SELECT DISTINCT town FROM (
+                SELECT DISTINCT g.town
+                FROM Community_Groups g
+                WHERE g.town IS NOT NULL AND g.town != '' AND g.status = 'active'
+                UNION
+                SELECT DISTINCT e.town
+                FROM Events e
+                JOIN Community_Groups g ON e.group_id = g.id
+                WHERE e.town IS NOT NULL AND e.town != '' AND e.datetime > NOW() AND g.status = 'active'
+            ) AS locations
+            ORDER BY town
+        """)
+        locations = [row['town'] for row in cursor.fetchall()]
+
+        # Get unique event types from future events
+        cursor.execute("""
+            SELECT DISTINCT e.event_type
+            FROM Events e
+            JOIN Community_Groups g ON e.group_id = g.id
+            WHERE e.event_type IS NOT NULL AND e.event_type != ''
+            AND e.datetime > NOW() AND g.status = 'active'
+            ORDER BY e.event_type
+        """)
+        event_types = [row['event_type'] for row in cursor.fetchall()]
+
+        return {
+            'locations': locations,
+            'event_types': event_types
+        }
 
     @staticmethod
     def get_group_by_id(cursor, group_id):
@@ -133,6 +246,39 @@ class GroupRepository(Repository):
             WHERE group_id = %s AND user_id = %s AND member_status = 'active'
         """, (group_id, user_id))
         return cursor.fetchone() is not None
+
+    @staticmethod
+    def update_group_settings(cursor, group_id, visibility, status):
+        """Update visibility and status of a group"""
+        cursor.execute("""
+            UPDATE Community_Groups
+            SET visibility = %s, status = %s
+            WHERE id = %s
+        """, (visibility, status, group_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def get_group_events(cursor, group_id, include_past=False, limit=None):
+        """Fetch events associated with a group"""
+        query = """
+            SELECT e.id, e.group_id, e.datetime, e.town, e.name, e.event_type,
+                   e.description, e.max_participants, e.visibility, e.created_by
+            FROM Events e
+            WHERE e.group_id = %s
+        """
+        params = [group_id]
+
+        if not include_past:
+            query += " AND e.datetime >= NOW()"
+
+        query += " ORDER BY e.datetime ASC"
+
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+
+        cursor.execute(query, params)
+        return cursor.fetchall()
 
     # Group Applications
     @staticmethod

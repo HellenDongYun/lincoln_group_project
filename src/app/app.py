@@ -7,7 +7,9 @@ from src.app.app_controller import app_blueprint, auth_service
 from src.app.volunteer.volunteer_controller import volunteer_blueprint
 from src.app.results.results_controller import results_blueprint
 from src.app.participant.participant_controller import participant_blueprint
-from src.app.group.group_controller import group_blueprint 
+from src.app.group.group_controller import group_blueprint
+
+
 
 from src.app.common.db import db
 from src.app.common.nav.nav_items import left_nav_items, right_nav_items
@@ -37,7 +39,7 @@ app.register_blueprint(group_blueprint, url_prefix='/groups')
 @app.context_processor
 def get_nav_items():
     user_id = auth_service.get_user_id()
-    user_role = auth_service.get_user_role()
+    user_role = auth_service.get_global_role()
     return {
         "left_nav_items": left_nav_items(user_id, user_role),
         "right_nav_items": right_nav_items(user_id, user_role)

@@ -1,7 +1,6 @@
-from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_bcrypt import generate_password_hash, check_password_hash
-from src.app.common.db.cursor import get_cursor
+
 from src.app.admin.admin_service import AdminService
 from src.app.auth.auth_service import AuthService
 from src.app.common.file_service import FileService
@@ -21,9 +20,6 @@ user_service = UserService()
 home_service = HomeService()
 
 app_blueprint = Blueprint('app', __name__)
-
-
-
 
 @app_blueprint.route("")
 def home():

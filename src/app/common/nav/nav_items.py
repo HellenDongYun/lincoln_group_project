@@ -3,11 +3,17 @@ from flask import url_for
 from src.app.user.user import GlobalRole
 from src.app.common.nav.encode import encode_id
 
-
 def left_nav_items(user_id: int, user_role: GlobalRole):
 
     nav_items = []
-    
+
+    if user_role == GlobalRole.SUPER_ADMIN and user_id:
+        encoded_admin_id = encode_id(user_id)
+        nav_items.append({
+            "label": "Admin Dashboard",
+            "url": url_for('admin.admin_dashboard', encoded_admin_id=encoded_admin_id)
+        })
+
     #Race Results for all users 
     nav_items.append({
         "label": "Race Results",
@@ -29,7 +35,11 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "My Dashboard",
             "url": url_for('participant.dashboard', encoded_participant_id=encoded_participant_id)
         })
-    
+        nav_items.append({
+            "label": "Find Groups & Events",
+            "url": url_for('groups.participant_search')
+        })
+ 
     # Groups navigation for all logged-in users
     if user_id:
         nav_items.append({
@@ -37,13 +47,6 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "url": url_for('groups.index')
         })
     
-    if user_role == GlobalRole.SUPER_ADMIN:
-        encoded_admin_id = encode_id(user_id)
-        nav_items.append({
-            "label": "Admin Dashboard",
-            "url": url_for('admin.admin_dashboard', encoded_admin_id=encoded_admin_id)
-        })
-
     return nav_items
 
     """def left_nav_items():

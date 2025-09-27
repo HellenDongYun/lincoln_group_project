@@ -2,6 +2,8 @@ import math
 from src.app.common.db.cursor import get_cursor
 from src.app.admin.admin import Admin
 from src.app.admin.admin_repository import AdminRepository
+from src.app.group.group_repository import GroupRepository
+from src.app.user.user import GroupVisibility, GroupStatus, GroupJoinType
 
 
 class AdminService:
@@ -14,9 +16,9 @@ class AdminService:
         return Admin(**row) if row else None
     
     @staticmethod
-    def get_upcoming_events_with_volunteers():
+    def get_upcoming_events_with_volunteers(event_filters=None, limit=5):
         """Get upcoming events with their volunteer requirements"""
-        return AdminRepository.fetch_upcoming_events_with_volunteers()
+        return AdminRepository.fetch_upcoming_events_with_volunteers(event_filters, limit)
     
     
     
@@ -66,7 +68,7 @@ class AdminService:
         with get_cursor() as cursor:
             event = AdminRepository.get_event_by_id(cursor, event_id)
             volunteer_roles = AdminRepository.get_volunteer_roles(cursor, event_id)
-            participants = AdminRepository.get_event_participants(cursor, event_id)
+            participants = AdminRepository.get_event_participants_by_event_id(cursor, event_id)
             participant_count = AdminRepository.count_event_participants(cursor, event_id)
             volunteer_total = AdminRepository.sum_volunteer_spots(cursor, event_id)
 
@@ -131,7 +133,7 @@ class AdminService:
     def get_event_participants(full_name=None, role=None, status=None, page=1, per_page=10):
         offset = (page - 1) * per_page
         with get_cursor() as cursor:
-            return AdminRepository.get_event_participants(cursor,
+            return AdminRepository.get_event_participants_filtered(cursor,
             full_name=full_name,
             role=role,
             status=status,
@@ -141,7 +143,7 @@ class AdminService:
     @staticmethod
     def count_event_participants(full_name=None, role=None, status=None):
         with get_cursor() as cursor:
-            return AdminRepository.count_event_participants(
+            return AdminRepository.count_event_participants_filtered(
                 cursor,
                 full_name=full_name,
                 role=role,
@@ -184,4 +186,114 @@ class AdminService:
                 'per_page': per_page,
                 'total_pages': total_pages,
                 'total_count': total_count
-            }          
+            }
+
+    @staticmethod
+    def get_group_overview(filters=None, limit=6):
+        with get_cursor() as cursor:
+            rows = AdminRepository.fetch_group_overview(cursor, filters, limit)
+            overview = []
+            for row in rows:
+                managers = []
+                raw_names = row.get('manager_names')
+                if raw_names:
+                    managers = [name for name in raw_names.split('|') if name]
+                overview.append({
+                    'group_id': row['group_id'],
+                    'name': row['name'],
+                    'description': row.get('description'),
+                    'town': row.get('town'),
+                    'visibility': row.get('visibility'),
+                    'status': row.get('status'),
+                    'member_count': row.get('member_count', 0),
+                    'manager_count': row.get('manager_count', 0),
+                    'manager_names': managers,
+                    'upcoming_events_count': row.get('upcoming_events_count', 0)
+                })
+            return overview
+
+    @staticmethod
+    def get_pending_group_applications():
+        with get_cursor() as cursor:
+            return AdminRepository.fetch_pending_group_applications(cursor)
+
+    @staticmethod
+    def get_group_filter_options():
+        with get_cursor() as cursor:
+            options = AdminRepository.fetch_group_filter_options(cursor)
+        return {
+            'visibilities': [visibility.value for visibility in GroupVisibility],
+            'statuses': [status.value for status in GroupStatus],
+            'towns': options.get('towns', []),
+            'join_types': [join_type.value for join_type in GroupJoinType]
+        }
+
+    @staticmethod
+    def get_event_filter_options():
+        with get_cursor() as cursor:
+            return AdminRepository.fetch_event_filter_options(cursor)
+
+    @staticmethod
+    def get_monitoring_metrics(timeframe_days=30):
+        with get_cursor() as cursor:
+            return AdminRepository.fetch_monitoring_metrics(cursor, timeframe_days)
+
+    @staticmethod
+    def assign_group_manager(group_id, manager_email):
+        if not manager_email:
+            raise ValueError("Manager email is required")
+
+        email = manager_email.strip().lower()
+        if not email:
+            raise ValueError("Manager email is required")
+
+        with get_cursor() as cursor:
+            user = AdminRepository.find_user_by_email(cursor, email)
+            if not user:
+                raise ValueError("No user found with that email address")
+
+            GroupRepository.add_group_member(cursor, group_id, user['id'], group_role='manager')
+
+            return {
+                'user_id': user['id'],
+                'full_name': f"{user['first_name']} {user['last_name']}",
+                'email': user['email']
+            }
+
+    @staticmethod
+    def create_group(name, description, town, visibility, join_type, created_by, manager_email=None):
+        if not name:
+            raise ValueError("Group name is required")
+        if not town:
+            raise ValueError("Town or region is required")
+        if visibility not in [v.value for v in GroupVisibility]:
+            raise ValueError("Invalid visibility option selected")
+        if join_type not in [jt.value for jt in GroupJoinType]:
+            raise ValueError("Invalid join type option selected")
+        if not created_by:
+            raise ValueError("Unable to determine creator for the group")
+
+        manager_email_normalized = manager_email.strip().lower() if manager_email else None
+
+        with get_cursor() as cursor:
+            group_id = GroupRepository.create_group(cursor, name, description, town, visibility, join_type, created_by)
+
+            manager_info = None
+            manager_warning = None
+            if manager_email_normalized:
+                user = AdminRepository.find_user_by_email(cursor, manager_email_normalized)
+                if user:
+                    GroupRepository.add_group_member(cursor, group_id, user['id'], group_role='manager')
+                    manager_info = {
+                        'user_id': user['id'],
+                        'full_name': f"{user['first_name']} {user['last_name']}",
+                        'email': user['email']
+                    }
+                else:
+                    manager_warning = "Manager email not found; group created without an assigned manager."
+
+            return {
+                'group_id': group_id,
+                'manager': manager_info,
+                'manager_warning': manager_warning
+            }
