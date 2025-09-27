@@ -1,6 +1,13 @@
 from src.app.common.db.cursor import get_cursor
 from src.app.group.group_repository import GroupRepository
-from src.app.user.user import CommunityGroup, GroupMembership, GroupApplication
+from src.app.event.event import Event
+from src.app.user.user import (
+    CommunityGroup,
+    GroupMembership,
+    GroupApplication,
+    GroupVisibility,
+    GroupStatus,
+)
 
 
 class GroupService:
@@ -183,3 +190,27 @@ class GroupService:
         with get_cursor() as cursor:
             groups = GroupRepository.get_user_groups(cursor, user_id)
             return [group for group in groups if group['group_role'] == 'manager']
+
+    @staticmethod
+    def update_group_settings(group_id, visibility, status):
+        """Update a group's visibility and status"""
+        valid_visibilities = [option.value for option in GroupVisibility]
+        valid_statuses = [option.value for option in GroupStatus]
+
+        if visibility not in valid_visibilities:
+            raise ValueError("Invalid visibility option")
+
+        if status not in valid_statuses:
+            raise ValueError("Invalid status option")
+
+        with get_cursor() as cursor:
+            updated_rows = GroupRepository.update_group_settings(cursor, group_id, visibility, status)
+            if updated_rows == 0:
+                raise ValueError("Group not found")
+
+    @staticmethod
+    def get_group_events(group_id, include_past=False, limit=None):
+        """Get events created for a group"""
+        with get_cursor() as cursor:
+            rows = GroupRepository.get_group_events(cursor, group_id, include_past, limit)
+            return [Event(**row) for row in rows]

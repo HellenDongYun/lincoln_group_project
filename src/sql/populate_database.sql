@@ -52,25 +52,25 @@ INSERT INTO Community_Groups (name, description, town, visibility, status, creat
 -- 1 = Darfield, 2 = Harbour Runners, 3 = Auckland Trail, 4 = Rotorua Adventure
 -- Group Managers (user_id): 2=Alice, 3=Bob, 12=Violet, 10=Irene
 INSERT INTO Group_Memberships (group_id, user_id, group_role, member_status) VALUES
-(1, 2, 'manager', 'active'),  -- Alice (2) manager Darfield
-(1, 3, 'member', 'active'),  -- Bob (3) member Darfield
-(1, 4, 'member', 'active'),  -- Carol (4) member Darfield
+(1, 2, 'manager', 'active'), -- Alice (2) manager Darfield
+(1, 3, 'member', 'active'), -- Bob (3) member Darfield
+(1, 4, 'member', 'active'), -- Carol (4) member Darfield
 (1, 11, 'member', 'active'), -- Jack (11) member Darfield
-(1, 5, 'member', 'active'),  -- Dave (5) member Darfield 
+(1, 5, 'member', 'active'), -- Dave (5) member Darfield 
 
-(2, 3, 'manager', 'active'),  -- Bob (3) manager Harbour Runners
-(2, 2, 'member', 'active'),   -- Alice (2) member Harbour Runners
-(2, 5, 'member', 'active'),   -- Dave (5) member Harbour Runners
-(2, 7, 'member', 'active'),   -- Frank (7) member Harbour Runners 
+(2, 3, 'manager', 'active'), -- Bob (3) manager Harbour Runners
+(2, 2, 'member', 'active'), -- Alice (2) member Harbour Runners
+(2, 5, 'member', 'active'), -- Dave (5) member Harbour Runners
+(2, 7, 'member', 'active'), -- Frank (7) member Harbour Runners 
 
 (3, 12, 'manager', 'active'), -- Violet (12) manager Auckland Trail Explorers
-(3, 4, 'member', 'active'),   -- Carol (4) member Trail Explorers
-(3, 6, 'member', 'active'),   -- Emma (6) member Trail Explorers
+(3, 4, 'member', 'active'), -- Carol (4) member Trail Explorers
+(3, 6, 'member', 'active'), -- Emma (6) member Trail Explorers
 (3, 15, 'member', 'active'), -- Valentina (15) member Trail Explorers 
 
 (4, 10, 'manager', 'active'), -- Irene (10) manager Rotorua Adventure
-(4, 14, 'member', 'active'),  -- Vladimir (14) member Rotorua Adventure
-(4, 9, 'member', 'active');   -- Harry (9) member Rotorua Adventure 
+(4, 14, 'member', 'active'), -- Vladimir (14) member Rotorua Adventure
+(4, 9, 'member', 'active'); -- Harry (9) member Rotorua Adventure 
 
 
 -- ------------------------------
@@ -79,6 +79,8 @@ INSERT INTO Group_Memberships (group_id, user_id, group_role, member_status) VAL
 INSERT INTO Group_Applications (applicant_id, proposed_name, proposed_description, proposed_town, visibility, status, decision_by)
 VALUES
 (5, 'Hamilton Fitness Collective', 'Local mixed-discipline fitness and running events.', 'Hamilton', 'public', 'pending', NULL),
+(2, 'Auckland Run', 'Local running events.', 'Auckland', 'public', 'pending', NULL),
+(6, 'Auckland Fitness Collective', 'Local mixed-discipline fitness and running events.', 'Auckland', 'private', 'pending', NULL),
 (7, 'Napier Coastal Walkers', 'Social coastal walking group.', 'Napier', 'public', 'approved', 1),
 (8, 'Queenstown Mountain Riders', 'Mountain terrain cycling crew.', 'Queenstown', 'private', 'rejected', 1);
 
@@ -134,20 +136,20 @@ INSERT INTO Event_Task_Vacancies (event_id, task_id, spots) VALUES
 -- Event Task Assignments (Volunteers)
 -- ------------------------------
 INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
- -- Assignments for UPCOMING Event 1 (Avon River Fun Run)
-(1, 1, 2),  -- Alice (2) Event Coordinator
-(1, 3, 5),  -- Dave (5) Course Marshal
+-- Assignments for UPCOMING Event 1 (Avon River Fun Run)
+(1, 1, 2), -- Alice (2) Event Coordinator
+(1, 3, 5), -- Dave (5) Course Marshal
 
- -- Assignments for UPCOMING Event 2 (Harbour Walk Challenge)
-(2, 2, 7),  -- Frank (7) Registration Assistant
-(2, 3, 2),  -- Alice (2) Course Marshal (Member of Group 2)
+-- Assignments for UPCOMING Event 2 (Harbour Walk Challenge)
+(2, 2, 7),-- Frank (7) Registration Assistant
+(2, 3, 2), -- Alice (2) Course Marshal (Member of Group 2)
 
- -- Assignments for UPCOMING Event 3 (City Park Trail Intro)
+-- Assignments for UPCOMING Event 3 (City Park Trail Intro)
 (3, 1, 12), -- Violet (12) Event Coordinator
-(3, 9, 6),  -- Emma (6) Photographer
+(3, 9, 6), -- Emma (6) Photographer
 
- -- Assignments for PAST events (retained)
-(8, 1, 2),  (8, 2, 3),  (8, 3, 4),  (8, 4, 5),  (8, 5, 6),  (8, 11, 7),
+-- Assignments for PAST events 
+(8, 1, 2), (8, 2, 3), (8, 3, 4), (8, 4, 5), (8, 5, 6), (8, 11, 7),
 (9, 1, 12), (9, 2, 13), (9, 6, 14), (9, 8, 11), (9, 9, 10), (9, 10, 9), (9, 12, 8),
 (10, 1, 2), (10, 2, 13), (10, 13, 14), (10, 6, 12), (10, 7, 11), (10, 4, 5);
 
@@ -156,28 +158,28 @@ INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
 -- Event Participants (Attendees)
 -- ------------------------------
 INSERT INTO Event_Participants (event_id, user_id, status) VALUES
- -- Event 1 (Avon River Fun Run - Group 1 members + others)
+-- Event 1 (Avon River Fun Run - Group 1 members + others)
 (1, 2, 'registered'), (1, 3, 'registered'), (1, 4, 'registered'), (1, 5, 'registered'), (1, 11, 'registered'), (1, 13, 'registered'),
 
- -- Event 2 (Harbour Walk Challenge - Group 2 members + others)
+-- Event 2 (Harbour Walk Challenge - Group 2 members + others)
 (2, 3, 'registered'), (2, 2, 'registered'), (2, 5, 'registered'), (2, 7, 'registered'), (2, 6, 'registered'), (2, 15, 'registered'),
 
- -- Event 3 (City Park Trail Intro - Group 3 members + others)
+-- Event 3 (City Park Trail Intro - Group 3 members + others)
 (3, 12, 'registered'), (3, 4, 'registered'), (3, 6, 'registered'), (3, 15, 'registered'), (3, 8, 'registered'), (3, 9, 'registered'),
 
- -- Event 4 (Otago Peninsula Ride - Group 1 members + others)
+-- Event 4 (Otago Peninsula Ride - Group 1 members + others)
 (4, 2, 'registered'), (4, 11, 'registered'), (4, 13, 'registered'),
 
- -- Event 5 (Lake Run Festival - Group 2 members + others)
+-- Event 5 (Lake Run Festival - Group 2 members + others)
 (5, 3, 'registered'), (5, 7, 'registered'), (5, 5, 'registered'),
 
- -- Event 6 (Hawke’s Bay Sunrise Walk - Group 3 members + others)
+-- Event 6 (Hawke’s Bay Sunrise Walk - Group 3 members + others)
 (6, 12, 'registered'), (6, 4, 'registered'), (6, 6, 'registered'),
 
- -- Event 7 (Redwoods Forest Ride - Group 4 members)
+-- Event 7 (Redwoods Forest Ride - Group 4 members)
 (7, 10, 'registered'), (7, 14, 'registered'), (7, 9, 'registered'),
 
- -- Registrations for PAST events (retained)
+-- Registrations for PAST events (retained)
 (8, 2, 'registered'), (8, 3, 'registered'), (8, 4, 'registered'), (8, 5, 'registered'), (8, 6, 'registered'),
 (9, 3, 'registered'), (9, 4, 'registered'), (9, 9, 'registered'), (9, 10, 'registered'), (9, 11, 'registered'),
 (10, 2, 'registered'), (10, 5, 'registered'), (10, 6, 'registered'), (10, 12, 'registered');

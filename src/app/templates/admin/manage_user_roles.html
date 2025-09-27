@@ -39,7 +39,6 @@
                             <select id="search_role" name="search_role" class="form-select">
                                 <option value="">All Roles</option>
                                 <option value="participant" {% if search_role == 'participant' %}selected{% endif %}>Participant</option>
-                                <option value="group_manager" {% if search_role == 'group_manager' %}selected{% endif %}>Group Manager</option>
                                 <option value="super_admin" {% if search_role == 'super_admin' %}selected{% endif %}>Super Admin</option>
                             </select>
                         </div>
@@ -101,12 +100,12 @@
                                         <span class="badge bg-light text-dark">{{ user.town or 'N/A' }}</span>
                                     </td>
                                     <td>
-                                        <span class="badge 
-                                            {% if user.role == 'admin' %}bg-danger
-                                            {% elif user.role == 'volunteer' %}bg-info
-                                            {% else %}bg-success{% endif %}" 
+                                                                                <span class="badge 
+                                                                                        {% if user.role == 'super_admin' %}bg-dark text-warning
+                                                                                        {% elif user.role == 'participant' %}bg-success
+                                                                                        {% else %}bg-secondary{% endif %}" 
                                               id="role-badge-{{ user.id }}">
-                                            {{ user.role.title() }}
+                                                                                        {{ user.role.replace('_', ' ')|title }}
                                         </span>
                                     </td>
                                     <td>
@@ -124,10 +123,10 @@
                                                     id="roleDropdown{{ user.id }}" 
                                                     data-bs-toggle="dropdown" 
                                                     aria-expanded="false">
-                                                </i>Change Role
+                                                Change Role
                                             </button>
                                             <ul class="dropdown-menu" aria-labelledby="roleDropdown{{ user.id }}">
-                                                {% for role in ['participant', 'volunteer', 'admin'] %}
+                                                {% for role in ['participant', 'super_admin'] %}
                                                     {% if role != user.role %}
                                                     <li>
                                                         <a class="dropdown-item role-change-btn" 
@@ -137,7 +136,7 @@
                                                            data-new-role="{{ role }}"
                                                            data-current-role="{{ user.role }}">
                                                             <i class="fas fa-arrow-right me-2"></i>
-                                                            Change to {{ role.title() }}
+                                                            Change to {{ role.replace('_', ' ')|title }}
                                                         </a>
                                                     </li>
                                                     {% endif %}
@@ -300,8 +299,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update modal content
             document.getElementById('modal-user-name').textContent = userName;
-            document.getElementById('modal-current-role').textContent = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
-            document.getElementById('modal-new-role').textContent = currentNewRole.charAt(0).toUpperCase() + currentNewRole.slice(1);
+            document.getElementById('modal-current-role').textContent = formatRoleLabel(currentRole);
+            document.getElementById('modal-new-role').textContent = formatRoleLabel(currentNewRole);
             
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('roleChangeModal'));
@@ -374,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update the badge in the table
                 const badge = document.getElementById(`role-badge-${userId}`);
                 if (badge) {
-                    badge.textContent = newRole.charAt(0).toUpperCase() + newRole.slice(1);
+                    badge.textContent = formatRoleLabel(newRole);
                     badge.className = `badge ${getRoleBadgeClass(newRole)}`;
                 }
                 
@@ -473,12 +472,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    function formatRoleLabel(role) {
+        if (!role) {
+            return '';
+        }
+        return role
+            .split('_')
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+    }
+
     function getRoleBadgeClass(role) {
         switch(role) {
-            case 'admin': return 'bg-danger';
-            case 'volunteer': return 'bg-info';
-            case 'participant': return 'bg-success';
-            default: return 'bg-secondary';
+            case 'super_admin':
+                return 'bg-dark text-warning';
+            case 'participant':
+                return 'bg-success';
+            default:
+                return 'bg-secondary';
         }
     }
     
@@ -492,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateDropdownOptions(userId, newRole) {
         const dropdown = document.querySelector(`#roleDropdown${userId}`).parentNode.querySelector('.dropdown-menu');
-        const allRoles = ['participant', 'volunteer', 'admin'];
+    const allRoles = ['participant', 'super_admin'];
         
         // Clear current options
         dropdown.innerHTML = '';
@@ -509,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
                        data-new-role="${role}"
                        data-current-role="${newRole}">
                         <i class="fas fa-arrow-right me-2"></i>
-                        Change to ${role.charAt(0).toUpperCase() + role.slice(1)}
+                        Change to ${formatRoleLabel(role)}
                     </a>
                 `;
                 dropdown.appendChild(li);
@@ -524,8 +535,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const currentRole = this.dataset.currentRole;
                     
                     document.getElementById('modal-user-name').textContent = userName;
-                    document.getElementById('modal-current-role').textContent = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
-                    document.getElementById('modal-new-role').textContent = currentNewRole.charAt(0).toUpperCase() + currentNewRole.slice(1);
+                    document.getElementById('modal-current-role').textContent = formatRoleLabel(currentRole);
+                    document.getElementById('modal-new-role').textContent = formatRoleLabel(currentNewRole);
                     
                     const modal = new bootstrap.Modal(document.getElementById('roleChangeModal'));
                     modal.show();

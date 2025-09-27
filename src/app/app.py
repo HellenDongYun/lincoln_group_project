@@ -39,7 +39,7 @@ app.register_blueprint(group_blueprint, url_prefix='/groups')
 @app.context_processor
 def get_nav_items():
     user_id = auth_service.get_user_id()
-    user_role = auth_service.get_user_role()
+    user_role = auth_service.get_global_role()
     return {
         "left_nav_items": left_nav_items(user_id, user_role),
         "right_nav_items": right_nav_items(user_id, user_role)
