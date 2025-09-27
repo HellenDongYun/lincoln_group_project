@@ -22,3 +22,14 @@ TeamAmberProject2
 
 ![Group Section] [Unsplash](https://unsplash.com/photos/person-in-red-sweater-holding-babys-hand-Zyx1bK9mqmA)
 *Photo by [Hannah Busing](https://unsplash.com/@hannahbusing) *
+
+![Home page avatar 1] [Unsplash](https://unsplash.com/photos/man-in-white-crew-neck-shirt-wearing-black-framed-eyeglasses-_RcTaCHHMI0)
+*Photo by [Vicky Hladynets](https://unsplash.com/@vhladynets) *
+
+![Home page avatar 2] [Unsplash](https://unsplash.com/photos/closeup-photography-of-woman-smiling-mEZ3PoFGs_k)
+*Photo by [Michael Dam](https://unsplash.com/@michaeldam) *
+
+![Home page avatar 2] [Unsplash](https://unsplash.com/photos/woman-in-white-crew-neck-shirt-smiling-IF9TK5Uy-KI)
+*Photo by [Jake Nackos](https://unsplash.com/@jakenackos) *
+
+
