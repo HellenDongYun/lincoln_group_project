@@ -33,11 +33,11 @@ block header %}
             <div class="mb-5">
               <a href="{{ url_for('app.register') }}" 
                  class="btn btn-warning btn-lg rounded-pill px-4 me-2 me-lg-3 mb-2 mb-sm-0">
-                Register
+                Register as participant
               </a>
               <a href="{{ url_for('app.login') }}" 
                  class="btn btn-outline-light btn-lg rounded-pill px-4">
-                Login
+                check events
               </a>
             </div>
             {% endif %}
@@ -67,57 +67,40 @@ block header %}
     </div>
   </div>
 </div>
-  <!-- find events that suit you  -->
+  <!-- find your event -->
 <section class="py-5 bg-light text-center">
     <div class="container-fluid">
         <div class="row">
             <div class="col-lg-12">
-                <h2 class="display-6 mb-3 fw-bold">Find the event that suits you</h2>
+                <h2 class="display-6 mb-3 fw-bold">Find the activity that suits you</h2>
                 <p class="text-muted lead fs-5 mb-4">Search for upcoming running, walking and cycling events and join our community fitness program</p>
             </div>
         </div>
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="card p-4 rounded shadow-sm">
-                    <form name="event_type" id="search-form" class="row g-3 align-items-center" method="GET" action="{{url_for('app.home_filter_events')}}">
-                      <input type="hidden" name="filter_type" value="events">
-                      <!-- location  -->
+                    <form class="row g-3 align-items-center">
                         <div class="col-md-4">
-                          <div class="input-group align-items-center">
-                            <span class="input-group-text">
-                              <i class="bi bi-geo-alt-fill"></i>
-                            </span>
-                            <input
-                              type="text"
-                              name="location"
-                              class="form-control"
-                              placeholder="Location"
-                              aria-label="Location"
-                            />
-                          </div>
-                        </div>
-                        <!-- type  -->
-                           <div class="col-md-4">
                             <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-pin-map-fill"></i>
-                                </span>
-                                <select name="event_type" class="form-select" aria-label="Activity Type">
-                                    <option value="all">All Events</option>
-                                    <option value="run">Run</option>
-                                    <option value="walk">Walk</option>
-                                    <option value="trail">Trail</option>
-                                    <option value="cycling">Cycling</option>
+                                <span class="input-group-text"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-geo-alt-fill" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg></span>
+                                <input type="text" class="form-control" placeholder="location" aria-label="Location">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pin-map-fill" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.1 11.2a.5.5 0 0 1 .4-.2H6a.5.5 0 0 1 0 1H3.5L.5 14h13l-3-2.9v-.4a.5.5 0 0 1 .5-.5h2.2a.5.5 0 0 1 .4.2l3 2.9h-4.3a.5.5 0 0 1-.4-.2L8.8 12.3a.5.5 0 0 1-.7 0L.9 14.1a.5.5 0 0 1-.2-.4l2-2.5zM4 4a4 4 0 1 1 8 0 4 4 0 0 1-8 0z"/></svg></span>
+                                <select class="form-select" aria-label="Activity Type">
+                                    <option selected>All Events</option>
+                                    <option value="1">Running</option>
+                                    <option value="2">walking</option>
+                                    <option value="3">Cycling</option>
                                 </select>
                             </div>
                         </div>
-                     <!-- Date -->
                         <div class="col-md-4">
                             <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-calendar-date-fill"></i>
-                                </span>
-                                <input type="date" name="date" class="form-control" aria-label="Date">
+                                <span class="input-group-text"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-date-fill" viewBox="0 0 16 16"><path d="M12.5 0a.5.5 0 0 1 .5.5v1h-1v-1a.5.5 0 0 1 .5-.5zm-4 0a.5.5 0 0 1 .5.5v1h-1v-1a.5.5 0 0 1 .5-.5zm-4 0a.5.5 0 0 1 .5.5v1h-1v-1a.5.5 0 0 1 .5-.5zM8.5 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-.5.5H8a.5.5 0 0 1-.5-.5V4.5a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-.5.5H12a.5.5 0 0 1-.5-.5V4.5a.5.5 0 0 1 .5-.5zM4.5 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V4.5a.5.5 0 0 1 .5-.5z"/></svg></span>
+                                <input type="text" class="form-control" placeholder="dd/mm/yyyy" aria-label="Date">
                             </div>
                         </div>
                         <div class="col-12 text-center mt-3">
@@ -127,67 +110,14 @@ block header %}
                 </div>
                   <div class="mt-3 text-center d-flex justify-content-center align-items-center">
                     <p class="text-muted fw-bold mb-0 me-2">Filter:</p>
-                    <a href="{{url_for('app.home_filter_events',filter_type='events')}}" class="btn btn-outline-secondary rounded-pill me-2 selected">Events</a>
-                    <a  href="{{url_for('app.home_filter_events',filter_type='groups')}}" class="btn btn-outline-secondary rounded-pill me-2">Group</a>
+                    <a href="#" class="btn btn-outline-secondary rounded-pill me-2">Running for today</a>
+                    <a href="#" class="btn btn-outline-secondary rounded-pill me-2">Auckland</a>
+                    <a href="#" class="btn btn-outline-secondary rounded-pill">Events in this week</a>
                 </div>
             </div>
         </div>
     </div>
 </section>
-
-<!-- about active loop -->
-<section class="py-5 bg-light">
-  <div class="container">
-    <div class="row align-items-center g-5">
-      <!-- left -->
-      <div class="col-lg-6">
-        <h2 class="fw-bold text-dark mb-4">About ActiveLoop</h2>
-        <p class="text-muted mb-4">
-          ActiveLoop is a platform dedicated to improving community health, offering personalized and engaging activities for people of all ages and backgrounds. We believe that everyone can enhance their physical and mental health and build genuine connections through participation.
-        </p>
-        <ul class="list-unstyled">
-          <li class="mb-3 d-flex align-items-start">
-            <i class="bi bi-shield-check text-success me-2 fs-5"></i>
-            <span>Safety experience guarantee</span>
-          </li>
-          <li class="mb-3 d-flex align-items-start">
-            <i class="bi bi-stars text-info me-2 fs-5"></i>
-            <span>Recommended system</span>
-          </li>
-          <li class="mb-3 d-flex align-items-start">
-            <i class="bi bi-people-fill text-warning me-2 fs-5"></i>
-            <span>Team expert guidance</span>
-          </li>
-        </ul>
-        <a href="{{ url_for('app.login') }}" class="btn btn-warning rounded-pill px-4 mt-3">
-          Join us
-        </a>
-      </div>
-
-      <!-- right images -->
-      <div class="col-lg-6">
-          <div class="row g-3">
-            {% for img in ['aboutus1.jpg', 'aboutus2.jpg', 'aboutus3.jpg', 'aboutus4.jpg'] %}
-              <div class="col-6">
-                <div class="ratio ratio-4x3">
-                  <img src="{{ url_for('static', filename='images/' ~ img) }}"
-                      class="img-fluid rounded shadow-sm"
-                      style="object-fit: cover;"
-                      alt="Activity Image">
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-    </div>
-  </div>
-</section>
-
-
-
-
-
-
   <!-- participant say -->
 <section class="py-5 bg-white text-center">
     <div class="container">
@@ -197,15 +127,10 @@ block header %}
             <div class="col-md-4">
                 <div class="card p-4 h-100 rounded shadow-sm">
                     <div class="d-flex justify-content-center mb-3">
-                        <img
-                          src="{{ url_for('static', filename='images/avatar1.jpg') }}"
-                          class="rounded-circle"
-                          alt="User1"
-                          style="object-fit: cover; width: 100px; height: 100px;"
-                        >
+                        <img src="https://placehold.co/100x100" class="rounded-circle" alt="User 1" style="object-fit: cover;">
                     </div>
                     <p class="fst-italic lead">"ActiveLoop has rediscovered the joy of sports for me. The community atmosphere here is very friendly!"</p>
-                    <h5 class="fw-bold mb-0 mt-3">Kevin</h5>
+                    <h5 class="fw-bold mb-0 mt-3">Hellen</h5>
                     <p class="small text-muted">Participant</p>
                 </div>
             </div>
@@ -213,12 +138,7 @@ block header %}
             <div class="col-md-4">
                 <div class="card p-4 h-100 rounded shadow-sm">
                     <div class="d-flex justify-content-center mb-3">
-                            <img
-                              src="{{ url_for('static', filename='images/avatar2.jpg') }}"
-                              class="rounded-circle"
-                              alt="User2"
-                              style="object-fit: cover; width: 100px; height: 100px;"
-                            >
+                        <img src="https://placehold.co/100x100" class="rounded-circle" alt="User 2" style="object-fit: cover;">
                     </div>
                     <p class="fst-italic lead">"As a volunteer, being able to help others achieve their fitness goals gives me a great sense of accomplishment"</p>
                     <h5 class="fw-bold mb-0 mt-3">Jade</h5>
@@ -229,24 +149,16 @@ block header %}
             <div class="col-md-4">
                 <div class="card p-4 h-100 rounded shadow-sm">
                     <div class="d-flex justify-content-center mb-3">
-                          <img
-                            src="{{ url_for('static', filename='images/avatar3.jpg') }}"
-                            class="rounded-circle"
-                            alt="User3"
-                            style="object-fit: cover; width: 100px; height: 100px;"
-                          >
+                        <img src="https://placehold.co/100x100" class="rounded-circle" alt="User 3" style="object-fit: cover;">
                     </div>
                     <p class="fst-italic lead">"From zero foundation to completing a 5K run, ActiveLoop has witnessed my growth journey"</p>
-                    <h5 class="fw-bold mb-0 mt-3">Winne</h5>
+                    <h5 class="fw-bold mb-0 mt-3">Ken</h5>
                     <p class="small text-muted">Participant</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
-
-
-
  {% endblock %} {% block footer %}
   <footer class="lead text-center my-5">
     <i class="fas fa-circle text-amber"></i> Team Amber
