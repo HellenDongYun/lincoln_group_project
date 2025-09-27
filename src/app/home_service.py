@@ -31,3 +31,9 @@ class HomeService(Repository):
         except Exception as e:
             print(f"Database error in get_upcoming_events: {e}")
             return []
+
+    def home_filter_events(limit,location="", event_type="", date_str=""):
+        return Repository.home_filter_events(limit,location, event_type, date_str)
+    def home_filter_groups():
+        return Repository.home_filter_groups() 
+
