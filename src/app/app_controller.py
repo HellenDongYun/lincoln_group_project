@@ -1,6 +1,7 @@
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_bcrypt import generate_password_hash, check_password_hash
-
+from src.app.common.db.cursor import get_cursor
 from src.app.admin.admin_service import AdminService
 from src.app.auth.auth_service import AuthService
 from src.app.common.file_service import FileService
@@ -20,6 +21,9 @@ user_service = UserService()
 home_service = HomeService()
 
 app_blueprint = Blueprint('app', __name__)
+
+
+
 
 @app_blueprint.route("")
 def home():
@@ -273,4 +277,27 @@ def settings():
             flash("Failed to update settings.", "danger")
     
     return render_template("app/settings.html", form_group=form_group)
+
+# home page as visitor when filter events
+@app_blueprint.route("/search")
+def home_filter_events():
+    filter_type = request.args.get("filter_type", "events")  
+    location = request.args.get("location", "").strip()
+    event_type = request.args.get("event_type", "").strip()
+    date_str = request.args.get("date", "").strip()
+    formatted_date = ""
+    if date_str:
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            formatted_date = date_obj.strftime("%d/%m/%Y")
+        except ValueError:
+            formatted_date = date_str
+    filter_event_results = []
+    filter_group_results = []
+    if filter_type == "events":
+        filter_event_results = HomeService.home_filter_events(location, event_type, date_str)
+    elif filter_type == "groups":
+        filter_group_results = HomeService.home_filter_groups()
+    print("events=", filter_event_results)
+    return render_template("app/search.html", events=filter_event_results, groups=filter_group_results, filter_type=filter_type, location=location,event_type=event_type,date_str =formatted_date   )
 
