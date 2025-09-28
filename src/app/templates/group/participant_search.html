@@ -134,19 +134,20 @@
                                                class="btn btn-outline-primary btn-sm">
                                                 <i class="fas fa-eye"></i> View Group
                                             </a>
-                                        {% elif result.join_action == 'join' %}
+                                        {% elif result.join_action == 'join_immediately' %}
                                             <form method="POST" action="{{ url_for('groups.join_group', group_id=result.group_id) }}" style="display: inline;">
                                                 <button type="submit" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-plus"></i> Join Group
+                                                    <i class="fas fa-plus"></i> Join Now
                                                 </button>
                                             </form>
-                                        {% elif result.join_action == 'apply' %}
-                                            <span class="badge bg-warning text-dark mb-1">Application Required</span><br>
-                                            <a href="{{ url_for('groups.apply_for_group') }}" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-edit"></i> Apply to Join
+                                        {% elif result.join_action == 'request_access' %}
+                                            <a href="{{ url_for('groups.request_join_form', group_id=result.group_id) }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-paper-plane"></i> Request Access
                                             </a>
                                         {% elif result.join_action == 'closed' %}
                                             <span class="badge bg-secondary">Closed Group</span>
+                                        {% else %}
+                                            <small class="text-muted">Debug: join_action = "{{ result.join_action }}"</small>
                                         {% endif %}
                                     </div>
                                 </div>

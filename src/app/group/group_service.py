@@ -114,13 +114,13 @@ class GroupService:
             group = GroupRepository.get_group_by_id(cursor, group_id)
             if not group:
                 return False
-            
+
             # Can't join if already a member
             if GroupRepository.is_group_member(cursor, group_id, user_id):
                 return False
-            
-            # Can join if group is open
-            return group['join_type'] == 'open'
+
+            # Can join immediately if group is public
+            return group['visibility'] == 'public'
 
     # Group Applications
     @staticmethod
@@ -192,6 +192,18 @@ class GroupService:
             return [group for group in groups if group['group_role'] == 'manager']
 
     @staticmethod
+    def get_group_events(group_id, include_past=False, limit=None):
+        """Get events for a specific group"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_group_events(cursor, group_id, include_past, limit)
+
+    @staticmethod
+    def update_group_settings(group_id, visibility, status):
+        """Update group visibility and status"""
+        with get_cursor() as cursor:
+            return GroupRepository.update_group_settings(cursor, group_id, visibility, status)
+
+    @staticmethod
 
     def search_for_participants(participant_id, search_term=None, location_filter=None,
                               date_filter=None, type_filter=None, sort_by='popularity'):
@@ -241,8 +253,8 @@ class GroupService:
         if group_result.get('participant_group_role'):
             return False
 
-        # Can join if group is open
-        if group_result.get('join_type') == 'open':
+        # Can join if group is public
+        if group_result.get('visibility') == 'public':
             return True
 
         # Private groups require application
@@ -255,10 +267,10 @@ class GroupService:
             return 'manage'
         elif group_result.get('participant_group_role') == 'member':
             return 'member'
-        elif group_result.get('join_type') == 'open':
-            return 'join'
+        elif group_result.get('visibility') == 'public':
+            return 'join_immediately'  # Public groups = immediate join
         elif group_result.get('visibility') == 'private':
-            return 'apply'
+            return 'request_access'    # Private groups = request required
         else:
             return 'closed'
 
@@ -289,3 +301,100 @@ class GroupService:
                 return 'full'
 
         return 'register'
+
+    # Group Join Request Methods
+    @staticmethod
+    def get_join_action_for_group(group, user_id):
+        """Determine what join action is available for user"""
+        with get_cursor() as cursor:
+            # Check if already a member
+            if GroupRepository.is_group_member(cursor, group['id'], user_id):
+                # Check if manager
+                if GroupRepository.is_group_manager(cursor, group['id'], user_id):
+                    return 'manage'
+                else:
+                    return 'member'
+
+            # Check if has pending request
+            existing_request = GroupRepository.check_existing_join_request(cursor, user_id, group['id'])
+            if existing_request:
+                return 'request_pending'
+
+            # Determine action based on visibility
+            if group['visibility'] == 'public':
+                return 'join_immediately'
+            elif group['visibility'] == 'private':
+                return 'request_access'
+            else:
+                return 'closed'
+
+    @staticmethod
+    def request_to_join_group(user_id, group_id, message=None):
+        """Submit request to join private group"""
+        with get_cursor() as cursor:
+            # Validate group exists and is private
+            group = GroupRepository.get_group_by_id(cursor, group_id)
+            if not group:
+                raise ValueError("Group not found")
+
+            if group['visibility'] != 'private':
+                raise ValueError("Only private groups require join requests")
+
+            # Check if already a member
+            if GroupRepository.is_group_member(cursor, group_id, user_id):
+                raise ValueError("Already a member of this group")
+
+            # Check for existing pending request
+            existing_request = GroupRepository.check_existing_join_request(cursor, user_id, group_id)
+            if existing_request:
+                raise ValueError("You already have a pending request for this group")
+
+            # Create the join request
+            return GroupRepository.create_join_request(cursor, user_id, group_id, message)
+
+    @staticmethod
+    def get_pending_join_requests(group_id):
+        """Get pending join requests for group managers"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_pending_join_requests(cursor, group_id)
+
+    @staticmethod
+    def process_join_request(request_id, action, manager_id):
+        """Approve or reject join request"""
+        with get_cursor() as cursor:
+            # Get request details
+            request = GroupRepository.get_join_request_by_id(cursor, request_id)
+            if not request or request['status'] != 'pending':
+                raise ValueError("Request not found or already processed")
+
+            # Validate manager permissions
+            if not GroupRepository.is_group_manager(cursor, request['group_id'], manager_id):
+                raise ValueError("Only group managers can process join requests")
+
+            if action == 'approve':
+                # Update request status
+                GroupRepository.update_join_request_status(cursor, request_id, 'approved', manager_id)
+                # Add user to group as member
+                GroupRepository.add_group_member(cursor, request['group_id'], request['user_id'], 'member')
+                return True
+            elif action == 'reject':
+                # Update request status
+                GroupRepository.update_join_request_status(cursor, request_id, 'rejected', manager_id)
+                return True
+            else:
+                raise ValueError("Invalid action. Must be 'approve' or 'reject'")
+
+    @staticmethod
+    def can_user_join_group_enhanced(group_id, user_id):
+        """Enhanced version that returns join action details"""
+        with get_cursor() as cursor:
+            group = GroupRepository.get_group_by_id(cursor, group_id)
+            if not group:
+                return False, "Group not found"
+
+            action = GroupService.get_join_action_for_group(group, user_id)
+
+            if action in ['join_immediately', 'request_access']:
+                return True, action
+            else:
+                return False, action

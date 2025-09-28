@@ -115,7 +115,14 @@
                 <h2 class="h4 fw-bold mb-1">Member roster</h2>
                 <p class="text-muted small mb-0">Assign management roles or remove members when needed.</p>
               </div>
-              <span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>{{ members|length }} active</span>
+              <div class="d-flex gap-2 align-items-center">
+                {% if group.visibility == 'private' %}
+                  <a href="{{ url_for('groups.manage_join_requests', group_id=group.id) }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-user-plus"></i> Join Requests
+                  </a>
+                {% endif %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>{{ members|length }} active</span>
+              </div>
             </div>
             <div class="table-responsive">
               <table class="table align-middle">

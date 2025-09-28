@@ -3,6 +3,7 @@ from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
 from src.app.user.user import GroupVisibility, GroupJoinType, GroupStatus
+from src.app.common.db.cursor import get_cursor
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -259,8 +260,9 @@ def participant_search():
             sort_by
         )
     except Exception as e:
-        flash('Error performing search. Please try again.', 'error')
+        flash(f'Error performing search: {str(e)}', 'error')
         results = []
+
 
     # Get filter options for dropdowns
     try:
@@ -319,5 +321,123 @@ def reject_application(application_id):
         flash('Group application rejected', 'success')
     except Exception as e:
         flash('Error rejecting application', 'error')
-    
+
     return redirect(url_for('groups.admin_applications'))
+
+
+# Group Join Request Routes
+@group_blueprint.route('/<int:group_id>/request-join')
+@require_login
+def request_join_form(group_id):
+    """Show form to request joining a private group"""
+    user_id = auth_service.get_user_id()
+
+    try:
+        can_join, join_action = GroupService.can_user_join_group_enhanced(group_id, user_id)
+        if not can_join or join_action != 'request_access':
+            flash('Cannot request to join this group', 'error')
+            return redirect(url_for('groups.view_group', group_id=group_id))
+    except Exception as e:
+        flash('Error checking group permissions', 'error')
+        return redirect(url_for('groups.index'))
+
+    group = GroupService.get_group_by_id(group_id)
+    if not group:
+        flash('Group not found', 'error')
+        return redirect(url_for('groups.index'))
+
+    return render_template('group/join_request.html', group=group)
+
+
+@group_blueprint.route('/<int:group_id>/request-join', methods=['POST'])
+@require_login
+def submit_join_request(group_id):
+    """Submit request to join private group"""
+    user_id = auth_service.get_user_id()
+    message = request.form.get('message', '').strip()
+
+    try:
+        GroupService.request_to_join_group(user_id, group_id, message)
+        flash('Your request to join has been submitted for review', 'success')
+    except ValueError as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        flash('Error submitting request', 'error')
+
+    return redirect(url_for('groups.view_group', group_id=group_id))
+
+
+@group_blueprint.route('/<int:group_id>/manage/join-requests')
+@require_login
+def manage_join_requests(group_id):
+    """Manage pending join requests (for group managers)"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('Permission denied', 'error')
+        return redirect(url_for('groups.view_group', group_id=group_id))
+
+    try:
+        requests = GroupService.get_pending_join_requests(group_id)
+        group = GroupService.get_group_by_id(group_id)
+
+        return render_template('group/manage_join_requests.html',
+                             requests=requests, group=group)
+    except Exception as e:
+        flash('Error loading join requests', 'error')
+        return redirect(url_for('groups.manage_group', group_id=group_id))
+
+
+@group_blueprint.route('/join-requests/<int:request_id>/approve', methods=['POST'])
+@require_login
+def approve_join_request(request_id):
+    """Approve a join request"""
+    manager_id = auth_service.get_user_id()
+
+    try:
+        GroupService.process_join_request(request_id, 'approve', manager_id)
+        flash('Join request approved successfully', 'success')
+    except ValueError as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        flash('Error processing request', 'error')
+
+    # Get the group_id from the request to redirect back
+    try:
+        with get_cursor() as cursor:
+            from src.app.group.group_repository import GroupRepository
+            request_data = GroupRepository.get_join_request_by_id(cursor, request_id)
+            if request_data:
+                return redirect(url_for('groups.manage_join_requests', group_id=request_data['group_id']))
+    except:
+        pass
+
+    return redirect(url_for('groups.index'))
+
+
+@group_blueprint.route('/join-requests/<int:request_id>/reject', methods=['POST'])
+@require_login
+def reject_join_request(request_id):
+    """Reject a join request"""
+    manager_id = auth_service.get_user_id()
+
+    try:
+        GroupService.process_join_request(request_id, 'reject', manager_id)
+        flash('Join request rejected', 'success')
+    except ValueError as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        flash('Error processing request', 'error')
+
+    # Get the group_id from the request to redirect back
+    try:
+        with get_cursor() as cursor:
+            from src.app.group.group_repository import GroupRepository
+            request_data = GroupRepository.get_join_request_by_id(cursor, request_id)
+            if request_data:
+                return redirect(url_for('groups.manage_join_requests', group_id=request_data['group_id']))
+    except:
+        pass
+
+    return redirect(url_for('groups.index'))
