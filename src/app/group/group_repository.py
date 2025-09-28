@@ -39,109 +39,84 @@ class GroupRepository(Repository):
     def search_groups_and_events_for_participants(cursor, participant_id, search_term=None,
                                                 location_filter=None, date_filter=None,
                                                 type_filter=None, sort_by='popularity'):
-        """Participant-specific search combining groups and events with join/register context"""
+        """Participant-specific search focusing on groups with their event information"""
         # Build search conditions
         search_conditions = ""
-        params_base = []
+        params = [participant_id]
 
         if search_term and search_term.strip():
             search_pattern = f"%{search_term.strip()}%"
             search_conditions += " AND (g.name LIKE %s OR g.description LIKE %s)"
-            params_base.extend([search_pattern, search_pattern])
+            params.extend([search_pattern, search_pattern])
 
         if location_filter and location_filter.strip():
             search_conditions += " AND g.town = %s"
-            params_base.append(location_filter.strip())
+            params.append(location_filter.strip())
 
-        # Union query to get both groups and events separately
-        query = f"""
-            (
-                SELECT
-                    g.id as group_id, g.name as group_name, g.description as group_description,
-                    g.town, g.visibility, g.status as group_status,
-                    COUNT(DISTINCT gm.user_id) as member_count,
-                    COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END) as upcoming_events,
-                    NULL as event_id, NULL as event_name, NULL as event_description,
-                    NULL as datetime, NULL as event_type, NULL as max_participants,
-                    0 as registered_participants,
-                    CASE WHEN participant_gm.user_id IS NOT NULL THEN participant_gm.group_role
-                         ELSE NULL END as participant_group_role,
-                    'available' as participant_event_status,
-                    'group' as result_type,
-                    (COUNT(DISTINCT gm.user_id) + COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END)) as popularity_score
-                FROM Community_Groups g
-                LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
-                LEFT JOIN Events e ON g.id = e.group_id
-                LEFT JOIN Group_Memberships participant_gm ON g.id = participant_gm.group_id
-                         AND participant_gm.user_id = %s AND participant_gm.member_status = 'active'
-                WHERE g.status = 'active' {search_conditions}
-                GROUP BY g.id
-            )
-            UNION ALL
-            (
-                SELECT
-                    g.id as group_id, g.name as group_name, g.description as group_description,
-                    g.town, g.visibility, g.status as group_status,
-                    COUNT(DISTINCT gm.user_id) as member_count,
-                    0 as upcoming_events,
-                    e.id as event_id, e.name as event_name, e.description as event_description,
-                    e.datetime, e.event_type, e.max_participants,
-                    COUNT(DISTINCT ep_all.user_id) as registered_participants,
-                    CASE WHEN participant_gm.user_id IS NOT NULL THEN participant_gm.group_role
-                         ELSE NULL END as participant_group_role,
-                    CASE WHEN participant_ep.user_id IS NOT NULL THEN 'registered'
-                         ELSE 'available' END as participant_event_status,
-                    'event' as result_type,
-                    COUNT(DISTINCT gm.user_id) as popularity_score
-                FROM Community_Groups g
-                LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
-                INNER JOIN Events e ON g.id = e.group_id
-                LEFT JOIN Event_Participants ep_all ON e.id = ep_all.event_id AND ep_all.status = 'registered'
-                LEFT JOIN Group_Memberships participant_gm ON g.id = participant_gm.group_id
-                         AND participant_gm.user_id = %s AND participant_gm.member_status = 'active'
-                LEFT JOIN Event_Participants participant_ep ON e.id = participant_ep.event_id
-                         AND participant_ep.user_id = %s AND participant_ep.status = 'registered'
-                WHERE g.status = 'active' AND e.datetime > NOW() {search_conditions}
-        """
-
-        # Add event-specific filters for the second part of union
-        event_search_conditions = search_conditions
-        if search_term and search_term.strip():
-            search_pattern = f"%{search_term.strip()}%"
-            event_search_conditions += " AND (e.name LIKE %s OR e.description LIKE %s)"
-
+        # Event-specific date filters
+        event_date_filter = ""
         if date_filter and date_filter.strip():
             if date_filter.strip() == "next_2_weeks":
-                event_search_conditions += " AND e.datetime <= DATE_ADD(NOW(), INTERVAL 2 WEEK)"
+                event_date_filter = " AND e.datetime <= DATE_ADD(NOW(), INTERVAL 2 WEEK)"
             elif date_filter.strip() == "next_month":
-                event_search_conditions += " AND e.datetime <= DATE_ADD(NOW(), INTERVAL 1 MONTH)"
+                event_date_filter = " AND e.datetime <= DATE_ADD(NOW(), INTERVAL 1 MONTH)"
+            elif date_filter.strip() == "upcoming":
+                event_date_filter = " AND e.datetime > NOW()"
 
+        # Event type filter
+        event_type_filter = ""
         if type_filter and type_filter.strip():
-            event_search_conditions += " AND e.event_type = %s"
-
-        query = query.replace(search_conditions, event_search_conditions, 1)  # Replace only second occurrence
-        query += " GROUP BY g.id, e.id )"
-
-        # Build parameters
-        params = [participant_id] + params_base + [participant_id, participant_id] + params_base
-
-        # Add event-specific search parameters
-        if search_term and search_term.strip():
-            search_pattern = f"%{search_term.strip()}%"
-            params.extend([search_pattern, search_pattern])
-
-        if type_filter and type_filter.strip():
+            event_type_filter = f" AND e.event_type = %s"
             params.append(type_filter.strip())
+
+        # Single query to get groups with their event details
+        query = f"""
+            SELECT
+                g.id as group_id, g.name as group_name, g.description as group_description,
+                g.town, g.visibility, g.status as group_status,
+                COUNT(DISTINCT gm.user_id) as member_count,
+                COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END) as upcoming_events,
+
+                -- Event information (JSON-like string with all events)
+                GROUP_CONCAT(
+                    CASE WHEN e.id IS NOT NULL AND e.datetime > NOW() {event_date_filter} {event_type_filter}
+                    THEN CONCAT(e.id, '|', e.name, '|', e.description, '|', e.datetime, '|', e.event_type, '|',
+                                COALESCE(e.max_participants, 0), '|',
+                                COALESCE(event_participants.registered_count, 0))
+                    END
+                    SEPARATOR ';;'
+                ) as events_data,
+
+                CASE WHEN participant_gm.user_id IS NOT NULL THEN participant_gm.group_role
+                     ELSE NULL END as participant_group_role,
+                'group' as result_type,
+                (COUNT(DISTINCT gm.user_id) + COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END)) as popularity_score
+
+            FROM Community_Groups g
+            LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
+            LEFT JOIN Events e ON g.id = e.group_id
+            LEFT JOIN Group_Memberships participant_gm ON g.id = participant_gm.group_id
+                     AND participant_gm.user_id = %s AND participant_gm.member_status = 'active'
+            LEFT JOIN (
+                SELECT event_id, COUNT(*) as registered_count
+                FROM Event_Participants
+                WHERE status = 'registered'
+                GROUP BY event_id
+            ) event_participants ON e.id = event_participants.event_id
+
+            WHERE g.status = 'active' {search_conditions}
+            GROUP BY g.id
+        """
 
         # Add sorting
         if sort_by == 'popularity':
-            query += " ORDER BY popularity_score DESC, group_name ASC"
+            query += " ORDER BY popularity_score DESC, g.name ASC"
         elif sort_by == 'alphabetical':
-            query += " ORDER BY group_name ASC, event_name ASC"
+            query += " ORDER BY g.name ASC"
         elif sort_by == 'date':
-            query += " ORDER BY datetime ASC, group_name ASC"
+            query += " ORDER BY upcoming_events DESC, g.name ASC"
         else:
-            query += " ORDER BY popularity_score DESC, group_name ASC"
+            query += " ORDER BY popularity_score DESC, g.name ASC"
 
         cursor.execute(query, params)
         return cursor.fetchall()

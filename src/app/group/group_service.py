@@ -214,27 +214,48 @@ class GroupService:
                 date_filter, type_filter, sort_by
             )
 
-            # Process results to add additional context for participants
+            # Process results to add additional context for participants (now only groups)
             processed_results = []
             for result in results:
                 processed_result = dict(result)
 
-                # Determine join/register status and actions available
-                if processed_result['result_type'] == 'group':
-                    processed_result['can_join'] = GroupService._can_participant_join_group(processed_result)
-                    processed_result['join_action'] = GroupService._get_group_join_action(processed_result)
-                elif processed_result['result_type'] == 'event':
-                    processed_result['can_register'] = GroupService._can_participant_register_for_event(processed_result)
-                    processed_result['register_action'] = GroupService._get_event_register_action(processed_result)
+                # All results are groups now
+                processed_result['can_join'] = GroupService._can_participant_join_group(processed_result)
+                processed_result['join_action'] = GroupService._get_group_join_action(processed_result)
 
-                # Format datetime for display
-                if processed_result.get('datetime'):
-                    processed_result['formatted_datetime'] = processed_result['datetime'].strftime('%Y-%m-%d %H:%M')
+                # Parse events data if present
+                if processed_result.get('events_data'):
+                    events = []
+                    for event_data in processed_result['events_data'].split(';;'):
+                        if event_data.strip():
+                            parts = event_data.split('|')
+                            if len(parts) >= 7:
+                                event = {
+                                    'id': parts[0],
+                                    'name': parts[1],
+                                    'description': parts[2] if parts[2] != 'None' else '',
+                                    'datetime': parts[3],
+                                    'event_type': parts[4],
+                                    'max_participants': int(parts[5]) if parts[5] != '0' else None,
+                                    'registered_count': int(parts[6])
+                                }
+                                # Format datetime
+                                try:
+                                    from datetime import datetime
+                                    dt = datetime.strptime(parts[3], '%Y-%m-%d %H:%M:%S')
+                                    event['formatted_datetime'] = dt.strftime('%Y-%m-%d %H:%M')
+                                except:
+                                    event['formatted_datetime'] = parts[3]
 
-                # Calculate available spaces for events
-                if processed_result['result_type'] == 'event' and processed_result.get('max_participants'):
-                    registered = processed_result.get('registered_participants', 0)
-                    processed_result['available_spaces'] = processed_result['max_participants'] - registered
+                                # Calculate available spaces
+                                if event['max_participants']:
+                                    event['available_spaces'] = event['max_participants'] - event['registered_count']
+
+                                events.append(event)
+
+                    processed_result['events'] = events
+                else:
+                    processed_result['events'] = []
 
                 processed_results.append(processed_result)
 

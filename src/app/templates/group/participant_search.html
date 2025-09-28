@@ -93,127 +93,94 @@
 
             {% if results %}
                 {% for result in results %}
-                    {% if result.result_type == 'group' %}
-                        <!-- Group Card -->
-                        <div class="card mt-4 border-primary">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge bg-primary me-2">GROUP</span>
-                                            <h5 class="mb-0"><i class="fas fa-users text-primary"></i> {{ result.group_name }}</h5>
-                                        </div>
-
-                                        {% if result.group_description %}
-                                            <p class="text-muted">{{ result.group_description }}</p>
-                                        {% endif %}
-
-                                        <small class="text-muted">
-                                            <i class="fas fa-map-marker-alt"></i> {{ result.town }}
-                                            <br>
-                                            <i class="fas fa-users"></i> {{ result.member_count }} members
-                                            {% if result.upcoming_events > 0 %}
-                                                <br><i class="fas fa-calendar"></i> {{ result.upcoming_events }} upcoming events
-                                            {% endif %}
-                                        </small>
+                    <!-- Group Card with Events -->
+                    <div class="card mt-4 border-primary">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge bg-primary me-2">GROUP</span>
+                                        <h5 class="mb-0"><i class="fas fa-users text-primary"></i> {{ result.group_name }}</h5>
                                     </div>
 
-                                    <div class="col-md-4 text-end">
-                                        {% if result.visibility == 'private' %}
-                                            <span class="badge bg-warning text-dark mb-2">Private Group</span><br>
-                                        {% endif %}
+                                    {% if result.group_description %}
+                                        <p class="text-muted">{{ result.group_description }}</p>
+                                    {% endif %}
 
-                                        {% if result.join_action == 'manage' %}
-                                            <a href="{{ url_for('groups.manage_group', group_id=result.group_id) }}"
-                                               class="btn btn-success btn-sm">
-                                                <i class="fas fa-cog"></i> Manage
-                                            </a>
-                                        {% elif result.join_action == 'member' %}
-                                            <span class="badge bg-success">Member</span>
-                                            <a href="{{ url_for('groups.view_group', group_id=result.group_id) }}"
-                                               class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-eye"></i> View Group
-                                            </a>
-                                        {% elif result.join_action == 'join_immediately' %}
-                                            <form method="POST" action="{{ url_for('groups.join_group', group_id=result.group_id) }}" style="display: inline;">
-                                                <button type="submit" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-plus"></i> Join Now
-                                                </button>
-                                            </form>
-                                        {% elif result.join_action == 'request_access' %}
-                                            <a href="{{ url_for('groups.request_join_form', group_id=result.group_id) }}" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-paper-plane"></i> Request Access
-                                            </a>
-                                        {% elif result.join_action == 'closed' %}
-                                            <span class="badge bg-secondary">Closed Group</span>
-                                        {% else %}
-                                            <small class="text-muted">Debug: join_action = "{{ result.join_action }}"</small>
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt"></i> {{ result.town }}
+                                        <br>
+                                        <i class="fas fa-users"></i> {{ result.member_count }} members
+                                        {% if result.upcoming_events > 0 %}
+                                            <br><i class="fas fa-calendar"></i> {{ result.upcoming_events }} upcoming events
                                         {% endif %}
-                                    </div>
+                                    </small>
+
+                                    <!-- Upcoming Events Section -->
+                                    {% if result.events and result.events|length > 0 %}
+                                        <hr class="my-3">
+                                        <h6 class="text-primary mb-2"><i class="fas fa-calendar-alt"></i> Upcoming Events</h6>
+                                        {% for event in result.events[:3] %}
+                                            <div class="border-start border-success border-3 ps-3 mb-2 bg-light p-2">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1 text-success">{{ event.name }}</h6>
+                                                        {% if event.description %}
+                                                            <p class="mb-1 small text-muted">{{ event.description }}</p>
+                                                        {% endif %}
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-clock"></i> {{ event.formatted_datetime }}
+                                                            <br><i class="fas fa-tag"></i> {{ event.event_type }}
+                                                            {% if event.available_spaces is defined %}
+                                                                <br><i class="fas fa-users"></i> {{ event.available_spaces }} spaces available
+                                                            {% endif %}
+                                                        </small>
+                                                    </div>
+                                                    <span class="badge bg-success text-small">EVENT</span>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                        {% if result.events|length > 3 %}
+                                            <small class="text-muted">+ {{ result.events|length - 3 }} more events</small>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-4 text-end">
+                                    {% if result.visibility == 'private' %}
+                                        <span class="badge bg-warning text-dark mb-2">Private Group</span><br>
+                                    {% endif %}
+
+                                    {% if result.join_action == 'manage' %}
+                                        <a href="{{ url_for('groups.manage_group', group_id=result.group_id) }}"
+                                           class="btn btn-success btn-sm">
+                                            <i class="fas fa-cog"></i> Manage
+                                        </a>
+                                    {% elif result.join_action == 'member' %}
+                                        <span class="badge bg-success">Member</span>
+                                        <a href="{{ url_for('groups.view_group', group_id=result.group_id) }}"
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> View Group
+                                        </a>
+                                    {% elif result.join_action == 'join_immediately' %}
+                                        <form method="POST" action="{{ url_for('groups.join_group', group_id=result.group_id) }}" style="display: inline;">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plus"></i> Join Now
+                                            </button>
+                                        </form>
+                                    {% elif result.join_action == 'request_access' %}
+                                        <a href="{{ url_for('groups.request_join_form', group_id=result.group_id) }}" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-paper-plane"></i> Request Access
+                                        </a>
+                                    {% elif result.join_action == 'closed' %}
+                                        <span class="badge bg-secondary">Closed Group</span>
+                                    {% else %}
+                                        <small class="text-muted">Debug: join_action = "{{ result.join_action }}"</small>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
-
-                    {% elif result.result_type == 'event' %}
-                        <!-- Event Card -->
-                        <div class="card mt-4 border-success">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge bg-success me-2">EVENT</span>
-                                            <h5 class="mb-0"><i class="fas fa-calendar-check text-success"></i> {{ result.event_name }}</h5>
-                                        </div>
-
-                                        <p class="text-muted mb-1">
-                                            <small>From group: <strong>{{ result.group_name }}</strong></small>
-                                        </p>
-
-                                        {% if result.event_description %}
-                                            <p class="text-muted">{{ result.event_description }}</p>
-                                        {% endif %}
-
-                                        <small class="text-muted">
-                                            <i class="fas fa-map-marker-alt"></i> {{ result.town }}
-                                            <br>
-                                            <i class="fas fa-clock"></i> {{ result.formatted_datetime }}
-                                            <br>
-                                            <i class="fas fa-tag"></i> {{ result.event_type }}
-                                            {% if result.available_spaces is defined %}
-                                                <br><i class="fas fa-users"></i> {{ result.available_spaces }} spaces available
-                                            {% endif %}
-                                        </small>
-                                    </div>
-
-                                    <div class="col-md-4 text-end">
-                                        {% if result.register_action == 'registered' %}
-                                            <span class="badge bg-success mb-2">Registered</span>
-                                        {% elif result.register_action == 'full' %}
-                                            <span class="badge bg-danger mb-2">Full</span>
-                                        {% elif result.register_action == 'register' %}
-                                            {% if result.available_spaces and result.available_spaces > 0 %}
-                                                <span class="badge bg-primary mb-2">{{ result.available_spaces }} available</span><br>
-                                                <button class="btn btn-success btn-sm">
-                                                    <i class="fas fa-plus"></i> Register
-                                                </button>
-                                            {% else %}
-                                                <button class="btn btn-success btn-sm">
-                                                    <i class="fas fa-plus"></i> Register
-                                                </button>
-                                            {% endif %}
-                                        {% endif %}
-
-                                        <div class="mt-2">
-                                            <a href="{{ url_for('groups.view_group', group_id=result.group_id) }}"
-                                               class="btn btn-outline-secondary btn-sm">
-                                                <i class="fas fa-eye"></i> View Group
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
+                    </div>
                 {% endfor %}
 
             {% else %}
