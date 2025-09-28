@@ -288,6 +288,8 @@ class GroupService:
             return 'manage'
         elif group_result.get('participant_group_role') == 'member':
             return 'member'
+        elif group_result.get('pending_join_request') == 'pending':
+            return 'request_pending'   # Already has pending request
         elif group_result.get('visibility') == 'public':
             return 'join_immediately'  # Public groups = immediate join
         elif group_result.get('visibility') == 'private':
@@ -378,6 +380,12 @@ class GroupService:
         """Get pending join requests for group managers"""
         with get_cursor() as cursor:
             return GroupRepository.get_pending_join_requests(cursor, group_id)
+
+    @staticmethod
+    def get_join_request_by_id(request_id):
+        """Get specific join request details"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_join_request_by_id(cursor, request_id)
 
     @staticmethod
     def process_join_request(request_id, action, manager_id):

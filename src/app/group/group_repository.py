@@ -42,7 +42,7 @@ class GroupRepository(Repository):
         """Participant-specific search focusing on groups with their event information"""
         # Build search conditions
         search_conditions = ""
-        params = [participant_id]
+        params = [participant_id, participant_id]  # Used twice: once for participant_gm, once for pending_request
 
         if search_term and search_term.strip():
             search_pattern = f"%{search_term.strip()}%"
@@ -89,6 +89,11 @@ class GroupRepository(Repository):
 
                 CASE WHEN participant_gm.user_id IS NOT NULL THEN participant_gm.group_role
                      ELSE NULL END as participant_group_role,
+
+                -- Check for pending join request
+                CASE WHEN pending_request.id IS NOT NULL THEN 'pending'
+                     ELSE NULL END as pending_join_request,
+
                 'group' as result_type,
                 (COUNT(DISTINCT gm.user_id) + COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END)) as popularity_score
 
@@ -97,6 +102,8 @@ class GroupRepository(Repository):
             LEFT JOIN Events e ON g.id = e.group_id
             LEFT JOIN Group_Memberships participant_gm ON g.id = participant_gm.group_id
                      AND participant_gm.user_id = %s AND participant_gm.member_status = 'active'
+            LEFT JOIN Group_Join_Requests pending_request ON g.id = pending_request.group_id
+                     AND pending_request.user_id = %s AND pending_request.status = 'pending'
             LEFT JOIN (
                 SELECT event_id, COUNT(*) as registered_count
                 FROM Event_Participants
@@ -370,6 +377,14 @@ class GroupRepository(Repository):
     @staticmethod
     def create_join_request(cursor, user_id, group_id, message=None):
         """Create a request to join a private group"""
+        # First, delete any existing records for this user-group combination
+        # This prevents duplicate key errors from the unique constraint
+        cursor.execute("""
+            DELETE FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s
+        """, (user_id, group_id))
+
+        # Now create the new pending request
         cursor.execute("""
             INSERT INTO Group_Join_Requests (user_id, group_id, message, status)
             VALUES (%s, %s, %s, 'pending')
@@ -392,6 +407,26 @@ class GroupRepository(Repository):
     @staticmethod
     def update_join_request_status(cursor, request_id, status, reviewed_by):
         """Approve or reject a join request"""
+        # First get the request details to know user_id and group_id
+        cursor.execute("""
+            SELECT user_id, group_id FROM Group_Join_Requests WHERE id = %s
+        """, (request_id,))
+        request_info = cursor.fetchone()
+
+        if not request_info:
+            return 0
+
+        user_id = request_info['user_id']
+        group_id = request_info['group_id']
+
+        # Delete any existing records with the same user-group-status combination
+        # to avoid unique constraint violations
+        cursor.execute("""
+            DELETE FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s AND status = %s AND id != %s
+        """, (user_id, group_id, status, request_id))
+
+        # Now update the current request status
         cursor.execute("""
             UPDATE Group_Join_Requests
             SET status = %s, reviewed_by = %s, reviewed_at = NOW()

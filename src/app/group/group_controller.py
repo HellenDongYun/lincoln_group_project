@@ -3,7 +3,6 @@ from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
 from src.app.user.user import GroupVisibility, GroupJoinType, GroupStatus
-from src.app.common.db.cursor import get_cursor
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -379,13 +378,17 @@ def manage_join_requests(group_id):
         return redirect(url_for('groups.view_group', group_id=group_id))
 
     try:
-        requests = GroupService.get_pending_join_requests(group_id)
         group = GroupService.get_group_by_id(group_id)
+        if not group:
+            flash('Group not found', 'error')
+            return redirect(url_for('groups.index'))
+
+        requests = GroupService.get_pending_join_requests(group_id)
 
         return render_template('group/manage_join_requests.html',
                              requests=requests, group=group)
     except Exception as e:
-        flash('Error loading join requests', 'error')
+        flash(f'Error loading join requests: {str(e)}', 'error')
         return redirect(url_for('groups.manage_group', group_id=group_id))
 
 
@@ -401,17 +404,15 @@ def approve_join_request(request_id):
     except ValueError as e:
         flash(str(e), 'error')
     except Exception as e:
-        flash('Error processing request', 'error')
+        flash(f'Error processing request: {str(e)}', 'error')
 
     # Get the group_id from the request to redirect back
     try:
-        with get_cursor() as cursor:
-            from src.app.group.group_repository import GroupRepository
-            request_data = GroupRepository.get_join_request_by_id(cursor, request_id)
-            if request_data:
-                return redirect(url_for('groups.manage_join_requests', group_id=request_data['group_id']))
-    except:
-        pass
+        request_data = GroupService.get_join_request_by_id(request_id)
+        if request_data:
+            return redirect(url_for('groups.manage_join_requests', group_id=request_data['group_id']))
+    except Exception as e:
+        flash(f'Redirect error: {str(e)}', 'warning')
 
     return redirect(url_for('groups.index'))
 
@@ -432,12 +433,10 @@ def reject_join_request(request_id):
 
     # Get the group_id from the request to redirect back
     try:
-        with get_cursor() as cursor:
-            from src.app.group.group_repository import GroupRepository
-            request_data = GroupRepository.get_join_request_by_id(cursor, request_id)
-            if request_data:
-                return redirect(url_for('groups.manage_join_requests', group_id=request_data['group_id']))
-    except:
-        pass
+        request_data = GroupService.get_join_request_by_id(request_id)
+        if request_data:
+            return redirect(url_for('groups.manage_join_requests', group_id=request_data['group_id']))
+    except Exception as e:
+        flash(f'Redirect error: {str(e)}', 'warning')
 
     return redirect(url_for('groups.index'))
