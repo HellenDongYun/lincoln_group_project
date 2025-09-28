@@ -1,5 +1,5 @@
 dbuser = 'root'
-dbpass = '3y26z89abc'
+dbpass = '******'
 dbhost = 'localhost'
 dbport = 3306
 dbname = 'activeloop'
