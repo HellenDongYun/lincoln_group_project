@@ -78,7 +78,7 @@
                         <i class="bi bi-inboxes me-2"></i>Pending applications
                     </a>
                     <a href="#events-overview" class="btn btn-outline-light px-4">
-                        <i class="bi bi-calendar-event me-2"></i>Event coverage
+                        <i class="bi bi-calendar-event me-2"></i>Upcoming events
                     </a>
                 </div>
             </div>
@@ -176,9 +176,9 @@
     <div class="container">
         <div class="section-heading d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center">
             <div>
-                <span class="section-eyebrow">Platform health</span>
+                <span class="section-eyebrow">Real-time insights</span>
                 <h2 class="section-title mb-0">Monitoring snapshot</h2>
-                <p class="text-muted mb-0">Use advanced filters to track engagement and pipeline pressure.</p>
+                <p class="text-muted mb-0">Use filters to track engagement.</p>
             </div>
             <form method="get" class="d-flex align-items-center gap-2">
                 <input type="hidden" name="group_search" value="{{ group_filters_values.get('search', '') }}">
@@ -215,31 +215,31 @@
                             <div class="col">
                                 <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <span class="text-uppercase small text-muted">Member footprint</span>
-                                        <i class="bi bi-people text-warning fs-4"></i>
+                                        <span class="text-uppercase small text-muted">Groups overview</span>
+                                        <i class="bi bi-diagram-3 text-warning fs-4"></i>
                                     </div>
-                                    <div class="display-5 fw-bold text-black">{{ active_members }}</div>
-                                    <p class="text-muted small mt-3 mb-0">Group managers: <span class="fw-semibold text-black">{{ active_managers }}</span></p>
+                                    <div class="display-5 fw-bold text-black">{{ total_groups }}</div>
+                                    <p class="text-muted small mt-3 mb-0">Active managers: <span class="fw-semibold text-black">{{ active_managers }}</span></p>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <span class="text-uppercase small text-muted">Event pipeline</span>
+                                        <span class="text-uppercase small text-muted">Upcoming events</span>
                                         <i class="bi bi-calendar-event text-warning fs-4"></i>
                                     </div>
                                     <div class="display-5 fw-bold text-black">{{ events_window }}</div>
-                                    <p class="text-muted small mt-3 mb-0">Events with participants: <span class="fw-semibold text-black">{{ events_with_participants }}</span></p>
+                                    <p class="text-muted small mt-3 mb-0">Participants registered: <span class="fw-semibold text-black">{{ stats.participants }}</span></p>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="bg-body-tertiary rounded-4 border border-light p-4 h-100 d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <span class="text-uppercase small text-muted">Volunteer coverage</span>
+                                        <span class="text-uppercase small text-muted">Volunteer roles</span>
                                         <i class="bi bi-shield-check text-warning fs-4"></i>
                                     </div>
-                                    <div class="display-5 fw-bold text-black">{{ open_roles }}</div>
-                                    <p class="text-muted small mt-3 mb-0">Registered volunteers: <span class="fw-semibold text-black">{{ stats.volunteer_filled }}</span></p>
+                                    <div class="display-5 fw-bold text-black">{{ stats.volunteer_needed }}</div>
+                                    <p class="text-muted small mt-3 mb-0">Roles filled: <span class="fw-semibold text-black">{{ stats.volunteer_filled }}</span> • Open: <span class="fw-semibold text-black">{{ open_roles }}</span></p>
                                 </div>
                             </div>
                             <div class="col">
