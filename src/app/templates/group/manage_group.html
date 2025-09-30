@@ -145,7 +145,12 @@
                     <td class="text-center">
                       <select class="form-select form-select-sm role-select" data-update-url="{{ url_for('groups.update_member_role', group_id=group.id, member_id=member.id) }}">
                         <option value="member" {% if member.group_role == 'member' %}selected{% endif %}>Member</option>
-                        <option value="manager" {% if member.group_role == 'manager' %}selected{% endif %}>Manager</option>
+                        <option value="volunteer" {% if member.group_role == 'volunteer' %}selected{% endif %}>Volunteer</option>
+                        {% if is_super_admin %}
+                          <option value="manager" {% if member.group_role == 'manager' %}selected{% endif %}>Manager</option>
+                        {% elif member.group_role == 'manager' %}
+                          <option value="manager" selected disabled>Manager</option>
+                        {% endif %}
                       </select>
                     </td>
                     <td class="text-end">

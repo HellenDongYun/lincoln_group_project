@@ -154,8 +154,14 @@ def update_member_role(group_id, member_id):
     if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
         return jsonify({'error': 'Permission denied'}), 403
     
-    new_role = request.json.get('role')
-    if new_role not in ['member', 'manager']:
+    payload = request.get_json(silent=True) or {}
+    new_role = payload.get('role')
+
+    allowed_roles = {'member', 'volunteer'}
+    if is_super_admin:
+        allowed_roles.add('manager')
+
+    if new_role not in allowed_roles:
         return jsonify({'error': 'Invalid role'}), 400
     
     try:
