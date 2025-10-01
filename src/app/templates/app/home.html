@@ -2,7 +2,7 @@
 block header %}
 <h2>Welcome to ActiveLoop</h2>
 {% endblock %} {% block content %}
-<div class="position-relative overflow-hidden" style="height: 43vh;">
+<div class="position-relative overflow-hidden" style="min-height: 50vh;">
   <!-- Background Image -->
   <img 
     src="{{ url_for('static', filename='images/fitness.jpg') }}" 
@@ -14,11 +14,11 @@ block header %}
   <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark" style="opacity: 0.5; z-index: 2;"></div>
   
   <!-- Content -->
-  <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="z-index: 3;">
+  <div class="position-relative d-flex align-items-center" style="z-index: 3;">
     <div class="container-fluid">
-      <div class="row align-items-center h-100">
+      <div class="row align-items-center" style="min-height: 55vh;">
         <div class="col-lg-6 text-white">
-          <div class="px-3 px-lg-5">
+          <div class="px-3 px-lg-5 my-auto">
             <!-- Title -->
             <h1 class="display-2 display-md-1 fw-bold mb-4">Events.Volunteers.</h1>
             
@@ -62,7 +62,6 @@ block header %}
           </div>
         </div>
         
-        <div class="col-lg-6 d-none d-lg-block"></div>
       </div>
     </div>
   </div>
@@ -244,12 +243,10 @@ block header %}
         </div>
     </div>
 </section>
-
-
-
  {% endblock %} {% block footer %}
   <footer class="lead text-center my-5">
     <i class="fas fa-circle text-amber"></i> Team Amber
   </footer>
   {% endblock %}
 </div>
+
