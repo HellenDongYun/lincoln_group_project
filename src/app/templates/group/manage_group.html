@@ -115,7 +115,14 @@
                 <h2 class="h4 fw-bold mb-1">Member roster</h2>
                 <p class="text-muted small mb-0">Assign management roles or remove members when needed.</p>
               </div>
-              <span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>{{ members|length }} active</span>
+              <div class="d-flex gap-2 align-items-center">
+                {% if group.visibility == 'private' %}
+                  <a href="{{ url_for('groups.manage_join_requests', group_id=group.id) }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-user-plus"></i> Join Requests
+                  </a>
+                {% endif %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>{{ members|length }} active</span>
+              </div>
             </div>
             <div class="table-responsive">
               <table class="table align-middle">
@@ -145,7 +152,12 @@
                     <td class="text-center">
                       <select class="form-select form-select-sm role-select" data-update-url="{{ url_for('groups.update_member_role', group_id=group.id, member_id=member.id) }}">
                         <option value="member" {% if member.group_role == 'member' %}selected{% endif %}>Member</option>
-                        <option value="manager" {% if member.group_role == 'manager' %}selected{% endif %}>Manager</option>
+                        <option value="volunteer" {% if member.group_role == 'volunteer' %}selected{% endif %}>Volunteer</option>
+                        {% if is_super_admin %}
+                          <option value="manager" {% if member.group_role == 'manager' %}selected{% endif %}>Manager</option>
+                        {% elif member.group_role == 'manager' %}
+                          <option value="manager" selected disabled>Manager</option>
+                        {% endif %}
                       </select>
                     </td>
                     <td class="text-end">

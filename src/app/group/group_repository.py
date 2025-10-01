@@ -9,7 +9,7 @@ class GroupRepository(Repository):
     def get_all_groups(cursor, visibility_filter=None, town_filter=None, limit=None, offset=0):
         """Get all groups with optional filtering"""
         query = """
-            SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status, g.created_by,
+            SELECT g.id, g.name, g.description, g.town, g.visibility, g.status, g.created_by,
                    COUNT(gm.user_id) as member_count
             FROM Community_Groups g
             LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
@@ -25,7 +25,7 @@ class GroupRepository(Repository):
             query += " AND g.town = %s"
             params.append(town_filter)
             
-        query += " GROUP BY g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status, g.created_by"
+        query += " GROUP BY g.id, g.name, g.description, g.town, g.visibility, g.status, g.created_by"
         query += " ORDER BY g.name ASC"
         
         if limit:
@@ -39,74 +39,89 @@ class GroupRepository(Repository):
     def search_groups_and_events_for_participants(cursor, participant_id, search_term=None,
                                                 location_filter=None, date_filter=None,
                                                 type_filter=None, sort_by='popularity'):
-        """Participant-specific search combining groups and events with join/register context"""
-        query = """
+        """Participant-specific search focusing on groups with their event information"""
+        # Build search conditions
+        search_conditions = ""
+        params = [participant_id, participant_id]  # Used twice: once for participant_gm, once for pending_request
+
+        if search_term and search_term.strip():
+            search_pattern = f"%{search_term.strip()}%"
+            search_conditions += " AND (g.name LIKE %s OR g.description LIKE %s)"
+            params.extend([search_pattern, search_pattern])
+
+        if location_filter and location_filter.strip():
+            search_conditions += " AND g.town = %s"
+            params.append(location_filter.strip())
+
+        # Event-specific date filters
+        event_date_filter = ""
+        if date_filter and date_filter.strip():
+            if date_filter.strip() == "next_2_weeks":
+                event_date_filter = " AND e.datetime <= DATE_ADD(NOW(), INTERVAL 2 WEEK)"
+            elif date_filter.strip() == "next_month":
+                event_date_filter = " AND e.datetime <= DATE_ADD(NOW(), INTERVAL 1 MONTH)"
+            elif date_filter.strip() == "upcoming":
+                event_date_filter = " AND e.datetime > NOW()"
+
+        # Event type filter
+        event_type_filter = ""
+        if type_filter and type_filter.strip():
+            event_type_filter = f" AND e.event_type = %s"
+            params.append(type_filter.strip())
+
+        # Single query to get groups with their event details
+        query = f"""
             SELECT
                 g.id as group_id, g.name as group_name, g.description as group_description,
-                g.town, g.visibility, g.join_type, g.status as group_status,
+                g.town, g.visibility, g.status as group_status,
                 COUNT(DISTINCT gm.user_id) as member_count,
                 COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END) as upcoming_events,
 
-                e.id as event_id, e.name as event_name, e.description as event_description,
-                e.datetime, e.event_type, e.max_participants,
-                COUNT(DISTINCT ep_all.user_id) as registered_participants,
+                -- Event information (JSON-like string with all events)
+                GROUP_CONCAT(
+                    CASE WHEN e.id IS NOT NULL AND e.datetime > NOW() {event_date_filter} {event_type_filter}
+                    THEN CONCAT(e.id, '|', e.name, '|', e.description, '|', e.datetime, '|', e.event_type, '|',
+                                COALESCE(e.max_participants, 0), '|',
+                                COALESCE(event_participants.registered_count, 0))
+                    END
+                    SEPARATOR ';;'
+                ) as events_data,
 
                 CASE WHEN participant_gm.user_id IS NOT NULL THEN participant_gm.group_role
                      ELSE NULL END as participant_group_role,
-                CASE WHEN participant_ep.user_id IS NOT NULL THEN 'registered'
-                     ELSE 'available' END as participant_event_status,
 
-                CASE WHEN e.id IS NOT NULL THEN 'event'
-                     ELSE 'group' END as result_type,
+                -- Check for pending join request
+                CASE WHEN pending_request.id IS NOT NULL THEN 'pending'
+                     ELSE NULL END as pending_join_request,
 
+                'group' as result_type,
                 (COUNT(DISTINCT gm.user_id) + COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END)) as popularity_score
 
             FROM Community_Groups g
             LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
             LEFT JOIN Events e ON g.id = e.group_id
-            LEFT JOIN Event_Participants ep_all ON e.id = ep_all.event_id AND ep_all.status = 'registered'
             LEFT JOIN Group_Memberships participant_gm ON g.id = participant_gm.group_id
                      AND participant_gm.user_id = %s AND participant_gm.member_status = 'active'
-            LEFT JOIN Event_Participants participant_ep ON e.id = participant_ep.event_id
-                     AND participant_ep.user_id = %s AND participant_ep.status = 'registered'
+            LEFT JOIN Group_Join_Requests pending_request ON g.id = pending_request.group_id
+                     AND pending_request.user_id = %s AND pending_request.status = 'pending'
+            LEFT JOIN (
+                SELECT event_id, COUNT(*) as registered_count
+                FROM Event_Participants
+                WHERE status = 'registered'
+                GROUP BY event_id
+            ) event_participants ON e.id = event_participants.event_id
 
-            WHERE g.status = 'active'
+            WHERE g.status = 'active' {search_conditions}
+            GROUP BY g.id
         """
 
-        params = [participant_id, participant_id]
-
-        if search_term and search_term.strip():
-            search_pattern = f"%{search_term.strip()}%"
-            query += " AND (g.name LIKE %s OR g.description LIKE %s OR e.name LIKE %s OR e.description LIKE %s)"
-            params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
-
-        if location_filter and location_filter.strip():
-            query += " AND g.town = %s"
-            params.append(location_filter.strip())
-
-        if date_filter and date_filter.strip():
-            if date_filter.strip() == "next_2_weeks":
-                query += " AND (e.datetime IS NULL OR e.datetime <= DATE_ADD(NOW(), INTERVAL 2 WEEK))"
-            elif date_filter.strip() == "next_month":
-                query += " AND (e.datetime IS NULL OR e.datetime <= DATE_ADD(NOW(), INTERVAL 1 MONTH))"
-            elif date_filter.strip() == "upcoming":
-                query += " AND (e.datetime IS NULL OR e.datetime > NOW())"
-
-        if type_filter and type_filter.strip():
-            query += " AND (e.event_type = %s OR e.id IS NULL)"
-            params.append(type_filter.strip())
-
-        query += """
-            GROUP BY g.id, e.id
-            HAVING result_type = 'group' OR (result_type = 'event' AND e.datetime > NOW())
-        """
-
+        # Add sorting
         if sort_by == 'popularity':
             query += " ORDER BY popularity_score DESC, g.name ASC"
         elif sort_by == 'alphabetical':
-            query += " ORDER BY g.name ASC, e.name ASC"
+            query += " ORDER BY g.name ASC"
         elif sort_by == 'date':
-            query += " ORDER BY e.datetime ASC, g.name ASC"
+            query += " ORDER BY upcoming_events DESC, g.name ASC"
         else:
             query += " ORDER BY popularity_score DESC, g.name ASC"
 
@@ -152,7 +167,7 @@ class GroupRepository(Repository):
     def get_group_by_id(cursor, group_id):
         """Get a specific group by ID"""
         cursor.execute("""
-            SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status, g.created_by,
+            SELECT g.id, g.name, g.description, g.town, g.visibility, g.status, g.created_by,
                    u.first_name, u.last_name,
                    COUNT(gm.user_id) as member_count
             FROM Community_Groups g
@@ -331,7 +346,7 @@ class GroupRepository(Repository):
     def get_public_groups_for_discovery(cursor, town_filter=None, search_term=None):
         """Get public groups for discovery by visitors and participants"""
         query = """
-            SELECT g.id, g.name, g.description, g.town, g.join_type,
+            SELECT g.id, g.name, g.description, g.town, g.visibility,
                    COUNT(gm.user_id) as member_count,
                    COUNT(CASE WHEN e.datetime > NOW() THEN 1 END) as upcoming_events
             FROM Community_Groups g
@@ -351,9 +366,92 @@ class GroupRepository(Repository):
             params.extend([search_pattern, search_pattern])
             
         query += """
-            GROUP BY g.id, g.name, g.description, g.town, g.join_type
+            GROUP BY g.id, g.name, g.description, g.town
             ORDER BY upcoming_events DESC, member_count DESC, g.name ASC
         """
-        
+
         cursor.execute(query, params)
         return cursor.fetchall()
+
+    # Group Join Requests
+    @staticmethod
+    def create_join_request(cursor, user_id, group_id, message=None):
+        """Create a request to join a private group"""
+        # First, delete any existing records for this user-group combination
+        # This prevents duplicate key errors from the unique constraint
+        cursor.execute("""
+            DELETE FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s
+        """, (user_id, group_id))
+
+        # Now create the new pending request
+        cursor.execute("""
+            INSERT INTO Group_Join_Requests (user_id, group_id, message, status)
+            VALUES (%s, %s, %s, 'pending')
+        """, (user_id, group_id, message))
+        return cursor.lastrowid
+
+    @staticmethod
+    def get_pending_join_requests(cursor, group_id):
+        """Get pending join requests for a group"""
+        cursor.execute("""
+            SELECT gjr.id, gjr.user_id, gjr.message, gjr.created_at,
+                   u.first_name, u.last_name, u.email
+            FROM Group_Join_Requests gjr
+            JOIN Users u ON gjr.user_id = u.id
+            WHERE gjr.group_id = %s AND gjr.status = 'pending'
+            ORDER BY gjr.created_at ASC
+        """, (group_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def update_join_request_status(cursor, request_id, status, reviewed_by):
+        """Approve or reject a join request"""
+        # First get the request details to know user_id and group_id
+        cursor.execute("""
+            SELECT user_id, group_id FROM Group_Join_Requests WHERE id = %s
+        """, (request_id,))
+        request_info = cursor.fetchone()
+
+        if not request_info:
+            return 0
+
+        user_id = request_info['user_id']
+        group_id = request_info['group_id']
+
+        # Delete any existing records with the same user-group-status combination
+        # to avoid unique constraint violations
+        cursor.execute("""
+            DELETE FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s AND status = %s AND id != %s
+        """, (user_id, group_id, status, request_id))
+
+        # Now update the current request status
+        cursor.execute("""
+            UPDATE Group_Join_Requests
+            SET status = %s, reviewed_by = %s, reviewed_at = NOW()
+            WHERE id = %s
+        """, (status, reviewed_by, request_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def check_existing_join_request(cursor, user_id, group_id):
+        """Check if user already has pending request"""
+        cursor.execute("""
+            SELECT id FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s AND status = 'pending'
+        """, (user_id, group_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def get_join_request_by_id(cursor, request_id):
+        """Get specific join request details"""
+        cursor.execute("""
+            SELECT gjr.*, u.first_name, u.last_name, u.email,
+                   g.name as group_name
+            FROM Group_Join_Requests gjr
+            JOIN Users u ON gjr.user_id = u.id
+            JOIN Community_Groups g ON gjr.group_id = g.id
+            WHERE gjr.id = %s
+        """, (request_id,))
+        return cursor.fetchone()

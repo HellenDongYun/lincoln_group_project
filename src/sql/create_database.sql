@@ -48,7 +48,7 @@ CREATE TABLE Group_Applications (
 CREATE TABLE Group_Memberships (
   group_id INT NOT NULL,
   user_id INT NOT NULL,
-  group_role ENUM('manager','member') NOT NULL DEFAULT 'member',
+  group_role ENUM('manager','volunteer','member') NOT NULL DEFAULT 'member',
   member_status ENUM('active','inactive') NOT NULL DEFAULT 'active',
   PRIMARY KEY (group_id, user_id),
   FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -129,4 +129,20 @@ CREATE TABLE Event_Results (
   CHECK (end_time >= start_time),
   FOREIGN KEY (event_id) REFERENCES Events(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- Group Join Requests for private group access
+CREATE TABLE Group_Join_Requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  group_id INT NOT NULL,
+  message TEXT,
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  reviewed_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TIMESTAMP NULL,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (reviewed_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  UNIQUE KEY unique_user_group_pending (user_id, group_id, status)
 );
