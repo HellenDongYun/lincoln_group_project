@@ -1,186 +1,77 @@
-from src.app.common.db.repository import Repository
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
+from participant.repository import assign_volunteer_task, cancel_volunteer_role, withdraw_application
+from flask_login import login_required, current_user  # Assuming Flask-Login is used for user authentication
 
+participant_bp = Blueprint('participant', __name__)
 
-class ParticipantRepository(Repository):
-    
-    def get_upcoming_events(self, participant_id):
-        """Get all upcoming events that the participant is not already registered for"""
-        sql = """
-            SELECT 
-                e.id as Event_ID,
-                e.name as Event_Name,
-                DATE(e.datetime) as Event_Date,
-                TIME(e.datetime) as Event_Time,
-                e.town as Event_Location,
-                e.event_type as Event_Type,
-                e.description as Event_Description,
-                e.max_participants as Max_Participants,
-                COALESCE(COUNT(p.participant_id), 0) as Current_Registrations,
-                (e.max_participants - COALESCE(COUNT(p.participant_id), 0)) as Available_Spots
-            FROM Events e
-            LEFT JOIN Event_Participants ep ON e.id = ep.event_id AND ep.status = 'registered'
-            WHERE DATE(e.datetime) >= CURDATE()
-            AND e.id NOT IN (
-                SELECT event_id 
-                FROM Event_Participants 
-                WHERE user_id = %s AND status = 'registered'
-            )
-            GROUP BY e.id, e.name, DATE(e.datetime), TIME(e.datetime), e.town, e.event_type, e.description, e.max_participants
-            ORDER BY DATE(e.datetime) ASC, TIME(e.datetime) ASC
-        """
-        try:
-            return self.fetchall(sql, (participant_id,))
-        except Exception as e:
-            print(f"Database error in get_upcoming_events: {e}")
-            return []
-    
-    def get_my_registrations(self, participant_id):
-        """Get events that the participant is registered for"""
-        sql = """
-            SELECT 
-                e.id as Event_ID,
-                e.name as Event_Name,
-                DATE(e.datetime) as Event_Date,
-                TIME(e.datetime) as Event_Time,
-                e.town as Event_Location,
-                e.event_type as Event_Type,
-                e.description as Event_Description,
-                ep.status as Registration_Status
-            FROM Event_Participants ep
-            JOIN Events e ON ep.event_id = e.id
-            WHERE ep.user_id = %s
-            AND ep.status = 'registered'
-            AND DATE(e.datetime) >= CURDATE()
-            ORDER BY DATE(e.datetime) ASC, TIME(e.datetime) ASC
-        """
-        try:
-            return self.fetchall(sql, (participant_id,))
-        except Exception as e:
-            print(f"Database error in get_my_registrations: {e}")
-            return []
-    
-    def get_my_race_results(self, participant_id):
-        """Get participant's past race results"""
-        sql = """
-            SELECT 
-                e.id as Event_ID,
-                e.name as Event_Name,
-                DATE(e.datetime) as Event_Date,
-                e.town as Event_Location,
-                e.event_type as Event_Type,
-                rr.start_time as Start_Time,
-                rr.end_time as End_Time,
-                SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time))) as Race_Time,
-                TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time)) as Race_Time_Seconds,
-                RANK() OVER (
-                    PARTITION BY rr.event_id 
-                    ORDER BY TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time))
-                ) as Position,
-                (
-                    SELECT COUNT(*) 
-                    FROM Race_Results rr2 
-                    WHERE rr2.event_id = rr.event_id
-                ) as Total_Participants
-            FROM Race_Results rr
-            JOIN Events e ON rr.event_id = e.id
-            WHERE rr.participant_id = %s
-            AND DATE(e.datetime) < CURDATE()
-            AND rr.start_time IS NOT NULL 
-            AND rr.end_time IS NOT NULL
-            ORDER BY DATE(e.datetime) DESC
-        """
-        try:
-            return self.fetchall(sql, (participant_id,))
-        except Exception as e:
-            print(f"Database error in get_my_race_results: {e}")
-            return []
-    
-    def register_for_event(self, participant_id, event_id):
-        """Register a participant for an event"""
-        # First check if already registered (only active registrations)
-        check_sql = """
-            SELECT COUNT(*) as count 
-            FROM Event_Participants 
-            WHERE user_id = %s AND event_id = %s AND status = 'registered'
-        """
-        
-        try:
-            existing = self.fetchone(check_sql, (participant_id, event_id))
-            if existing and existing['count'] > 0:
-                return False  # Already registered
-            
-            # Check if event is full
-            capacity_sql = """
-                SELECT 
-                    e.max_participants,
-                    COUNT(ep.user_id) as current_registrations
-                FROM Events e
-                LEFT JOIN Event_Participants ep ON e.id = ep.event_id AND ep.status = 'registered'
-                WHERE e.id = %s
-                GROUP BY e.id, e.max_participants
-            """
-            
-            capacity_check = self.fetchone(capacity_sql, (event_id,))
-            if capacity_check:
-                if capacity_check['current_registrations'] >= capacity_check['max_participants']:
-                    return False  # Event is full
-            
-            # Register for the event
-            # First check if there's a cancelled registration we can reactivate
-            cancelled_check_sql = """
-                SELECT COUNT(*) as count 
-                FROM Event_Participants 
-                WHERE user_id = %s AND event_id = %s AND status = 'cancelled'
-            """
-            
-            cancelled_record = self.fetchone(cancelled_check_sql, (participant_id, event_id))
-            
-            if cancelled_record and cancelled_record['count'] > 0:
-                # Reactivate cancelled registration
-                reactivate_sql = """
-                    UPDATE Event_Participants 
-                    SET status = 'registered'
-                    WHERE user_id = %s AND event_id = %s AND status = 'cancelled'
-                """
-                result = self.execute(reactivate_sql, (participant_id, event_id))
-            else:
-                # Create new registration
-                register_sql = """
-                    INSERT INTO Event_Participants (user_id, event_id, status)
-                    VALUES (%s, %s, 'registered')
-                """
-                result = self.execute(register_sql, (participant_id, event_id))
-            
-            return result is not None
-            
-        except Exception as e:
-            print(f"Database error in register_for_event: {e}")
-            return False
-    
-    def cancel_registration(self, participant_id, event_id):
-        """Cancel a participant's registration for an event"""
-        try:
-            # Check if the participant is registered for this event
-            check_sql = """
-                SELECT COUNT(*) as count 
-                FROM Event_Participants 
-                WHERE user_id = %s AND event_id = %s AND status = 'registered'
-            """
-            
-            existing = self.fetchone(check_sql, (participant_id, event_id))
-            if not existing or existing['count'] == 0:
-                return False  # Not registered or already cancelled
-            
-            # Update the registration status to cancelled
-            cancel_sql = """
-                UPDATE Event_Participants 
-                SET status = 'cancelled'
-                WHERE user_id = %s AND event_id = %s
-            """
-            
-            result = self.execute(cancel_sql, (participant_id, event_id))
-            return result is not None
-            
-        except Exception as e:
-            print(f"Database error in cancel_registration: {e}")
-            return False
+@participant_bp.route('/participant/sign_task', methods=['POST'])
+@login_required
+def sign_task():
+    """
+    Handle volunteer task registration requests. 
+    After submission, the status will be pending approval.
+    """
+    data = request.get_json()
+    event_name = data.get('event')
+    role_name = data.get('role')
+    volunteer_id = current_user.id if current_user.is_authenticated else None  # Get ID from the current user
+
+    if not volunteer_id or not event_name or not role_name:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    # Call repository layer to handle task registration
+    try:
+        success = assign_volunteer_task(volunteer_id, event_name, role_name)
+        if success:
+            return jsonify({'message': 'Application submitted, pending approval'}), 200
+        return jsonify({'error': 'Failed to submit application'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@participant_bp.route('/participant/cancel_role', methods=['POST'])
+@login_required
+def cancel_role():
+    """
+    Cancel an approved volunteer role.
+    """
+    data = request.get_json()
+    event_name = data.get('event')
+    volunteer_id = current_user.id if current_user.is_authenticated else None
+
+    if not volunteer_id or not event_name:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        success = cancel_volunteer_role(volunteer_id, event_name)
+        if success:
+            return jsonify({'message': f'Successfully cancelled role for {event_name}'}), 200
+        return jsonify({'error': 'Failed to cancel role'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@participant_bp.route('/participant/withdraw_application', methods=['POST'])
+@login_required
+def withdraw_application():
+    """
+    Withdraw a pending application.
+    """
+    data = request.get_json()
+    event_name = data.get('event')
+    volunteer_id = current_user.id if current_user.is_authenticated else None
+
+    if not volunteer_id or not event_name:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        success = withdraw_application(volunteer_id, event_name)
+        if success:
+            return jsonify({'message': f'Successfully withdrawn application for {event_name}'}), 200
+        return jsonify({'error': 'Failed to withdraw application'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Route to render sign_task.html (optional, used for initial page load)
+@participant_bp.route('/participant/sign_task', methods=['GET'])
+@login_required
+def show_sign_task():
+    return render_template('app/participant/sign_task.html')
