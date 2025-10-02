@@ -3,7 +3,7 @@ from src.app.common.db.cursor import get_cursor
 from src.app.admin.admin import Admin
 from src.app.admin.admin_repository import AdminRepository
 from src.app.group.group_repository import GroupRepository
-from src.app.user.user import GroupVisibility, GroupStatus, GroupJoinType
+from src.app.user.user import GroupVisibility, GroupStatus
 
 
 class AdminService:
@@ -224,8 +224,7 @@ class AdminService:
         return {
             'visibilities': [visibility.value for visibility in GroupVisibility],
             'statuses': [status.value for status in GroupStatus],
-            'towns': options.get('towns', []),
-            'join_types': [join_type.value for join_type in GroupJoinType]
+            'towns': options.get('towns', [])
         }
 
     @staticmethod
@@ -261,22 +260,20 @@ class AdminService:
             }
 
     @staticmethod
-    def create_group(name, description, town, visibility, join_type, created_by, manager_email=None):
+    def create_group(name, description, town, visibility, created_by, manager_email=None):
         if not name:
             raise ValueError("Group name is required")
         if not town:
             raise ValueError("Town or region is required")
         if visibility not in [v.value for v in GroupVisibility]:
             raise ValueError("Invalid visibility option selected")
-        if join_type not in [jt.value for jt in GroupJoinType]:
-            raise ValueError("Invalid join type option selected")
         if not created_by:
             raise ValueError("Unable to determine creator for the group")
 
         manager_email_normalized = manager_email.strip().lower() if manager_email else None
 
         with get_cursor() as cursor:
-            group_id = GroupRepository.create_group(cursor, name, description, town, visibility, join_type, created_by)
+            group_id = GroupRepository.create_group(cursor, name, description, town, visibility, created_by)
 
             manager_info = None
             manager_warning = None
