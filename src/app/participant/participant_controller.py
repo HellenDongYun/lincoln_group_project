@@ -1,15 +1,39 @@
+
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
+from src.app.participant.repository import assign_volunteer_task, cancel_volunteer_role, withdraw_application
+from flask_login import login_required, current_user  # Assuming Flask-Login is used for user authentication
+
 from datetime import datetime
 import math
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 
-from src.app.auth.route_guard import require_login
-from src.app.common.nav.encode import decode_id
-from src.app.user.user import GlobalRole
-from src.app.participant.participant_service import ParticipantService
 
-participant_service = ParticipantService()
-participant_blueprint = Blueprint('participant', __name__)
+participant_bp = Blueprint('participant', __name__)
 
+@participant_bp.route('/participant/sign_task', methods=['POST'])
+@login_required
+def sign_task():
+    """
+    Handle volunteer task registration requests. 
+    After submission, the status will be pending approval.
+    """
+    data = request.get_json()
+    event_name = data.get('event')
+    role_name = data.get('role')
+    volunteer_id = current_user.id if current_user.is_authenticated else None  # Get ID from the current user
+
+    if not volunteer_id or not event_name or not role_name:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+
+    # Call repository layer to handle task registration
+    try:
+        success = assign_volunteer_task(volunteer_id, event_name, role_name)
+        if success:
+            return jsonify({'message': 'Application submitted, pending approval'}), 200
+        return jsonify({'error': 'Failed to submit application'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @participant_blueprint.route("<encoded_participant_id>", methods=["GET"])
 @require_login
@@ -35,37 +59,55 @@ def dashboard(encoded_participant_id):
                          participant_id=encoded_participant_id)
 
 
-@participant_blueprint.route("<encoded_participant_id>/register/<int:event_id>", methods=["POST"])
-@require_login
-def register_for_event(encoded_participant_id, event_id):
-    participant_id = decode_id(encoded_participant_id)
-    
-    try:
-        success = participant_service.register_for_event(participant_id, event_id)
-        
-        if success:
-            flash("Successfully registered for the event!", "success")
-        else:
-            flash("Registration failed. Event may be full or you may already be registered.", "danger")
-    except Exception as e:
-        flash(f"Registration error: {str(e)}", "danger")
-    
-    return redirect(url_for('participant.dashboard', encoded_participant_id=encoded_participant_id))
+@participant_bp.route('/participant/cancel_role', methods=['POST'])
+@login_required
+def cancel_role():
+    """
+    Cancel an approved volunteer role.
+    """
+    data = request.get_json()
+    event_name = data.get('event')
+    volunteer_id = current_user.id if current_user.is_authenticated else None
 
+    if not volunteer_id or not event_name:
+        return jsonify({'error': 'Missing required fields'}), 400
 
-@participant_blueprint.route("<encoded_participant_id>/cancel/<int:event_id>", methods=["POST"])
-@require_login
-def cancel_registration(encoded_participant_id, event_id):
-    participant_id = decode_id(encoded_participant_id)
-    
     try:
-        success = participant_service.cancel_registration(participant_id, event_id)
-        
+        success = cancel_volunteer_role(volunteer_id, event_name)
         if success:
-            flash("Successfully cancelled your registration for the event.", "success")
-        else:
-            flash("Cancellation failed. You may not be registered for this event.", "danger")
+            return jsonify({'message': f'Successfully cancelled role for {event_name}'}), 200
+        return jsonify({'error': 'Failed to cancel role'}), 500
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@participant_bp.route('/participant/withdraw_application', methods=['POST'])
+@login_required
+def withdraw_application():
+    """
+    Withdraw a pending application.
+    """
+    data = request.get_json()
+    event_name = data.get('event')
+    volunteer_id = current_user.id if current_user.is_authenticated else None
+
+    if not volunteer_id or not event_name:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        success = withdraw_application(volunteer_id, event_name)
+        if success:
+            return jsonify({'message': f'Successfully withdrawn application for {event_name}'}), 200
+        return jsonify({'error': 'Failed to withdraw application'}), 500
+    except Exception as e:
+
+        return jsonify({'error': str(e)}), 500
+
+# Route to render sign_task.html (optional, used for initial page load)
+@participant_bp.route('/participant/sign_task', methods=['GET'])
+@login_required
+def show_sign_task():
+    return render_template('app/participant/sign_task.html')
+
         flash(f"Cancellation error: {str(e)}", "danger")
     
     return redirect(url_for('participant.dashboard', encoded_participant_id=encoded_participant_id))
@@ -135,3 +177,4 @@ def delete_group_application(encoded_participant_id, application_id):
     except Exception as e:
         flash(f"Error deleting group application: {str(e)}", "danger")
     return redirect(url_for("participant.myapplications", encoded_participant_id=encoded_participant_id))
+
