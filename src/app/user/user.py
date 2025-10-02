@@ -20,11 +20,6 @@ class GroupVisibility(Enum):
     PRIVATE = 'private'
 
 
-class GroupJoinType(Enum):
-    OPEN = 'open'
-    CLOSED = 'closed'
-
-
 class GroupStatus(Enum):
     ACTIVE = 'active'
     INACTIVE = 'inactive'
@@ -70,7 +65,6 @@ class CommunityGroup:
     description: str = None
     town: str = None
     visibility: GroupVisibility = None
-    join_type: GroupJoinType = None
     status: GroupStatus = None
     created_by: int = None
 
@@ -81,10 +75,6 @@ class CommunityGroup:
     @property
     def is_public(self) -> bool:
         return self.visibility == GroupVisibility.PUBLIC
-
-    @property
-    def is_open_join(self) -> bool:
-        return self.join_type == GroupJoinType.OPEN
 
 
 @dataclass
@@ -115,7 +105,6 @@ class GroupApplication:
     proposed_description: str = None
     proposed_town: str = None
     visibility: GroupVisibility = None
-    join_type: GroupJoinType = None
     status: str = None
     decision_by: Optional[int] = None
     

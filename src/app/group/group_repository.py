@@ -1,6 +1,6 @@
 from src.app.common.db.repository import Repository
 from src.app.common.db.cursor import get_cursor
-from src.app.user.user import CommunityGroup, GroupMembership, GroupApplication, GroupVisibility, GroupJoinType, GroupStatus, GroupRole
+from src.app.user.user import CommunityGroup, GroupMembership, GroupApplication, GroupVisibility, GroupStatus, GroupRole
 
 
 class GroupRepository(Repository):
@@ -179,19 +179,19 @@ class GroupRepository(Repository):
         return cursor.fetchone()
 
     @staticmethod
-    def create_group(cursor, name, description, town, visibility, join_type, created_by):
+    def create_group(cursor, name, description, town, visibility, created_by):
         """Create a new group"""
         cursor.execute("""
-            INSERT INTO Community_Groups (name, description, town, visibility, join_type, status, created_by)
-            VALUES (%s, %s, %s, %s, %s, 'active', %s)
-        """, (name, description, town, visibility, join_type, created_by))
+            INSERT INTO Community_Groups (name, description, town, visibility, status, created_by)
+            VALUES (%s, %s, %s, %s, 'active', %s)
+        """, (name, description, town, visibility, created_by))
         return cursor.lastrowid
 
     @staticmethod
     def get_user_groups(cursor, user_id):
         """Get all groups a user is a member of"""
         cursor.execute("""
-            SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status,
+            SELECT g.id, g.name, g.description, g.town, g.visibility, g.status,
                    gm.group_role, gm.member_status
             FROM Community_Groups g
             JOIN Group_Memberships gm ON g.id = gm.group_id
@@ -298,13 +298,13 @@ class GroupRepository(Repository):
     # Group Applications
     @staticmethod
     def create_group_application(cursor, applicant_id, proposed_name, proposed_description, 
-                               proposed_town, visibility, join_type):
+                               proposed_town, visibility):
         """Create a new group application"""
         cursor.execute("""
             INSERT INTO Group_Applications 
-            (applicant_id, proposed_name, proposed_description, proposed_town, visibility, join_type, status)
-            VALUES (%s, %s, %s, %s, %s, %s, 'pending')
-        """, (applicant_id, proposed_name, proposed_description, proposed_town, visibility, join_type))
+            (applicant_id, proposed_name, proposed_description, proposed_town, visibility, status)
+            VALUES (%s, %s, %s, %s, %s, 'pending')
+        """, (applicant_id, proposed_name, proposed_description, proposed_town, visibility))
         return cursor.lastrowid
 
     @staticmethod
@@ -312,7 +312,7 @@ class GroupRepository(Repository):
         """Get all pending group applications"""
         cursor.execute("""
             SELECT ga.id, ga.applicant_id, ga.proposed_name, ga.proposed_description, 
-                   ga.proposed_town, ga.visibility, ga.join_type, ga.status,
+                   ga.proposed_town, ga.visibility, ga.status,
                    u.first_name, u.last_name, u.email
             FROM Group_Applications ga
             JOIN Users u ON ga.applicant_id = u.id

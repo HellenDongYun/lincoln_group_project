@@ -48,11 +48,11 @@ class GroupService:
             return GroupRepository.get_group_by_id(cursor, group_id)
 
     @staticmethod
-    def create_group(name, description, town, visibility, join_type, created_by):
+    def create_group(name, description, town, visibility, created_by):
         """Create a new group"""
         with get_cursor() as cursor:
             group_id = GroupRepository.create_group(
-                cursor, name, description, town, visibility, join_type, created_by
+                cursor, name, description, town, visibility, created_by
             )
             # Add creator as manager
             GroupRepository.add_group_member(cursor, group_id, created_by, 'manager')
@@ -125,12 +125,12 @@ class GroupService:
     # Group Applications
     @staticmethod
     def create_group_application(applicant_id, proposed_name, proposed_description, 
-                               proposed_town, visibility, join_type):
+                               proposed_town, visibility):
         """Create a new group application"""
         with get_cursor() as cursor:
             return GroupRepository.create_group_application(
                 cursor, applicant_id, proposed_name, proposed_description,
-                proposed_town, visibility, join_type
+                proposed_town, visibility
             )
 
     @staticmethod
@@ -163,7 +163,6 @@ class GroupService:
                 application['proposed_description'],
                 application['proposed_town'],
                 application['visibility'],
-                application['join_type'],
                 decision_by  # Super admin creates it
             )
             

@@ -1,8 +1,13 @@
+from src.app.common.db.cursor import get_cursor
 from src.app.common.db.repository import Repository
 
 
 class ParticipantRepository(Repository):
     
+    """
+    参与者仓储类，用于处理参与者相关的数据库操作。
+    继承自Repository基类，提供参与者相关数据访问方法。
+    """
     def get_upcoming_events(self, participant_id):
         """Get all upcoming events that the participant is not already registered for"""
         sql = """
@@ -184,3 +189,81 @@ class ParticipantRepository(Repository):
         except Exception as e:
             print(f"Database error in cancel_registration: {e}")
             return False
+    
+    
+    def show_application(self,status, page,per_page,participant_id):
+        """Show the applications for a participant"""
+        query = '''
+        SELECT 
+            ga.proposed_name AS name,
+            ga.proposed_description AS description,
+            ga.proposed_town AS town,
+            ga.visibility,
+            ga.status,
+            ga.id,
+            reviewer.email,
+            CONCAT(reviewer.first_name, ' ', reviewer.last_name) AS full_name
+        FROM Group_Applications ga
+        LEFT JOIN Users reviewer ON ga.decision_by = reviewer.id
+        WHERE ga.applicant_id = %s
+        '''
+        params = [participant_id]
+
+        if status != "all":
+            query += " AND ga.status = %s"
+            params.append(status)
+
+        offset = (page - 1) * per_page
+        query += " LIMIT %s OFFSET %s"
+        params.extend([per_page, offset])
+
+        with get_cursor() as cursor:
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+
+            # Count total
+            count_query = '''
+            SELECT COUNT(*) AS total
+            FROM Group_Applications ga
+            WHERE ga.applicant_id = %s
+            '''
+            count_params = [participant_id]
+
+            if status != "all":
+                count_query += " AND ga.status = %s"
+                count_params.append(status)
+
+            cursor.execute(count_query, tuple(count_params))
+            total = cursor.fetchone()["total"]
+        return rows, total
+
+    def create_group_application(self,participant_id, name, description, town, visibility):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO Group_Applications (
+                    applicant_id, proposed_name, proposed_description, proposed_town, visibility
+                ) VALUES (%s, %s, %s, %s, %s)
+            """, (participant_id, name, description, town, visibility)) 
+            
+    def get_application_by_id(self,participant_id, application_id):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM Group_Applications WHERE id = %s AND applicant_id = %s
+            """, (application_id, participant_id))
+            return cursor.fetchone()
+        
+    def update_group_application(self,participant_id, application_id, name, town, visibility, description):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                UPDATE Group_Applications 
+                SET proposed_name = %s, proposed_town = %s, visibility = %s, proposed_description = %s
+                WHERE id = %s AND applicant_id = %s
+            """, (name, town, visibility, description, application_id, participant_id))
+    
+    
+    
+    def delete_group_application(self,participant_id, application_id):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM Group_Applications WHERE id = %s AND applicant_id = %s
+            """, (application_id, participant_id))
