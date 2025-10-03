@@ -426,3 +426,16 @@ class GroupService:
                 return True, action
             else:
                 return False, action
+
+    @staticmethod
+    def user_has_group_memberships(user_id):
+        """Check if user has any group memberships (can volunteer)"""
+        with get_cursor() as cursor:
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM Group_Memberships gm
+                WHERE gm.user_id = %s AND gm.member_status = 'active'
+            """, (user_id,))
+
+            result = cursor.fetchone()
+            return result['count'] > 0 if result else False

@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import datetime
 
-from src.app.auth.route_guard import require_super_admin
+from src.app.auth.route_guard import require_super_admin, require_volunteer_or_manager
 from src.app.user.user import GlobalRole
 from src.app.results.results_service import ResultsService
 
@@ -41,7 +41,7 @@ def public_results():
 
 
 @results_blueprint.route("/upload", methods=["GET", "POST"])
-@require_super_admin
+@require_volunteer_or_manager
 def upload_results():
     """Upload CSV results - admins and volunteers only"""
     if request.method == "GET":
@@ -146,7 +146,7 @@ def upload_results():
 
 
 @results_blueprint.route("/upload/confirm", methods=["POST"])
-@require_super_admin
+@require_volunteer_or_manager
 def confirm_overwrite():
     """Confirm overwriting existing results"""
     action = request.form.get('action')
@@ -186,7 +186,7 @@ def confirm_overwrite():
 
 
 @results_blueprint.route("/upload/confirm_unregistered", methods=["POST"])
-@require_super_admin
+@require_volunteer_or_manager
 def confirm_unregistered():
     """Handle unregistered participant confirmation"""
     action = request.form.get('action')
@@ -264,12 +264,68 @@ def remove_results(event_id):
     return redirect(url_for('results.public_results'))
 
 
+@results_blueprint.route("/record", methods=["GET", "POST"])
+@require_volunteer_or_manager
+def record_time():
+    """Record completion time by participant ID - volunteers and managers only"""
+    if request.method == "GET":
+        # Get all events for the dropdown
+        events = results_service.get_all_events()
+        return render_template("results/record_time.html", events=events)
+
+    # Handle POST request - manual time recording
+    event_id = request.form.get('event_id')
+    participant_id = request.form.get('participant_id')
+    participant_email = request.form.get('participant_email')
+    completion_time = request.form.get('completion_time')
+
+    if not event_id:
+        flash("Please select an event.", "danger")
+        return redirect(url_for('results.record_time'))
+
+    if not participant_id and not participant_email:
+        flash("Please enter either a participant User ID or email address.", "danger")
+        return redirect(url_for('results.record_time'))
+
+    if not completion_time:
+        flash("Please enter the completion time.", "danger")
+        return redirect(url_for('results.record_time'))
+
+    # Convert participant_id to int if provided, otherwise lookup by email
+    if participant_id:
+        try:
+            participant_id = int(participant_id.strip())
+        except ValueError:
+            flash("Invalid participant ID format. Please enter a valid number.", "danger")
+            return redirect(url_for('results.record_time'))
+    elif participant_email:
+        participant_email = participant_email.strip()
+        if not participant_email:
+            flash("Please enter a valid email address.", "danger")
+            return redirect(url_for('results.record_time'))
+
+    try:
+        # Record the completion time using provided time
+        success, message = results_service.record_completion_time(event_id, participant_id, participant_email, completion_time)
+
+        if success:
+            flash(message, "success")
+            return redirect(url_for('results.public_results', event_id=event_id))
+        else:
+            flash(message, "danger")
+
+    except Exception as e:
+        flash(f"Error recording completion time: {str(e)}", "danger")
+
+    return redirect(url_for('results.record_time'))
+
+
 @results_blueprint.route("/api/event/<int:event_id>/results", methods=["GET"])
 def api_event_results(event_id):
     """API endpoint to get results for a specific event (JSON)"""
     results = results_service.get_event_results(event_id)
     event = results_service.get_event_details(event_id)
-    
+
     return jsonify({
         'event': event,
         'results': results
