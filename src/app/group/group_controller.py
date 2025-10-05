@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from datetime import datetime
+from itertools import zip_longest
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
@@ -116,6 +119,14 @@ def manage_group(group_id):
     upcoming_events = GroupService.get_group_events(group_id)
     visibility_options = [option.value for option in GroupVisibility]
     status_options = [option.value for option in GroupStatus]
+
+    event_assignments = {}
+    event_assignment_list = []
+
+    for event in upcoming_events:
+        payload = _build_event_assignment_payload(group_id, event.id)
+        event_assignments[event.id] = payload
+        event_assignment_list.append(payload)
     
     return render_template('group/manage_group.html', 
                          group=group, 
@@ -123,7 +134,59 @@ def manage_group(group_id):
                          upcoming_events=upcoming_events,
                          visibility_options=visibility_options,
                          status_options=status_options,
-                         is_super_admin=is_super_admin)
+                         is_super_admin=is_super_admin,
+                         event_assignments=event_assignments,
+                         event_assignment_json=event_assignment_list,
+                         group_members_json=members,
+                         manager_dashboard_url=url_for('groups.manager_dashboard', group_id=group_id))
+
+
+@group_blueprint.route('/manager/dashboard')
+@require_login
+def manager_dashboard():
+    """Analytics-focused dashboard for group managers"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    managed_groups = GroupService.get_user_managed_groups(user_id)
+    managed_group_ids = {group['id'] for group in managed_groups}
+
+    requested_group_id = request.args.get('group_id', type=int)
+    events_scope = request.args.get('events', 'upcoming')
+    if events_scope not in {'upcoming', 'all'}:
+        events_scope = 'upcoming'
+    include_past_events = events_scope == 'all'
+    selected_group_id = requested_group_id
+
+    if not selected_group_id:
+        if managed_groups:
+            selected_group_id = managed_groups[0]['id']
+        elif is_super_admin:
+            # Allow super admins to target a group via query parameter only
+            flash('Select a group to view analytics.', 'info')
+            return redirect(url_for('groups.index'))
+        else:
+            flash('You do not manage any groups yet.', 'warning')
+            return redirect(url_for('groups.index'))
+
+    if not is_super_admin and selected_group_id not in managed_group_ids:
+        flash('You do not have access to that group dashboard.', 'error')
+        return redirect(url_for('groups.index'))
+
+    group = GroupService.get_group_by_id(selected_group_id)
+    if not group:
+        flash('Group not found.', 'error')
+        return redirect(url_for('groups.index'))
+
+    dashboard = GroupService.get_manager_dashboard_snapshot(selected_group_id, include_past_events)
+
+    return render_template('group/manager_dashboard.html',
+                           group=group,
+                           dashboard=dashboard,
+                           managed_groups=managed_groups,
+                           selected_group_id=selected_group_id,
+                           events_scope=events_scope,
+                           is_super_admin=is_super_admin)
 
 
 @group_blueprint.route('/<int:group_id>/manage/settings', methods=['POST'])
@@ -144,6 +207,566 @@ def update_group_settings(group_id):
     return redirect(url_for('groups.manage_group', group_id=group_id))
 
 
+@group_blueprint.route('/<int:group_id>/events/new', methods=['GET', 'POST'])
+@require_login
+def create_group_event(group_id):
+    """Group managers can create new events for their community"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('You do not have permission to create events for this group', 'error')
+        return redirect(url_for('groups.view_group', group_id=group_id))
+
+    group = GroupService.get_group_by_id(group_id)
+    if not group:
+        flash('Group not found', 'error')
+        return redirect(url_for('groups.index'))
+    volunteer_roles = GroupService.get_all_volunteer_roles()
+    form_data = _initial_event_form_data()
+
+    if request.method == 'POST':
+        form_data = _initial_event_form_data()  # reset defaults
+        form_data.update(_extract_event_form_submission())
+        errors, event_payload = _validate_event_form(form_data)
+
+        if errors:
+            for error in errors:
+                flash(error, 'error')
+            return render_template('group/event_form.html',
+                                   group=group,
+                                   form_data=form_data,
+                                   volunteer_roles=volunteer_roles,
+                                   is_edit=False,
+                                   page_title='Create event',
+                                   submit_label='Create event')
+
+        try:
+            event_id = GroupService.create_group_event(group_id, user_id, **event_payload)
+            flash('Event created successfully.', 'success')
+            current_app.logger.info('Group %s created event %s', group_id, event_id)
+            return redirect(url_for('groups.manage_group', group_id=group_id))
+        except Exception as exc:
+            current_app.logger.exception('Failed to create event: %s', exc)
+            flash('Failed to create event. Please try again.', 'error')
+
+    return render_template('group/event_form.html',
+                           group=group,
+                           form_data=form_data,
+               volunteer_roles=volunteer_roles,
+                           is_edit=False,
+                           page_title='Create event',
+                           submit_label='Create event')
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/edit', methods=['GET', 'POST'])
+@require_login
+def edit_group_event(group_id, event_id):
+    """Group managers can edit existing events"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('You do not have permission to edit events for this group', 'error')
+        return redirect(url_for('groups.view_group', group_id=group_id))
+
+    group = GroupService.get_group_by_id(group_id)
+    if not group:
+        flash('Group not found', 'error')
+        return redirect(url_for('groups.index'))
+    event = GroupService.get_group_event(group_id, event_id)
+
+    if not event:
+        flash('Event not found', 'error')
+        return redirect(url_for('groups.manage_group', group_id=group_id))
+
+    volunteer_roles = GroupService.get_all_volunteer_roles()
+    assigned_requirements = GroupService.get_event_volunteer_requirements(event_id)
+    form_data = _initial_event_form_data(event, assigned_requirements)
+
+    if request.method == 'POST':
+        submitted = _extract_event_form_submission()
+        for key, value in submitted.items():
+            form_data[key] = value
+        errors, event_payload = _validate_event_form(form_data)
+
+        if errors:
+            for error in errors:
+                flash(error, 'error')
+            return render_template('group/event_form.html',
+                                   group=group,
+                                   form_data=form_data,
+                                   volunteer_roles=volunteer_roles,
+                                   is_edit=True,
+                                   page_title='Edit event',
+                                   submit_label='Save changes')
+
+        try:
+            GroupService.update_group_event(group_id, event_id, **event_payload)
+            notified = _notify_event_participants(event_id,
+                                                 f"Event '{event_payload['name']}' has been updated. Please review the latest details.")
+            if notified:
+                flash(f'Event updated and {notified} participant{"s" if notified != 1 else ""} notified.', 'success')
+            else:
+                flash('Event updated successfully.', 'success')
+            return redirect(url_for('groups.manage_group', group_id=group_id))
+        except Exception as exc:
+            current_app.logger.exception('Failed to update event: %s', exc)
+            flash('Failed to update event. Please try again.', 'error')
+
+    return render_template('group/event_form.html',
+                           group=group,
+                           form_data=form_data,
+               volunteer_roles=volunteer_roles,
+                           is_edit=True,
+                           page_title='Edit event',
+                           submit_label='Save changes')
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/cancel', methods=['POST'])
+@require_login
+def cancel_group_event(group_id, event_id):
+    """Group managers can cancel (delete) their events"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('You do not have permission to cancel this event', 'error')
+        return redirect(url_for('groups.view_group', group_id=group_id))
+
+    event = GroupService.get_group_event(group_id, event_id)
+    if not event:
+        flash('Event not found', 'error')
+        return redirect(url_for('groups.manage_group', group_id=group_id))
+
+    participants = GroupService.get_event_participants(event_id)
+
+    try:
+        removed = GroupService.cancel_group_event(group_id, event_id)
+        if removed:
+            notified = _notify_event_participants(event_id,
+                                                 f"Event '{event.name}' has been cancelled.",
+                                                 participants)
+            if notified:
+                flash(f'Event cancelled. {notified} participant{"s" if notified != 1 else ""} notified.', 'warning')
+            else:
+                flash('Event cancelled successfully.', 'warning')
+        else:
+            flash('Unable to cancel event.', 'error')
+    except Exception as exc:
+        current_app.logger.exception('Failed to cancel event: %s', exc)
+        flash('Failed to cancel event. Please try again.', 'error')
+
+    return redirect(url_for('groups.manage_group', group_id=group_id))
+
+
+def _build_event_assignment_payload(group_id, event_id):
+    snapshot = GroupService.get_event_assignment_snapshot(group_id, event_id)
+    event_obj = snapshot.get('event')
+
+    event_datetime = None
+    if event_obj is None:
+        event_meta = {
+            'id': event_id,
+            'name': '',
+            'datetime': None,
+            'datetime_display': '',
+            'town': '',
+            'visibility': '',
+            'max_participants': None
+        }
+    elif isinstance(event_obj, dict):
+        event_datetime = event_obj.get('datetime')
+        event_meta = {
+            'id': event_obj.get('id') or event_id,
+            'name': event_obj.get('name', ''),
+            'datetime': event_datetime.isoformat() if hasattr(event_datetime, 'isoformat') else event_datetime,
+            'datetime_display': event_obj.get('datetime_display') or _format_event_datetime(event_datetime),
+            'town': event_obj.get('town', ''),
+            'visibility': event_obj.get('visibility', ''),
+            'max_participants': event_obj.get('max_participants')
+        }
+    else:
+        event_datetime = getattr(event_obj, 'datetime', None)
+        event_meta = {
+            'id': getattr(event_obj, 'id', event_id),
+            'name': getattr(event_obj, 'name', ''),
+            'datetime': event_datetime.isoformat() if hasattr(event_datetime, 'isoformat') else event_datetime,
+            'datetime_display': getattr(event_obj, 'datetime_str', None) or _format_event_datetime(event_datetime),
+            'town': getattr(event_obj, 'town', ''),
+            'visibility': getattr(event_obj, 'visibility', ''),
+            'max_participants': getattr(event_obj, 'max_participants', None)
+        }
+
+    max_participants = event_meta['max_participants']
+    if max_participants is not None:
+        try:
+            max_participants = int(max_participants)
+        except (TypeError, ValueError):
+            max_participants = None
+    event_meta['max_participants'] = max_participants
+
+    return {
+        'event': event_meta,
+        'participants': snapshot.get('participants', []),
+        'volunteer_requirements': snapshot.get('volunteer_requirements', []),
+        'volunteer_assignments': snapshot.get('volunteer_assignments', [])
+    }
+
+
+def _format_event_datetime(value):
+    if not value:
+        return ''
+    if hasattr(value, 'strftime'):
+        try:
+            from src.app.common.datetime_format import DatetimeFormat
+            return value.strftime(DatetimeFormat.NZ_SHORT_DATETIME.value)
+        except Exception:
+            return value.strftime('%Y-%m-%d %H:%M')
+    return str(value)
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/participants', methods=['POST'])
+@require_login
+def assign_event_participant(group_id, event_id):
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    member_id = payload.get('member_id')
+
+    try:
+        member_id = int(member_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid member'}), 400
+
+    try:
+        GroupService.assign_event_participant(group_id, event_id, member_id)
+        assignments = _build_event_assignment_payload(group_id, event_id)
+        return jsonify({'success': True, 'assignments': assignments})
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    except Exception as exc:
+        current_app.logger.exception('Failed to assign participant: %s', exc)
+        return jsonify({'error': 'Failed to assign participant'}), 500
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/participants/remove', methods=['POST'])
+@require_login
+def remove_event_participant(group_id, event_id):
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    member_id = payload.get('member_id')
+
+    try:
+        member_id = int(member_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid member'}), 400
+
+    try:
+        GroupService.remove_event_participant(group_id, event_id, member_id)
+        assignments = _build_event_assignment_payload(group_id, event_id)
+        return jsonify({'success': True, 'assignments': assignments})
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    except Exception as exc:
+        current_app.logger.exception('Failed to remove participant: %s', exc)
+        return jsonify({'error': 'Failed to remove participant'}), 500
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/volunteers', methods=['POST'])
+@require_login
+def assign_event_volunteer(group_id, event_id):
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    member_id = payload.get('member_id')
+    role_id = payload.get('role_id')
+
+    try:
+        member_id = int(member_id)
+        role_id = int(role_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid assignment payload'}), 400
+
+    try:
+        GroupService.assign_event_volunteer(group_id, event_id, member_id, role_id)
+        assignments = _build_event_assignment_payload(group_id, event_id)
+        return jsonify({'success': True, 'assignments': assignments})
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    except Exception as exc:
+        current_app.logger.exception('Failed to assign volunteer: %s', exc)
+        return jsonify({'error': 'Failed to assign volunteer'}), 500
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/volunteers/remove', methods=['POST'])
+@require_login
+def remove_event_volunteer(group_id, event_id):
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    member_id = payload.get('member_id')
+    role_id = payload.get('role_id')
+
+    try:
+        member_id = int(member_id)
+        role_id = int(role_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid assignment payload'}), 400
+
+    try:
+        GroupService.remove_event_volunteer(group_id, event_id, member_id, role_id)
+        assignments = _build_event_assignment_payload(group_id, event_id)
+        return jsonify({'success': True, 'assignments': assignments})
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    except Exception as exc:
+        current_app.logger.exception('Failed to remove volunteer: %s', exc)
+        return jsonify({'error': 'Failed to remove volunteer'}), 500
+
+
+def _initial_event_form_data(event=None, assigned_volunteer_requirements=None):
+    """Prepare baseline form data for event create/edit flows"""
+    if event:
+        if isinstance(event, dict):
+            event_datetime = event.get('datetime')
+            name = event.get('name', '')
+            town = event.get('town', '')
+            event_type = event.get('event_type', '')
+            description = event.get('description', '')
+            max_participants = event.get('max_participants')
+            visibility = event.get('visibility', 'public')
+        else:
+            event_datetime = getattr(event, 'datetime', None)
+            name = getattr(event, 'name', '')
+            town = getattr(event, 'town', '')
+            event_type = getattr(event, 'event_type', '')
+            description = getattr(event, 'description', '')
+            max_participants = getattr(event, 'max_participants', '')
+            visibility = getattr(event, 'visibility', 'public')
+
+        date_value = event_datetime.strftime('%Y-%m-%d') if event_datetime else ''
+        time_value = event_datetime.strftime('%H:%M') if event_datetime else ''
+        base = {
+            'name': name,
+            'event_date': date_value,
+            'event_time': time_value,
+            'town': town,
+            'event_type': event_type,
+            'description': description or '',
+            'max_participants': str(max_participants or ''),
+            'visibility': visibility or 'public'
+        }
+
+        base['volunteer_requirements'] = _format_assigned_volunteer_requirements(assigned_volunteer_requirements)
+        return base
+
+    return {
+        'name': '',
+        'event_date': '',
+        'event_time': '',
+        'town': '',
+        'event_type': '',
+        'description': '',
+        'max_participants': '',
+        'visibility': 'public',
+        'volunteer_requirements': []
+    }
+
+
+def _extract_event_form_submission():
+    """Capture submitted values from the event form"""
+    return {
+        'name': (request.form.get('name') or '').strip(),
+        'event_date': (request.form.get('event_date') or '').strip(),
+        'event_time': (request.form.get('event_time') or '').strip(),
+        'town': (request.form.get('town') or '').strip(),
+        'event_type': (request.form.get('event_type') or '').strip(),
+        'description': (request.form.get('description') or '').strip(),
+        'max_participants': (request.form.get('max_participants') or '').strip(),
+        'visibility': (request.form.get('visibility') or 'public').strip() or 'public',
+        'volunteer_role_ids': request.form.getlist('volunteer_role_ids[]'),
+        'volunteer_role_spots': request.form.getlist('volunteer_role_spots[]')
+    }
+
+
+def _validate_event_form(form_data):
+    """Validate event form input and build payload for persistence"""
+    errors = []
+
+    name = form_data.get('name', '').strip()
+    if not name:
+        errors.append('Event name is required.')
+    form_data['name'] = name
+
+    town = form_data.get('town', '').strip()
+    if not town:
+        errors.append('Town is required.')
+    form_data['town'] = town
+
+    event_type = form_data.get('event_type', '').strip()
+    if not event_type:
+        errors.append('Event type is required.')
+    form_data['event_type'] = event_type
+
+    event_date = form_data.get('event_date', '').strip()
+    event_time = form_data.get('event_time', '').strip()
+    form_data['event_date'] = event_date
+    form_data['event_time'] = event_time
+
+    event_datetime = None
+    if not event_date or not event_time:
+        errors.append('Event date and time are required.')
+    else:
+        try:
+            event_datetime = datetime.strptime(f"{event_date} {event_time}", '%Y-%m-%d %H:%M')
+        except ValueError:
+            errors.append('Invalid date or time format. Please use the provided pickers.')
+
+    max_participants_raw = form_data.get('max_participants', '').strip()
+    form_data['max_participants'] = max_participants_raw
+    try:
+        max_participants = int(max_participants_raw)
+        if max_participants <= 0:
+            raise ValueError
+    except ValueError:
+        errors.append('Max participants must be a positive whole number.')
+        max_participants = None
+
+    visibility = form_data.get('visibility', 'public')
+    if visibility not in {'public', 'private'}:
+        errors.append('Invalid visibility option selected.')
+    form_data['visibility'] = visibility if visibility in {'public', 'private'} else 'public'
+
+    description = form_data.get('description', '').strip()
+    form_data['description'] = description
+
+    role_ids = form_data.pop('volunteer_role_ids', [])
+    role_spots = form_data.pop('volunteer_role_spots', [])
+
+    volunteer_requirements_display = []
+    volunteer_requirements_payload = []
+    seen_roles = set()
+
+    for index, (role_id_raw, spots_raw) in enumerate(zip_longest(role_ids, role_spots, fillvalue='')):
+        role_id_str = (role_id_raw or '').strip()
+        spots_str = (spots_raw or '').strip()
+
+        if not role_id_str and not spots_str:
+            continue
+
+        volunteer_requirements_display.append({
+            'role_id': role_id_str,
+            'spots': spots_str
+        })
+
+        if not role_id_str:
+            errors.append(f'Volunteer requirement row {index + 1} is missing a role selection.')
+            continue
+
+        try:
+            role_id = int(role_id_str)
+        except (TypeError, ValueError):
+            errors.append(f'Volunteer requirement row {index + 1} has an invalid role selection.')
+            continue
+
+        if role_id in seen_roles:
+            errors.append('Each volunteer role can only be listed once per event.')
+            continue
+
+        seen_roles.add(role_id)
+
+        try:
+            spots_value = int(spots_str)
+            if spots_value <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors.append(f'Volunteer requirement row {index + 1} requires a positive whole number of spots.')
+            continue
+
+        volunteer_requirements_payload.append({'role_id': role_id, 'spots': spots_value})
+
+    form_data['volunteer_requirements'] = volunteer_requirements_display
+
+    if errors or not event_datetime or max_participants is None:
+        return errors, None
+
+    payload = {
+        'name': name,
+        'event_datetime': event_datetime,
+        'town': town,
+        'event_type': event_type,
+        'description': description or None,
+        'max_participants': max_participants,
+        'visibility': form_data['visibility'],
+        'volunteer_requirements': volunteer_requirements_payload
+    }
+
+    return errors, payload
+
+
+def _format_assigned_volunteer_requirements(assigned):
+    if not assigned:
+        return []
+
+    formatted = []
+
+    for item in assigned:
+        if isinstance(item, dict):
+            role_id = item.get('role_id') or item.get('task_id')
+            spots = item.get('spots')
+        else:
+            role_id = getattr(item, 'role_id', None)
+            if role_id is None:
+                role_id = getattr(item, 'task_id', '')
+            spots = getattr(item, 'spots', '')
+
+        if role_id is None:
+            continue
+
+        formatted.append({
+            'role_id': str(role_id),
+            'spots': str(spots) if spots is not None else ''
+        })
+
+    return formatted
+
+
+def _notify_event_participants(event_id, message, participants=None):
+    """Log notifications for participants about event changes"""
+    recipients = participants if participants is not None else GroupService.get_event_participants(event_id)
+    notified = 0
+
+    for participant in recipients:
+        if isinstance(participant, dict):
+            email = participant.get('email')
+            user_ref = email or participant.get('id')
+        else:
+            email = getattr(participant, 'email', None)
+            user_ref = email or getattr(participant, 'id', None)
+        current_app.logger.info('Notify user %s about event %s: %s', user_ref, event_id, message)
+        notified += 1
+
+    return notified
+
+
 @group_blueprint.route('/<int:group_id>/manage/members/<int:member_id>/role', methods=['POST'])
 @require_login
 def update_member_role(group_id, member_id):
@@ -157,12 +780,19 @@ def update_member_role(group_id, member_id):
     payload = request.get_json(silent=True) or {}
     new_role = payload.get('role')
 
-    allowed_roles = {'member', 'volunteer'}
-    if is_super_admin:
-        allowed_roles.add('manager')
+    allowed_roles = {'member', 'manager'}
 
     if new_role not in allowed_roles:
         return jsonify({'error': 'Invalid role'}), 400
+
+    membership = GroupService.get_group_membership(group_id, member_id)
+    if not membership or membership.get('member_status') != 'active':
+        return jsonify({'error': 'Member not found'}), 404
+
+    current_role = membership.get('group_role')
+
+    if not is_super_admin and current_role == 'manager' and new_role != 'manager':
+        return jsonify({'error': 'Only super admins can change manager roles'}), 403
     
     try:
         GroupService.update_member_role(group_id, member_id, new_role)

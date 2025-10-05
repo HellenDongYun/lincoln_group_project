@@ -3,158 +3,152 @@
 {% block title %}Settings - ActiveLoop{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-cog"></i> Account Settings
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <form method="POST">
-                        <!-- Personal Information -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="border-bottom pb-2 mb-3">Personal Information</h5>
+<section class="py-5 bg-dark text-white position-relative overflow-hidden">
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(135deg, rgba(255,193,7,0.85), rgba(33,37,41,0.92)); opacity: 0.9; z-index: 1;"></div>
+    <div class="container position-relative" style="z-index: 2;">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-8">
+                <span class="text-uppercase text-warning small fw-semibold">Your profile</span>
+                <h1 class="display-5 fw-bold mb-2">Account settings</h1>
+                <p class="text-white-50 mb-0">Update your personal details, adjust your preferences, and keep your credentials secure.</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <span class="badge bg-light text-dark"><i class="bi bi-person-circle me-1"></i>{{ form_group.get('first_name').value }} {{ form_group.get('last_name').value }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 col-lg-9">
+                <div class="card border-0 shadow-lg overflow-hidden">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+                            <div>
+                                <h2 class="h4 fw-bold mb-1">Personal information</h2>
+                                <p class="text-muted small mb-0">We use these details to personalize your experience across groups and events.</p>
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="first_name" class="form-label">First Name</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control {% if form_group.get('first_name').errors %}is-invalid{% endif %}" 
-                                    id="first_name" 
-                                    name="first_name" 
+                            <span class="badge bg-warning text-black text-uppercase">Profile</span>
+                        </div>
+
+                        <form method="post" class="row g-3 g-lg-4">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label text-uppercase small fw-semibold text-muted">First name</label>
+                                <input
+                                    type="text"
+                                    class="form-control form-control-lg shadow-sm {% if form_group.get('first_name').errors %}is-invalid{% endif %}"
+                                    id="first_name"
+                                    name="first_name"
                                     value="{{ form_group.get('first_name').value }}"
-                                    required
-                                >
+                                    required>
                                 {% if form_group.get('first_name').errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form_group.get('first_name').errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form_group.get('first_name').errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="last_name" class="form-label">Last Name</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control {% if form_group.get('last_name').errors %}is-invalid{% endif %}" 
-                                    id="last_name" 
-                                    name="last_name" 
+
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label text-uppercase small fw-semibold text-muted">Last name</label>
+                                <input
+                                    type="text"
+                                    class="form-control form-control-lg shadow-sm {% if form_group.get('last_name').errors %}is-invalid{% endif %}"
+                                    id="last_name"
+                                    name="last_name"
                                     value="{{ form_group.get('last_name').value }}"
-                                    required
-                                >
+                                    required>
                                 {% if form_group.get('last_name').errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form_group.get('last_name').errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form_group.get('last_name').errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="town" class="form-label">Town</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control {% if form_group.get('town').errors %}is-invalid{% endif %}" 
-                                    id="town" 
-                                    name="town" 
+
+                            <div class="col-md-4">
+                                <label for="town" class="form-label text-uppercase small fw-semibold text-muted">Town</label>
+                                <input
+                                    type="text"
+                                    class="form-control form-control-lg shadow-sm {% if form_group.get('town').errors %}is-invalid{% endif %}"
+                                    id="town"
+                                    name="town"
                                     value="{{ form_group.get('town').value }}"
-                                    required
-                                >
+                                    required>
                                 {% if form_group.get('town').errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form_group.get('town').errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form_group.get('town').errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
-                        </div>
-                        
-                        <!-- Password Change -->
-                        <div class="row mb-4">
+
                             <div class="col-12">
-                                <h5 class="border-bottom pb-2 mb-3">Change Password</h5>
-                                <p class="text-muted small">Leave password fields empty if you don't want to change your password.</p>
+                                <div class="border-top mt-4 pt-4"></div>
+                                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                                    <div>
+                                        <h2 class="h5 fw-bold mb-1">Change password</h2>
+                                        <p class="text-muted small mb-0">Leave these empty to keep your current password.</p>
+                                    </div>
+                                    <span class="badge bg-dark text-uppercase"><i class="bi bi-shield-lock me-1"></i>Security</span>
+                                </div>
                             </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="current_password" class="form-label">Current Password</label>
-                                <input 
-                                    type="password" 
-                                    class="form-control {% if form_group.get('current_password').errors %}is-invalid{% endif %}" 
-                                    id="current_password" 
-                                    name="current_password" 
-                                    value="{{ form_group.get('current_password').value }}"
-                                >
+
+                            <div class="col-md-4">
+                                <label for="current_password" class="form-label text-uppercase small fw-semibold text-muted">Current password</label>
+                                <input
+                                    type="password"
+                                    class="form-control shadow-sm {% if form_group.get('current_password').errors %}is-invalid{% endif %}"
+                                    id="current_password"
+                                    name="current_password"
+                                    value="{{ form_group.get('current_password').value }}">
                                 {% if form_group.get('current_password').errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form_group.get('current_password').errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form_group.get('current_password').errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="new_password" class="form-label">New Password</label>
-                                <input 
-                                    type="password" 
-                                    class="form-control {% if form_group.get('new_password').errors %}is-invalid{% endif %}" 
-                                    id="new_password" 
-                                    name="new_password" 
-                                    value="{{ form_group.get('new_password').value }}"
-                                >
+
+                            <div class="col-md-4">
+                                <label for="new_password" class="form-label text-uppercase small fw-semibold text-muted">New password</label>
+                                <input
+                                    type="password"
+                                    class="form-control shadow-sm {% if form_group.get('new_password').errors %}is-invalid{% endif %}"
+                                    id="new_password"
+                                    name="new_password"
+                                    value="{{ form_group.get('new_password').value }}">
                                 {% if form_group.get('new_password').errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form_group.get('new_password').errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form_group.get('new_password').errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="confirm_password" class="form-label">Confirm New Password</label>
-                                <input 
-                                    type="password" 
-                                    class="form-control {% if form_group.get('confirm_password').errors %}is-invalid{% endif %}" 
-                                    id="confirm_password" 
-                                    name="confirm_password" 
-                                    value="{{ form_group.get('confirm_password').value }}"
-                                >
+
+                            <div class="col-md-4">
+                                <label for="confirm_password" class="form-label text-uppercase small fw-semibold text-muted">Confirm new password</label>
+                                <input
+                                    type="password"
+                                    class="form-control shadow-sm {% if form_group.get('confirm_password').errors %}is-invalid{% endif %}"
+                                    id="confirm_password"
+                                    name="confirm_password"
+                                    value="{{ form_group.get('confirm_password').value }}">
                                 {% if form_group.get('confirm_password').errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form_group.get('confirm_password').errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form_group.get('confirm_password').errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
-                        </div>
-                        
-                        <!-- Submit Button -->
-                        <div class="row">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Update Settings
-                                </button>
-                                <a href="{{ url_for('app.home') }}" class="btn btn-secondary ms-2">
-                                    <i class="fas fa-times"></i> Cancel
-                                </a>
+
+                            <div class="col-12 mt-4">
+                                <div class="d-flex flex-column flex-md-row gap-2">
+                                    <button type="submit" class="btn btn-warning text-black fw-semibold"><i class="bi bi-save me-2"></i>Update settings</button>
+                                    <a href="{{ url_for('app.home') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-2"></i>Cancel</a>
+                                </div>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 {% endblock %}

@@ -11,6 +11,7 @@ from src.app.town.town_service import TownService
 from src.app.user.user import GlobalRole
 from src.app.user.user_service import UserService
 from src.app.home_service import HomeService
+from src.app.group.group_service import GroupService
 
 admin_service = AdminService()
 auth_service = AuthService()
@@ -93,6 +94,10 @@ def login():
             if auth_service.is_super_admin():
                 return redirect(url_for("admin.admin_dashboard", encoded_admin_id=user.encoded_user_id))
             elif auth_service.is_participant():
+                managed_groups = GroupService.get_user_managed_groups(user.id)
+                if managed_groups:
+                    first_group_id = managed_groups[0]['id']
+                    return redirect(url_for('groups.manager_dashboard', group_id=first_group_id))
                 return redirect(url_for("participant.dashboard", encoded_participant_id=user.encoded_user_id))
             else:
                 flash("Unknown role. Contact support.", "danger")

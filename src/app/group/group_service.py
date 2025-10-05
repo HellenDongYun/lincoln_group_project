@@ -1,3 +1,6 @@
+from collections import defaultdict
+from datetime import datetime
+
 from src.app.common.db.cursor import get_cursor
 from src.app.group.group_repository import GroupRepository
 from src.app.event.event import Event
@@ -69,6 +72,12 @@ class GroupService:
         """Get all members of a group"""
         with get_cursor() as cursor:
             return GroupRepository.get_group_members(cursor, group_id)
+
+    @staticmethod
+    def get_group_membership(group_id, user_id):
+        """Get a member's current role and status within a group"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_group_membership(cursor, group_id, user_id)
 
     @staticmethod
     def add_member_to_group(group_id, user_id, role='member'):
@@ -193,9 +202,343 @@ class GroupService:
 
     @staticmethod
     def get_group_events(group_id, include_past=False, limit=None):
-        """Get events for a specific group"""
+        """Get events created for a group"""
         with get_cursor() as cursor:
-            return GroupRepository.get_group_events(cursor, group_id, include_past, limit)
+            rows = GroupRepository.get_group_events(cursor, group_id, include_past, limit)
+            return [Event(**row) for row in rows]
+
+    @staticmethod
+    def get_group_event(group_id, event_id):
+        """Get a single event for a group"""
+        with get_cursor() as cursor:
+            row = GroupRepository.get_group_event(cursor, group_id, event_id)
+            return Event(**row) if row else None
+
+    @staticmethod
+    def create_group_event(group_id, created_by, **event_data):
+        """Create a new event under a group"""
+        with get_cursor() as cursor:
+            event_payload = event_data.copy()
+            volunteer_requirements = event_payload.pop('volunteer_requirements', [])
+
+            event_id = GroupRepository.create_group_event(cursor, group_id, created_by, **event_payload)
+
+            if volunteer_requirements:
+                GroupRepository.replace_event_volunteer_requirements(cursor, event_id, volunteer_requirements)
+
+            return event_id
+
+    @staticmethod
+    def update_group_event(group_id, event_id, **event_data):
+        """Update an existing group event"""
+        with get_cursor() as cursor:
+            update_payload = event_data.copy()
+            volunteer_requirements = update_payload.pop('volunteer_requirements', None)
+
+            updated = GroupRepository.update_group_event(cursor, group_id, event_id, **update_payload)
+
+            if volunteer_requirements is not None:
+                GroupRepository.replace_event_volunteer_requirements(cursor, event_id, volunteer_requirements)
+
+            return updated
+
+    @staticmethod
+    def cancel_group_event(group_id, event_id):
+        """Cancel (delete) an event belonging to a group"""
+        with get_cursor() as cursor:
+            return GroupRepository.delete_group_event(cursor, group_id, event_id)
+
+    @staticmethod
+    def get_event_participants(event_id):
+        """Return participants registered for an event"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_event_participants(cursor, event_id)
+
+    @staticmethod
+    def get_all_volunteer_roles():
+        """Return the global volunteer role catalogue"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_all_volunteer_roles(cursor)
+
+    @staticmethod
+    def get_event_volunteer_requirements(event_id):
+        """Return volunteer requirements configured for an event"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_event_volunteer_requirements(cursor, event_id)
+
+    @staticmethod
+    def get_event_volunteer_assignments(event_id):
+        """Return volunteer assignments for an event"""
+        with get_cursor() as cursor:
+            return GroupRepository.get_event_volunteer_assignments(cursor, event_id)
+
+    @staticmethod
+    def get_event_assignment_snapshot(group_id, event_id):
+        """Collect participants and volunteer assignment details for a group event"""
+        with get_cursor() as cursor:
+            event = GroupRepository.get_group_event(cursor, group_id, event_id)
+            if not event:
+                raise ValueError('Event not found')
+            if isinstance(event, dict):
+                event = Event(**event)
+
+            participants = GroupRepository.get_event_participants(cursor, event_id)
+            volunteer_requirements = GroupRepository.get_event_volunteer_requirements(cursor, event_id)
+            volunteer_assignments = GroupRepository.get_event_volunteer_assignments(cursor, event_id)
+
+        return {
+            'event': event,
+            'participants': participants,
+            'volunteer_requirements': volunteer_requirements,
+            'volunteer_assignments': volunteer_assignments
+        }
+
+    @staticmethod
+    def assign_event_participant(group_id, event_id, member_id):
+        """Assign a group member as a participant for the event"""
+        with get_cursor() as cursor:
+            event = GroupRepository.get_group_event(cursor, group_id, event_id)
+            if not event:
+                raise ValueError('Event not found')
+
+            membership = GroupRepository.get_group_membership(cursor, group_id, member_id)
+            if not membership or membership.get('member_status') != 'active':
+                raise ValueError('Member not found in group')
+
+            max_participants = event.get('max_participants') if isinstance(event, dict) else getattr(event, 'max_participants', None)
+            if max_participants is not None:
+                try:
+                    max_participants = int(max_participants)
+                except (TypeError, ValueError):
+                    max_participants = None
+            if max_participants is not None:
+                current_count = GroupRepository.count_event_participants(cursor, event_id)
+                if current_count >= max_participants:
+                    raise ValueError('Event is at capacity')
+
+            record = GroupRepository.get_event_participant_record(cursor, event_id, member_id)
+            if record and record.get('status') == 'registered':
+                raise ValueError('Member is already registered for this event')
+
+            GroupRepository.add_event_participant(cursor, event_id, member_id)
+            return True
+
+    @staticmethod
+    def remove_event_participant(group_id, event_id, member_id):
+        """Remove a participant assignment from the event"""
+        with get_cursor() as cursor:
+            event = GroupRepository.get_group_event(cursor, group_id, event_id)
+            if not event:
+                raise ValueError('Event not found')
+
+            record = GroupRepository.get_event_participant_record(cursor, event_id, member_id)
+            if not record or record.get('status') != 'registered':
+                raise ValueError('Member is not registered for this event')
+
+            GroupRepository.remove_event_participant(cursor, event_id, member_id)
+            return True
+
+    @staticmethod
+    def assign_event_volunteer(group_id, event_id, member_id, role_id):
+        """Assign a group member to a volunteer role for the event"""
+        with get_cursor() as cursor:
+            event = GroupRepository.get_group_event(cursor, group_id, event_id)
+            if not event:
+                raise ValueError('Event not found')
+
+            membership = GroupRepository.get_group_membership(cursor, group_id, member_id)
+            if not membership or membership.get('member_status') != 'active':
+                raise ValueError('Member not found in group')
+
+            requirement = GroupRepository.get_event_volunteer_requirement(cursor, event_id, role_id)
+            if not requirement:
+                raise ValueError('Volunteer role not configured for this event')
+
+            if GroupRepository.is_user_volunteer_for_role(cursor, event_id, role_id, member_id):
+                raise ValueError('Member already assigned to this volunteer role')
+
+            spots = requirement.get('spots') if isinstance(requirement, dict) else getattr(requirement, 'spots', None)
+            if spots is not None:
+                try:
+                    spots = int(spots)
+                except (TypeError, ValueError):
+                    spots = None
+            if spots is not None:
+                assigned_count = GroupRepository.count_event_volunteer_assignments(cursor, event_id, role_id)
+                if assigned_count >= spots:
+                    raise ValueError('No remaining spots for this role')
+
+            GroupRepository.assign_event_volunteer(cursor, event_id, role_id, member_id)
+            return True
+
+    @staticmethod
+    def remove_event_volunteer(group_id, event_id, member_id, role_id):
+        """Remove a volunteer assignment from the event"""
+        with get_cursor() as cursor:
+            event = GroupRepository.get_group_event(cursor, group_id, event_id)
+            if not event:
+                raise ValueError('Event not found')
+
+            if not GroupRepository.is_user_volunteer_for_role(cursor, event_id, role_id, member_id):
+                raise ValueError('Member is not assigned to this volunteer role')
+
+            GroupRepository.remove_event_volunteer(cursor, event_id, role_id, member_id)
+            return True
+
+    @staticmethod
+    def get_manager_dashboard_snapshot(group_id, include_past_events=False):
+        """Return aggregated analytics for the group manager dashboard"""
+
+        def _format_duration(seconds):
+            if seconds is None:
+                return None
+            seconds = int(round(seconds))
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            secs = seconds % 60
+            if hours:
+                return f"{hours:d}:{minutes:02d}:{secs:02d}"
+            return f"{minutes:d}:{secs:02d}"
+
+        with get_cursor() as cursor:
+            membership_counts = GroupRepository.get_group_membership_counts(cursor, group_id) or {}
+            event_rows = GroupRepository.get_group_event_metrics(cursor, group_id, include_past_events)
+            result_rows = GroupRepository.get_group_result_details(cursor, group_id)
+            activity_rows = GroupRepository.get_group_member_activity(cursor, group_id)
+            volunteer_assignment_rows = GroupRepository.get_group_volunteer_assignments(cursor, group_id)
+            duration_rows = GroupRepository.get_event_average_durations(cursor, group_id)
+
+        counts = {
+            'total_members': membership_counts.get('total_members', 0) or 0,
+            'participants': membership_counts.get('participants', 0) or 0,
+            'managers': membership_counts.get('managers', 0) or 0,
+            'volunteers': 0
+        }
+
+        # Event metrics with volunteer coverage and no-show calculations
+        events = []
+        now = datetime.now()
+
+        for row in event_rows:
+            event_datetime = row.get('datetime')
+            registrations = row.get('registrations') or 0
+            attendance_raw = row.get('attendance') or 0
+            no_shows_raw = max(registrations - attendance_raw, 0)
+            is_past = bool(event_datetime and event_datetime < now)
+            attendance = attendance_raw if is_past else None
+            no_shows = no_shows_raw if is_past else None
+            volunteer_needed = row.get('volunteer_needed') or 0
+            volunteer_assigned = row.get('volunteer_assigned') or 0
+            if volunteer_needed > 0:
+                volunteer_coverage = min(volunteer_assigned / volunteer_needed * 100, 100)
+            else:
+                volunteer_coverage = 100 if volunteer_assigned > 0 else 0
+
+            events.append({
+                'id': row['id'],
+                'name': row['name'],
+                'datetime': row['datetime'],
+                'registrations': registrations,
+                'attendance': attendance,
+                'attendance_display': attendance if attendance is not None else '–',
+                'no_shows': no_shows,
+                'no_shows_display': no_shows if no_shows is not None else '–',
+                'volunteer_needed': volunteer_needed,
+                'volunteer_assigned': volunteer_assigned,
+                'volunteer_gap': max(volunteer_needed - volunteer_assigned, 0),
+                'volunteer_coverage_percent': round(volunteer_coverage, 1),
+                'is_past': is_past
+            })
+
+        total_events = len(events)
+
+        # Performance metrics derived from results
+        total_results = len(result_rows)
+        total_seconds_accum = 0
+        personal_best_map = {}
+        group_record = None
+
+        for row in result_rows:
+            total_seconds = row['total_seconds'] or 0
+            total_seconds_accum += total_seconds
+
+            entry = personal_best_map.get(row['user_id'])
+            if entry is None or total_seconds < entry['seconds']:
+                personal_best_map[row['user_id']] = {
+                    'user_id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name']}",
+                    'seconds': total_seconds,
+                    'formatted': _format_duration(total_seconds),
+                    'event_name': row['event_name'],
+                    'event_datetime': row['event_datetime']
+                }
+
+            if group_record is None or total_seconds < group_record['seconds']:
+                group_record = {
+                    'user_id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name']}",
+                    'seconds': total_seconds,
+                    'formatted': _format_duration(total_seconds),
+                    'event_name': row['event_name'],
+                    'event_datetime': row['event_datetime']
+                }
+
+        personal_bests = sorted(personal_best_map.values(), key=lambda item: item['seconds'])
+        average_event_time = total_seconds_accum / total_results if total_results else None
+
+        # Engagement metrics
+        most_active = []
+        for row in activity_rows:
+            most_active.append({
+                'user_id': row['user_id'],
+                'name': f"{row['first_name']} {row['last_name']}",
+                'registrations': row.get('registrations') or 0,
+                'attended_events': row.get('attended_events') or 0
+            })
+        most_active.sort(key=lambda item: (item['attended_events'], item['registrations']), reverse=True)
+
+        duration_lookup = {row['event_id']: row['avg_duration_seconds'] or 0 for row in duration_rows}
+        default_event_seconds = 5400  # 1.5 hours default when results are not available
+
+        volunteer_summary = defaultdict(lambda: {'assignments': 0, 'seconds': 0, 'name': ''})
+        for row in volunteer_assignment_rows:
+            user_id = row['user_id']
+            volunteer_summary[user_id]['assignments'] += 1
+            volunteer_summary[user_id]['name'] = f"{row['first_name']} {row['last_name']}"
+            event_seconds = duration_lookup.get(row['event_id']) or default_event_seconds
+            volunteer_summary[user_id]['seconds'] += event_seconds
+
+        volunteer_participation = []
+        for user_id, stats in volunteer_summary.items():
+            hours = stats['seconds'] / 3600
+            volunteer_participation.append({
+                'user_id': user_id,
+                'name': stats['name'],
+                'assignments': stats['assignments'],
+                'hours': round(hours, 2)
+            })
+        volunteer_participation.sort(key=lambda item: (item['assignments'], item['hours']), reverse=True)
+
+        counts['volunteers'] = len(volunteer_participation)
+
+        return {
+            'membership_counts': counts,
+            'events': {
+                'total': total_events,
+                'items': events
+            },
+            'performance': {
+                'average_time_seconds': average_event_time,
+                'average_time_display': _format_duration(average_event_time) if average_event_time else None,
+                'personal_bests': personal_bests,
+                'group_record': group_record
+            },
+            'engagement': {
+                'most_active': most_active,
+                'volunteer_participation': volunteer_participation,
+                'volunteer_hours_total': round(sum(item['hours'] for item in volunteer_participation), 2)
+            }
+        }
 
     @staticmethod
     def update_group_settings(group_id, visibility, status):
@@ -204,7 +547,6 @@ class GroupService:
             return GroupRepository.update_group_settings(cursor, group_id, visibility, status)
 
     @staticmethod
-
     def search_for_participants(participant_id, search_term=None, location_filter=None,
                               date_filter=None, type_filter=None, sort_by='popularity'):
         """Get search results specifically for participants with join/register context"""

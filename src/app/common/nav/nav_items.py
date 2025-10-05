@@ -2,6 +2,7 @@ from flask import url_for
 
 from src.app.user.user import GlobalRole
 from src.app.common.nav.encode import encode_id
+from src.app.group.group_service import GroupService
 
 def left_nav_items(user_id: int, user_role: GlobalRole):
 
@@ -35,6 +36,12 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "My Dashboard",
             "url": url_for('participant.dashboard', encoded_participant_id=encoded_participant_id)
         })
+        managed_groups = GroupService.get_user_managed_groups(user_id)
+        if managed_groups:
+            nav_items.append({
+                "label": "Manager Dashboard",
+                "url": url_for('groups.manager_dashboard', group_id=managed_groups[0]['id'])
+            })
         nav_items.append({
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')

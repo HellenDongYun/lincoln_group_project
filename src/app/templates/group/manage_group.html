@@ -22,6 +22,7 @@
       </div>
       <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
         <a href="{{ url_for('groups.view_group', group_id=group.id) }}" class="btn btn-outline-light">Back to group</a>
+        <a href="{{ manager_dashboard_url }}" class="btn btn-warning text-black ms-lg-2 mt-3 mt-lg-0">Analytics dashboard</a>
       </div>
     </div>
   </div>
@@ -71,10 +72,15 @@
           <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <div>
-                <h2 class="h5 fw-bold mb-1">Upcoming events</h2>
+                <h2 id="events" class="h5 fw-bold mb-1">Upcoming events</h2>
                 <p class="text-muted small mb-0">Events created for this group.</p>
               </div>
-              <span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>{{ upcoming_events|length }}</span>
+              <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                <a href="{{ url_for('groups.create_group_event', group_id=group.id) }}" class="btn btn-warning text-black btn-sm shadow-sm" title="Create event" aria-label="Create event">
+                  <i class="bi bi-plus-circle"></i><span class="visually-hidden">Create event</span>
+                </a>
+                <span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>{{ upcoming_events|length }}</span>
+              </div>
             </div>
             {% if upcoming_events %}
             <div class="table-responsive">
@@ -84,16 +90,59 @@
                     <th scope="col">Event</th>
                     <th scope="col">Date &amp; time</th>
                     <th scope="col">Town</th>
+                    <th scope="col" class="text-center" style="width: 150px;">Participants</th>
+                    <th scope="col" class="text-center" style="width: 150px;">Volunteers</th>
                     <th scope="col">Visibility</th>
+                    <th scope="col" class="text-end" style="width: 220px;">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for event in upcoming_events %}
+                  {% set assignment = event_assignments.get(event.id) %}
+                  {% set participant_count = assignment.participants | length if assignment else 0 %}
+                  {% set participant_limit = assignment.event.max_participants if assignment else None %}
+                  {% set volunteer_assigned = assignment.volunteer_assignments | length if assignment else 0 %}
+                  {% set volunteer_total = 0 %}
+                  {% if assignment %}
+                    {% for requirement in assignment.volunteer_requirements %}
+                      {% set volunteer_total = volunteer_total + (requirement.spots | int if requirement.spots is not none else 0) %}
+                    {% endfor %}
+                  {% endif %}
                   <tr>
                     <td class="fw-semibold">{{ event.name }}</td>
                     <td>{{ event.datetime_str or event.datetime }}</td>
                     <td>{{ event.town }}</td>
+                    <td class="text-center">
+                      <span id="participant-count-{{ event.id }}">{{ participant_count }}</span>
+                      {% if participant_limit is not none %}
+                        <span class="text-muted">/</span>
+                        <span id="participant-limit-{{ event.id }}">{{ participant_limit }}</span>
+                      {% else %}
+                        <span class="text-muted">/</span>
+                        <span id="participant-limit-{{ event.id }}">&infin;</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-center">
+                      <span id="volunteer-count-{{ event.id }}">{{ volunteer_assigned }}</span>
+                      <span class="text-muted">/</span>
+                      <span id="volunteer-total-{{ event.id }}">{{ volunteer_total }}</span>
+                    </td>
                     <td class="text-capitalize">{{ event.visibility }}</td>
+                    <td class="text-end">
+                      <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignmentModal" data-event-id="{{ event.id }}" title="Manage participants &amp; volunteers" aria-label="Manage participants and volunteers">
+                          <i class="bi bi-people"></i>
+                        </button>
+                        <a href="{{ url_for('groups.edit_group_event', group_id=group.id, event_id=event.id) }}" class="btn btn-outline-secondary btn-sm">
+                          <i class="bi bi-pencil me-1"></i>Edit
+                        </a>
+                        <form method="post" action="{{ url_for('groups.cancel_group_event', group_id=group.id, event_id=event.id) }}" onsubmit="return confirm('Cancel this event? Participants will be notified.');">
+                          <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                          </button>
+                        </form>
+                      </div>
+                    </td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -117,8 +166,8 @@
               </div>
               <div class="d-flex gap-2 align-items-center">
                 {% if group.visibility == 'private' %}
-                  <a href="{{ url_for('groups.manage_join_requests', group_id=group.id) }}" class="btn btn-outline-primary btn-sm">
-                    <i class="fas fa-user-plus"></i> Join Requests
+                  <a href="{{ url_for('groups.manage_join_requests', group_id=group.id) }}" class="btn btn-outline-primary btn-sm" title="Manage join requests" aria-label="Manage join requests">
+                    <i class="fas fa-user-plus"></i><span class="visually-hidden">Manage join requests</span>
                   </a>
                 {% endif %}
                 <span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>{{ members|length }} active</span>
@@ -152,12 +201,7 @@
                     <td class="text-center">
                       <select class="form-select form-select-sm role-select" data-update-url="{{ url_for('groups.update_member_role', group_id=group.id, member_id=member.id) }}">
                         <option value="member" {% if member.group_role == 'member' %}selected{% endif %}>Member</option>
-                        <option value="volunteer" {% if member.group_role == 'volunteer' %}selected{% endif %}>Volunteer</option>
-                        {% if is_super_admin %}
-                          <option value="manager" {% if member.group_role == 'manager' %}selected{% endif %}>Manager</option>
-                        {% elif member.group_role == 'manager' %}
-                          <option value="manager" selected disabled>Manager</option>
-                        {% endif %}
+                        <option value="manager" {% if member.group_role == 'manager' %}selected{% endif %}>Manager</option>
                       </select>
                     </td>
                     <td class="text-end">
@@ -179,6 +223,51 @@
     </div>
   </div>
 </section>
+<div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true" data-group-id="{{ group.id }}">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="assignmentModalLabel">Manage participants &amp; volunteers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="assignmentModalAlert" class="alert d-none" role="alert"></div>
+        <div class="mb-3">
+          <h6 class="fw-semibold mb-1" id="assignmentEventName"></h6>
+          <p class="text-muted small mb-0" id="assignmentEventMeta"></p>
+        </div>
+
+        <div class="mb-4" id="participantSection">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">Participants</h6>
+            <span class="badge bg-light text-dark border" id="participantSummary"></span>
+          </div>
+          <ul class="list-group list-group-flush mb-3" id="participantList"></ul>
+          <div class="d-flex gap-2 align-items-center">
+            <select class="form-select form-select-sm" id="participantSelect"></select>
+            <button type="button" class="btn btn-primary btn-sm" data-action="assign-participant">
+              <i class="bi bi-person-plus-fill"></i><span class="visually-hidden">Assign participant</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="volunteerSection">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">Volunteers</h6>
+            <span class="badge bg-light text-dark border" id="volunteerSummary"></span>
+          </div>
+          <div id="volunteerRolesContainer"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="event-assignments-data" type="application/json">{{ event_assignment_json | tojson }}</script>
+<script id="group-members-data" type="application/json">{{ group_members_json | tojson }}</script>
 {% endblock %}
 
 {% block footer %}
@@ -207,12 +296,22 @@
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload || {})
       });
-      if (!response.ok) {
-        throw new Error('Request failed');
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (_) {
+        data = null;
       }
-      return response.json();
+
+      if (!response.ok) {
+        const message = data?.error || 'Request failed';
+        throw new Error(message);
+      }
+
+      return data;
     }
 
     document.querySelectorAll('.role-select').forEach((select) => {
@@ -223,7 +322,8 @@
           await postJson(url, { role: newRole });
           showAlert(`Role updated to ${newRole}.`, 'success');
         } catch (error) {
-          showAlert('Unable to update role. Please try again.', 'danger');
+          const message = error?.message || 'Unable to update role. Please try again.';
+          showAlert(message, 'danger');
         }
       });
     });
@@ -240,10 +340,527 @@
           if (row) row.remove();
           showAlert('Member removed from the group.', 'warning');
         } catch (error) {
-          showAlert('Unable to remove member. Please try again.', 'danger');
+          const message = error?.message || 'Unable to remove member. Please try again.';
+          showAlert(message, 'danger');
         }
       });
     });
+
+    function parseJsonData(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return null;
+      try {
+        return JSON.parse(el.textContent || 'null');
+      } catch (error) {
+        console.error('Failed to parse JSON data for', elementId, error);
+        return null;
+      }
+    }
+
+    const assignmentsData = parseJsonData('event-assignments-data') || [];
+    const eventAssignments = {};
+    assignmentsData.forEach((item) => {
+      if (item && item.event && item.event.id != null) {
+        eventAssignments[item.event.id] = item;
+      }
+    });
+
+    const membersData = parseJsonData('group-members-data') || [];
+    const membersById = new Map();
+    membersData.forEach((member) => {
+      if (member && member.id != null) {
+        membersById.set(Number(member.id), member);
+      }
+    });
+    const membersList = Array.from(membersById.values()).sort((a, b) => {
+      const nameA = `${(a.first_name || '').toLowerCase()} ${(a.last_name || '').toLowerCase()}`.trim();
+      const nameB = `${(b.first_name || '').toLowerCase()} ${(b.last_name || '').toLowerCase()}`.trim();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
+    });
+
+    const assignmentModal = document.getElementById('assignmentModal');
+    const assignmentModalLabel = document.getElementById('assignmentModalLabel');
+    const assignmentAlert = document.getElementById('assignmentModalAlert');
+    const assignmentEventName = document.getElementById('assignmentEventName');
+    const assignmentEventMeta = document.getElementById('assignmentEventMeta');
+    const participantSummary = document.getElementById('participantSummary');
+    const volunteerSummary = document.getElementById('volunteerSummary');
+    const participantList = document.getElementById('participantList');
+    const participantSelect = document.getElementById('participantSelect');
+    const volunteerRolesContainer = document.getElementById('volunteerRolesContainer');
+    const assignParticipantButton = assignmentModal ? assignmentModal.querySelector('[data-action="assign-participant"]') : null;
+
+    let currentEventId = null;
+
+    function showAssignmentAlert(message, variant) {
+      if (!assignmentAlert) return;
+      assignmentAlert.textContent = message;
+      assignmentAlert.className = `alert alert-${variant}`;
+      assignmentAlert.classList.remove('d-none');
+      setTimeout(() => assignmentAlert.classList.add('d-none'), 4000);
+    }
+
+    function clearAssignmentAlert() {
+      if (!assignmentAlert) return;
+      assignmentAlert.textContent = '';
+      assignmentAlert.className = 'alert d-none';
+    }
+
+    function formatMemberName(memberId) {
+      const member = membersById.get(Number(memberId));
+      if (!member) {
+        return `Member #${memberId}`;
+      }
+      return `${member.first_name || ''} ${member.last_name || ''}`.trim();
+    }
+
+    function calculateVolunteerCapacity(requirements) {
+      return (requirements || []).reduce((total, req) => {
+        const spots = Number(req && req.spots);
+        return total + (Number.isFinite(spots) ? spots : 0);
+      }, 0);
+    }
+
+    function updateSummaryCounts(eventId) {
+      const assignment = eventAssignments[eventId];
+      if (!assignment) return;
+
+      const participantCountEl = document.getElementById(`participant-count-${eventId}`);
+      const participantLimitEl = document.getElementById(`participant-limit-${eventId}`);
+      const volunteerCountEl = document.getElementById(`volunteer-count-${eventId}`);
+      const volunteerTotalEl = document.getElementById(`volunteer-total-${eventId}`);
+
+      const participants = assignment.participants || [];
+      const limitValue = assignment.event && assignment.event.max_participants != null
+        ? assignment.event.max_participants
+        : '∞';
+
+      if (participantCountEl) participantCountEl.textContent = participants.length;
+      if (participantLimitEl) participantLimitEl.textContent = limitValue;
+
+      const assignments = assignment.volunteer_assignments || [];
+      const totalCapacity = calculateVolunteerCapacity(assignment.volunteer_requirements);
+
+      if (volunteerCountEl) volunteerCountEl.textContent = assignments.length;
+      if (volunteerTotalEl) volunteerTotalEl.textContent = totalCapacity;
+    }
+
+    function renderParticipants(assignment) {
+      if (!participantList || !participantSelect) return;
+
+      const participants = assignment.participants || [];
+      participantList.innerHTML = '';
+
+      if (!participants.length) {
+        const emptyItem = document.createElement('li');
+        emptyItem.className = 'list-group-item text-muted small fst-italic';
+        emptyItem.textContent = 'No participants assigned yet.';
+        participantList.appendChild(emptyItem);
+      } else {
+        participants.forEach((participant) => {
+          const row = document.createElement('li');
+          row.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = formatMemberName(participant.id);
+          row.appendChild(nameSpan);
+
+          const actionButton = document.createElement('button');
+          actionButton.type = 'button';
+          actionButton.className = 'btn btn-outline-danger btn-sm';
+          actionButton.dataset.action = 'remove-participant';
+          actionButton.dataset.memberId = participant.id;
+          actionButton.innerHTML = '<i class="bi bi-person-dash"></i><span class="visually-hidden">Remove participant</span>';
+          row.appendChild(actionButton);
+
+          participantList.appendChild(row);
+        });
+      }
+
+      const assignedIds = new Set(participants.map((participant) => Number(participant.id)));
+      const availableMembers = membersList.filter((member) => !assignedIds.has(Number(member.id)));
+
+      participantSelect.innerHTML = '';
+      participantSelect.disabled = false;
+      participantSelect.value = '';
+
+      if (assignParticipantButton) assignParticipantButton.disabled = true;
+
+      if (!availableMembers.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No available group members';
+        participantSelect.appendChild(option);
+        participantSelect.disabled = true;
+      } else {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select member';
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        participantSelect.appendChild(placeholder);
+
+        availableMembers.forEach((member) => {
+          const option = document.createElement('option');
+          option.value = member.id;
+          option.textContent = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+          participantSelect.appendChild(option);
+        });
+
+        participantSelect.onchange = () => {
+          if (assignParticipantButton) {
+            assignParticipantButton.disabled = !participantSelect.value;
+          }
+        };
+      }
+
+      if (participantSummary) {
+        const limitValue = assignment.event && assignment.event.max_participants != null
+          ? assignment.event.max_participants
+          : '∞';
+        participantSummary.textContent = `${participants.length} / ${limitValue}`;
+      }
+    }
+
+    function renderVolunteerRoles(assignment) {
+      if (!volunteerRolesContainer || !volunteerSummary) return;
+
+      const requirements = assignment.volunteer_requirements || [];
+      const assignments = assignment.volunteer_assignments || [];
+
+      volunteerRolesContainer.innerHTML = '';
+
+      const totalCapacity = calculateVolunteerCapacity(requirements);
+      volunteerSummary.textContent = totalCapacity > 0
+        ? `${assignments.length} / ${totalCapacity}`
+        : `${assignments.length}`;
+
+      if (!requirements.length) {
+        const message = document.createElement('p');
+        message.className = 'text-muted small mb-0 fst-italic';
+        message.textContent = 'No volunteer roles configured for this event.';
+        volunteerRolesContainer.appendChild(message);
+        return;
+      }
+
+      const assignmentsByRole = new Map();
+      assignments.forEach((item) => {
+        const roleKey = String(item.role_id);
+        if (!assignmentsByRole.has(roleKey)) {
+          assignmentsByRole.set(roleKey, []);
+        }
+        assignmentsByRole.get(roleKey).push(item);
+      });
+
+      requirements.forEach((requirement) => {
+        const roleKey = String(requirement.role_id);
+        const roleName = requirement.name || requirement.role_name || 'Volunteer role';
+        const roleDescription = requirement.description || '';
+        const roleAssignments = assignmentsByRole.get(roleKey) || [];
+        const spots = Number(requirement.spots);
+        const capacityText = Number.isFinite(spots) ? `${roleAssignments.length} / ${spots}` : `${roleAssignments.length}`;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'border rounded-3 mb-3 p-3';
+        wrapper.dataset.roleId = roleKey;
+
+        const header = document.createElement('div');
+        header.className = 'd-flex justify-content-between align-items-center mb-2';
+
+        const headerText = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'fw-semibold';
+        title.textContent = roleName;
+        headerText.appendChild(title);
+        if (roleDescription) {
+          const description = document.createElement('div');
+          description.className = 'text-muted small';
+          description.textContent = roleDescription;
+          headerText.appendChild(description);
+        }
+
+        const summaryBadge = document.createElement('span');
+        summaryBadge.className = 'badge bg-light text-dark border';
+        summaryBadge.textContent = capacityText;
+
+        header.appendChild(headerText);
+        header.appendChild(summaryBadge);
+        wrapper.appendChild(header);
+
+        const list = document.createElement('ul');
+        list.className = 'list-group list-group-flush mb-3';
+
+        if (!roleAssignments.length) {
+          const empty = document.createElement('li');
+          empty.className = 'list-group-item text-muted small fst-italic';
+          empty.textContent = 'No volunteers assigned yet.';
+          list.appendChild(empty);
+        } else {
+          roleAssignments.forEach((assignmentItem) => {
+            const item = document.createElement('li');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = formatMemberName(assignmentItem.user_id);
+            item.appendChild(nameSpan);
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn btn-outline-danger btn-sm';
+            removeButton.dataset.action = 'remove-volunteer';
+            removeButton.dataset.roleId = roleKey;
+            removeButton.dataset.memberId = assignmentItem.user_id;
+            removeButton.innerHTML = '<i class="bi bi-person-dash"></i><span class="visually-hidden">Remove volunteer</span>';
+            item.appendChild(removeButton);
+
+            list.appendChild(item);
+          });
+        }
+
+        wrapper.appendChild(list);
+
+        const controls = document.createElement('div');
+        controls.className = 'd-flex gap-2 align-items-center';
+
+  const select = document.createElement('select');
+  select.className = 'form-select form-select-sm volunteer-select';
+
+        const assignedSet = new Set(roleAssignments.map((item) => Number(item.user_id)));
+        const availableMembers = membersList.filter((member) => !assignedSet.has(Number(member.id)));
+
+        const assignButton = document.createElement('button');
+        assignButton.type = 'button';
+        assignButton.className = 'btn btn-outline-primary btn-sm';
+        assignButton.dataset.action = 'assign-volunteer';
+        assignButton.dataset.roleId = roleKey;
+  assignButton.dataset.selectedMemberId = '';
+  assignButton.innerHTML = '<i class="bi bi-person-plus"></i><span class="visually-hidden">Assign volunteer</span>';
+  assignButton.disabled = true;
+
+        if (!availableMembers.length) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'No available group members';
+          select.appendChild(option);
+          select.disabled = true;
+          assignButton.disabled = true;
+        } else {
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = 'Select member';
+          placeholder.disabled = true;
+          placeholder.selected = true;
+          select.appendChild(placeholder);
+
+          availableMembers.forEach((member) => {
+            const option = document.createElement('option');
+            option.value = member.id;
+            option.textContent = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+            select.appendChild(option);
+          });
+
+          select.addEventListener('change', () => {
+            assignButton.disabled = !select.value;
+            assignButton.dataset.selectedMemberId = select.value || '';
+          });
+        }
+
+        controls.appendChild(select);
+        controls.appendChild(assignButton);
+        wrapper.appendChild(controls);
+
+        volunteerRolesContainer.appendChild(wrapper);
+      });
+    }
+
+    function renderAssignmentModal(eventId) {
+      clearAssignmentAlert();
+
+      if (!assignmentModal) return;
+
+      const assignment = eventAssignments[eventId];
+
+      if (!assignment) {
+  if (assignmentModalLabel) assignmentModalLabel.textContent = 'Manage participants & volunteers';
+        if (assignmentEventName) assignmentEventName.textContent = 'Assignments unavailable';
+        if (assignmentEventMeta) assignmentEventMeta.textContent = '';
+        if (participantSummary) participantSummary.textContent = '0 / 0';
+        if (volunteerSummary) volunteerSummary.textContent = '0';
+        if (participantList) {
+          participantList.innerHTML = '<li class="list-group-item text-muted small">Unable to load assignment data.</li>';
+        }
+        if (participantSelect) {
+          participantSelect.innerHTML = '';
+          participantSelect.disabled = true;
+        }
+        if (volunteerRolesContainer) {
+          volunteerRolesContainer.innerHTML = '<p class="text-muted small mb-0">No data available.</p>';
+        }
+        if (assignParticipantButton) assignParticipantButton.disabled = true;
+        return;
+      }
+
+      const eventMeta = assignment.event || {};
+      const eventName = eventMeta.name || 'Event assignments';
+      const eventInfoParts = [eventMeta.datetime_display, eventMeta.town].filter(Boolean);
+
+  if (assignmentModalLabel) assignmentModalLabel.textContent = `Manage participants & volunteers – ${eventName}`;
+      if (assignmentEventName) assignmentEventName.textContent = eventName;
+      if (assignmentEventMeta) assignmentEventMeta.textContent = eventInfoParts.join(' • ');
+
+      renderParticipants(assignment);
+      renderVolunteerRoles(assignment);
+    }
+
+    function storeAssignmentPayload(payload) {
+      if (!payload || !payload.event) return;
+      const eventId = payload.event.id != null ? payload.event.id : currentEventId;
+      if (eventId == null) return;
+      eventAssignments[eventId] = payload;
+    }
+
+    if (assignmentModal) {
+      const groupId = assignmentModal.dataset.groupId;
+
+      assignmentModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        const rawEventId = trigger ? trigger.getAttribute('data-event-id') : null;
+        currentEventId = rawEventId != null ? Number(rawEventId) : null;
+        if (Number.isNaN(currentEventId)) {
+          currentEventId = null;
+        }
+        if (currentEventId != null) {
+          renderAssignmentModal(currentEventId);
+        }
+      });
+
+      assignmentModal.addEventListener('hidden.bs.modal', () => {
+        currentEventId = null;
+        clearAssignmentAlert();
+      });
+
+      assignmentModal.addEventListener('click', async (evt) => {
+        const actionButton = evt.target.closest('[data-action]');
+        if (!actionButton || currentEventId == null) return;
+
+        if (!groupId) {
+          showAssignmentAlert('Group context unavailable.', 'danger');
+          return;
+        }
+
+        const basePath = `/groups/${groupId}/events/${currentEventId}`;
+
+        if (actionButton.dataset.action === 'assign-participant') {
+          if (!participantSelect || !participantSelect.value) {
+            showAssignmentAlert('Select a group member to assign.', 'warning');
+            return;
+          }
+
+          const memberId = Number(participantSelect.value);
+          try {
+            const data = await postJson(`${basePath}/participants`, { member_id: memberId });
+            if (data && data.assignments) {
+              storeAssignmentPayload(data.assignments);
+              renderAssignmentModal(currentEventId);
+              updateSummaryCounts(currentEventId);
+              showAssignmentAlert('Participant assigned to the event.', 'success');
+              showAlert('Participant assigned to the event.', 'success');
+            }
+          } catch (error) {
+            const message = error?.message || 'Unable to assign participant.';
+            showAssignmentAlert(message, 'danger');
+          }
+          return;
+        }
+
+        if (actionButton.dataset.action === 'remove-participant') {
+          const memberId = Number(actionButton.dataset.memberId);
+          if (!memberId) {
+            showAssignmentAlert('Member information missing.', 'danger');
+            return;
+          }
+          if (!confirm('Remove this participant from the event?')) {
+            return;
+          }
+
+          try {
+            const data = await postJson(`${basePath}/participants/remove`, { member_id: memberId });
+            if (data && data.assignments) {
+              storeAssignmentPayload(data.assignments);
+              renderAssignmentModal(currentEventId);
+              updateSummaryCounts(currentEventId);
+              showAssignmentAlert('Participant removed from the event.', 'warning');
+              showAlert('Participant removed from the event.', 'warning');
+            }
+          } catch (error) {
+            const message = error?.message || 'Unable to remove participant.';
+            showAssignmentAlert(message, 'danger');
+          }
+          return;
+        }
+
+        if (actionButton.dataset.action === 'assign-volunteer') {
+          const selectedMemberId = actionButton.dataset.selectedMemberId;
+          const memberId = selectedMemberId ? Number(selectedMemberId) : null;
+          const roleId = Number(actionButton.dataset.roleId);
+
+          if (!roleId) {
+            showAssignmentAlert('Volunteer role information missing.', 'danger');
+            return;
+          }
+
+          if (!memberId || Number.isNaN(memberId)) {
+            showAssignmentAlert('Select a group member to assign.', 'warning');
+            return;
+          }
+
+          try {
+            const data = await postJson(`${basePath}/volunteers`, { member_id: memberId, role_id: roleId });
+            if (data && data.assignments) {
+              storeAssignmentPayload(data.assignments);
+              renderAssignmentModal(currentEventId);
+              updateSummaryCounts(currentEventId);
+              showAssignmentAlert('Volunteer assigned to the role.', 'success');
+              showAlert('Volunteer assigned to the role.', 'success');
+            }
+          } catch (error) {
+            const message = error?.message || 'Unable to assign volunteer.';
+            showAssignmentAlert(message, 'danger');
+          }
+          return;
+        }
+
+        if (actionButton.dataset.action === 'remove-volunteer') {
+          const roleId = Number(actionButton.dataset.roleId);
+          const memberId = Number(actionButton.dataset.memberId);
+
+          if (!roleId || !memberId) {
+            showAssignmentAlert('Volunteer assignment details missing.', 'danger');
+            return;
+          }
+
+          if (!confirm('Remove this volunteer from the role?')) {
+            return;
+          }
+
+          try {
+            const data = await postJson(`${basePath}/volunteers/remove`, { member_id: memberId, role_id: roleId });
+            if (data && data.assignments) {
+              storeAssignmentPayload(data.assignments);
+              renderAssignmentModal(currentEventId);
+              updateSummaryCounts(currentEventId);
+              showAssignmentAlert('Volunteer removed from the role.', 'warning');
+              showAlert('Volunteer removed from the role.', 'warning');
+            }
+          } catch (error) {
+            const message = error?.message || 'Unable to remove volunteer.';
+            showAssignmentAlert(message, 'danger');
+          }
+        }
+      });
+    }
   })();
 </script>
 {% endblock %}

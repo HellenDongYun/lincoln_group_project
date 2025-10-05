@@ -32,7 +32,7 @@ class GroupRepository(Repository):
             query += " LIMIT %s OFFSET %s"
             params.extend([limit, offset])
 
-        cursor.execute(query, params)
+        cursor.execute(query, tuple(params))
         return cursor.fetchall()
 
     @staticmethod
@@ -125,7 +125,7 @@ class GroupRepository(Repository):
         else:
             query += " ORDER BY popularity_score DESC, g.name ASC"
 
-        cursor.execute(query, params)
+        cursor.execute(query, tuple(params))
         return cursor.fetchall()
 
     @staticmethod
@@ -191,8 +191,9 @@ class GroupRepository(Repository):
     def get_user_groups(cursor, user_id):
         """Get all groups a user is a member of"""
         cursor.execute("""
-            SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status,
-                   gm.group_role, gm.member_status
+         SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status,
+             CASE WHEN gm.group_role = 'volunteer' THEN 'member' ELSE gm.group_role END AS group_role,
+             gm.member_status
             FROM Community_Groups g
             JOIN Group_Memberships gm ON g.id = gm.group_id
             WHERE gm.user_id = %s AND gm.member_status = 'active'
@@ -204,14 +205,26 @@ class GroupRepository(Repository):
     def get_group_members(cursor, group_id):
         """Get all members of a group"""
         cursor.execute("""
-            SELECT u.id, u.first_name, u.last_name, u.email, u.town,
-                   gm.group_role, gm.member_status
+         SELECT u.id, u.first_name, u.last_name, u.email, u.town,
+             CASE WHEN gm.group_role = 'volunteer' THEN 'member' ELSE gm.group_role END AS group_role,
+             gm.member_status
             FROM Users u
             JOIN Group_Memberships gm ON u.id = gm.user_id
-            WHERE gm.group_id = %s AND gm.member_status = 'active'
-            ORDER BY gm.group_role DESC, u.first_name ASC
+         WHERE gm.group_id = %s AND gm.member_status = 'active'
+         ORDER BY group_role DESC, u.first_name ASC
         """, (group_id,))
         return cursor.fetchall()
+
+    @staticmethod
+    def get_group_membership(cursor, group_id, user_id):
+        """Get a specific member's role and status in a group"""
+        cursor.execute("""
+         SELECT CASE WHEN group_role = 'volunteer' THEN 'member' ELSE group_role END AS group_role,
+             member_status
+            FROM Group_Memberships
+            WHERE group_id = %s AND user_id = %s
+        """, (group_id, user_id))
+        return cursor.fetchone()
 
     @staticmethod
     def add_group_member(cursor, group_id, user_id, group_role='member'):
@@ -295,6 +308,210 @@ class GroupRepository(Repository):
         cursor.execute(query, params)
         return cursor.fetchall()
 
+    @staticmethod
+    def get_group_event(cursor, group_id, event_id):
+        """Fetch a single event and ensure it belongs to the group"""
+        cursor.execute("""
+            SELECT e.id, e.group_id, e.datetime, e.town, e.name, e.event_type,
+                   e.description, e.max_participants, e.visibility, e.created_by
+            FROM Events e
+            WHERE e.id = %s AND e.group_id = %s
+        """, (event_id, group_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def create_group_event(cursor, group_id, created_by, *, name, event_datetime,
+                           town, event_type, description, max_participants, visibility):
+        """Create a new event for a group"""
+        cursor.execute("""
+            INSERT INTO Events (group_id, datetime, town, name, event_type, description,
+                                max_participants, visibility, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (group_id, event_datetime, town, name, event_type, description,
+               max_participants, visibility, created_by))
+        return cursor.lastrowid
+
+    @staticmethod
+    def update_group_event(cursor, group_id, event_id, *, name, event_datetime,
+                           town, event_type, description, max_participants, visibility):
+        """Update an existing group event"""
+        cursor.execute("""
+            UPDATE Events
+            SET datetime = %s,
+                town = %s,
+                name = %s,
+                event_type = %s,
+                description = %s,
+                max_participants = %s,
+                visibility = %s
+            WHERE id = %s AND group_id = %s
+        """, (event_datetime, town, name, event_type, description,
+               max_participants, visibility, event_id, group_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def delete_group_event(cursor, group_id, event_id):
+        """Delete/cancel an event belonging to the group"""
+        cursor.execute("""
+            DELETE FROM Events
+            WHERE id = %s AND group_id = %s
+        """, (event_id, group_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def get_event_participants(cursor, event_id):
+        """Get active participants registered for an event"""
+        cursor.execute("""
+            SELECT u.id, u.first_name, u.last_name, u.email
+            FROM Event_Participants ep
+            JOIN Users u ON ep.user_id = u.id
+            WHERE ep.event_id = %s AND ep.status = 'registered'
+        """, (event_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def count_event_participants(cursor, event_id):
+        cursor.execute("""
+            SELECT COUNT(*) AS count
+            FROM Event_Participants
+            WHERE event_id = %s AND status = 'registered'
+        """, (event_id,))
+        row = cursor.fetchone()
+        return row['count'] if row else 0
+
+    @staticmethod
+    def get_event_participant_record(cursor, event_id, user_id):
+        cursor.execute("""
+            SELECT status
+            FROM Event_Participants
+            WHERE event_id = %s AND user_id = %s
+        """, (event_id, user_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def add_event_participant(cursor, event_id, user_id):
+        """Register a group member as an event participant"""
+        cursor.execute("""
+            INSERT INTO Event_Participants (event_id, user_id, status)
+            VALUES (%s, %s, 'registered')
+            ON DUPLICATE KEY UPDATE status = 'registered'
+        """, (event_id, user_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def remove_event_participant(cursor, event_id, user_id):
+        """Mark a participant's registration as cancelled"""
+        cursor.execute("""
+            UPDATE Event_Participants
+            SET status = 'cancelled'
+            WHERE event_id = %s AND user_id = %s
+        """, (event_id, user_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def get_all_volunteer_roles(cursor):
+        """Return the catalogue of available volunteer roles"""
+        cursor.execute("""
+            SELECT id, name, description
+            FROM Volunteer_Tasks
+            ORDER BY name ASC
+        """)
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_event_volunteer_requirements(cursor, event_id):
+        """Return volunteer requirements configured for an event"""
+        cursor.execute("""
+            SELECT etv.task_id AS role_id,
+                   vt.name,
+                   vt.description,
+                   etv.spots
+            FROM Event_Task_Vacancies etv
+            JOIN Volunteer_Tasks vt ON etv.task_id = vt.id
+            WHERE etv.event_id = %s
+            ORDER BY vt.name ASC
+        """, (event_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_event_volunteer_requirement(cursor, event_id, role_id):
+        cursor.execute("""
+            SELECT task_id AS role_id, spots
+            FROM Event_Task_Vacancies
+            WHERE event_id = %s AND task_id = %s
+        """, (event_id, role_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def get_event_volunteer_assignments(cursor, event_id):
+        cursor.execute("""
+            SELECT
+                eta.user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                eta.task_id AS role_id,
+                vt.name AS role_name
+            FROM Event_Task_Assignments eta
+            JOIN Users u ON u.id = eta.user_id
+            JOIN Volunteer_Tasks vt ON vt.id = eta.task_id
+            WHERE eta.event_id = %s
+            ORDER BY vt.name ASC, u.first_name ASC, u.last_name ASC
+        """, (event_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def count_event_volunteer_assignments(cursor, event_id, role_id):
+        cursor.execute("""
+            SELECT COUNT(*) AS count
+            FROM Event_Task_Assignments
+            WHERE event_id = %s AND task_id = %s
+        """, (event_id, role_id))
+        row = cursor.fetchone()
+        return row['count'] if row else 0
+
+    @staticmethod
+    def is_user_volunteer_for_role(cursor, event_id, role_id, user_id):
+        cursor.execute("""
+            SELECT 1
+            FROM Event_Task_Assignments
+            WHERE event_id = %s AND task_id = %s AND user_id = %s
+        """, (event_id, role_id, user_id))
+        return cursor.fetchone() is not None
+
+    @staticmethod
+    def assign_event_volunteer(cursor, event_id, role_id, user_id):
+        cursor.execute("""
+            INSERT INTO Event_Task_Assignments (event_id, task_id, user_id)
+            VALUES (%s, %s, %s)
+        """, (event_id, role_id, user_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def remove_event_volunteer(cursor, event_id, role_id, user_id):
+        cursor.execute("""
+            DELETE FROM Event_Task_Assignments
+            WHERE event_id = %s AND task_id = %s AND user_id = %s
+        """, (event_id, role_id, user_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def replace_event_volunteer_requirements(cursor, event_id, requirements):
+        """Persist volunteer requirements for an event, replacing existing rows"""
+        cursor.execute("DELETE FROM Event_Task_Vacancies WHERE event_id = %s", (event_id,))
+
+        if not requirements:
+            return
+
+        values = [(event_id, req['role_id'], req['spots']) for req in requirements]
+        cursor.executemany(
+            """
+            INSERT INTO Event_Task_Vacancies (event_id, task_id, spots)
+            VALUES (%s, %s, %s)
+            """,
+            values
+        )
+
     # Group Applications
     @staticmethod
     def create_group_application(cursor, applicant_id, proposed_name, proposed_description, 
@@ -306,6 +523,137 @@ class GroupRepository(Repository):
             VALUES (%s, %s, %s, %s, %s, %s, 'pending')
         """, (applicant_id, proposed_name, proposed_description, proposed_town, visibility, join_type))
         return cursor.lastrowid
+
+    # Analytics helpers
+    @staticmethod
+    def get_group_membership_counts(cursor, group_id):
+        cursor.execute("""
+            SELECT
+                COUNT(*) AS total_members,
+                SUM(CASE WHEN gm.group_role IN ('member','volunteer') THEN 1 ELSE 0 END) AS participants,
+                SUM(CASE WHEN gm.group_role = 'manager' THEN 1 ELSE 0 END) AS managers
+            FROM Group_Memberships gm
+            WHERE gm.group_id = %s AND gm.member_status = 'active'
+        """, (group_id,))
+        return cursor.fetchone()
+
+    @staticmethod
+    def get_group_event_metrics(cursor, group_id, include_past=False):
+        query = """
+            SELECT
+                e.id,
+                e.name,
+                e.datetime,
+                COALESCE(reg.registrations, 0) AS registrations,
+                COALESCE(att.attendance, 0) AS attendance,
+                COALESCE(vac.required_spots, 0) AS volunteer_needed,
+                COALESCE(assign.assigned_volunteers, 0) AS volunteer_assigned
+            FROM Events e
+            LEFT JOIN (
+                SELECT ep.event_id, COUNT(DISTINCT CASE WHEN ep.status = 'registered' THEN ep.user_id END) AS registrations
+                FROM Event_Participants ep
+                GROUP BY ep.event_id
+            ) reg ON reg.event_id = e.id
+            LEFT JOIN (
+                SELECT er.event_id, COUNT(DISTINCT er.user_id) AS attendance
+                FROM Event_Results er
+                GROUP BY er.event_id
+            ) att ON att.event_id = e.id
+            LEFT JOIN (
+                SELECT etv.event_id, SUM(etv.spots) AS required_spots
+                FROM Event_Task_Vacancies etv
+                GROUP BY etv.event_id
+            ) vac ON vac.event_id = e.id
+            LEFT JOIN (
+                SELECT eta.event_id, COUNT(DISTINCT eta.user_id) AS assigned_volunteers
+                FROM Event_Task_Assignments eta
+                GROUP BY eta.event_id
+            ) assign ON assign.event_id = e.id
+            WHERE e.group_id = %s
+        """
+
+        params = [group_id]
+        if not include_past:
+            query += "\n              AND e.datetime >= NOW()"
+
+        query += "\n            ORDER BY e.datetime DESC"
+
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_group_result_details(cursor, group_id):
+        cursor.execute("""
+            SELECT
+                er.event_id,
+                er.user_id,
+                er.total_seconds,
+                e.name AS event_name,
+                e.datetime AS event_datetime,
+                u.first_name,
+                u.last_name
+            FROM Event_Results er
+            JOIN Events e ON e.id = er.event_id
+            JOIN Users u ON u.id = er.user_id
+            WHERE e.group_id = %s
+        """, (group_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_group_member_activity(cursor, group_id):
+        cursor.execute("""
+            SELECT
+                u.id AS user_id,
+                u.first_name,
+                u.last_name,
+                COALESCE(reg.registrations, 0) AS registrations,
+                COALESCE(att.attended_events, 0) AS attended_events
+            FROM Group_Memberships gm
+            JOIN Users u ON u.id = gm.user_id
+            LEFT JOIN (
+                SELECT ep.user_id, e.group_id, COUNT(DISTINCT ep.event_id) AS registrations
+                FROM Event_Participants ep
+                JOIN Events e ON e.id = ep.event_id
+                WHERE ep.status = 'registered'
+                GROUP BY ep.user_id, e.group_id
+            ) reg ON reg.user_id = gm.user_id AND reg.group_id = gm.group_id
+            LEFT JOIN (
+                SELECT er.user_id, e.group_id, COUNT(DISTINCT er.event_id) AS attended_events
+                FROM Event_Results er
+                JOIN Events e ON e.id = er.event_id
+                GROUP BY er.user_id, e.group_id
+            ) att ON att.user_id = gm.user_id AND att.group_id = gm.group_id
+            WHERE gm.group_id = %s AND gm.member_status = 'active'
+        """, (group_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_group_volunteer_assignments(cursor, group_id):
+        cursor.execute("""
+            SELECT
+                eta.user_id,
+                u.first_name,
+                u.last_name,
+                eta.event_id
+            FROM Event_Task_Assignments eta
+            JOIN Events e ON e.id = eta.event_id
+            JOIN Users u ON u.id = eta.user_id
+            WHERE e.group_id = %s
+        """, (group_id,))
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_event_average_durations(cursor, group_id):
+        cursor.execute("""
+            SELECT
+                e.id AS event_id,
+                AVG(er.total_seconds) AS avg_duration_seconds
+            FROM Events e
+            JOIN Event_Results er ON er.event_id = e.id
+            WHERE e.group_id = %s
+            GROUP BY e.id
+        """, (group_id,))
+        return cursor.fetchall()
 
     @staticmethod
     def get_pending_applications(cursor):
