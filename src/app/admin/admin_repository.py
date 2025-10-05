@@ -457,7 +457,7 @@ class AdminRepository(Repository):
     def get_results(cursor):
         cursor.execute("""
         SELECT r.total_seconds,CONCAT(u.first_name,' ', u.last_name) AS full_name,e.name AS event_name,e.town AS event_location,e.datetime AS event_time
-        FROM Race_Results r
+    FROM Event_Results r
         JOIN Users u ON u.id = r.participant_id
         JOIN Events e ON r.event_id = e.id
         """)

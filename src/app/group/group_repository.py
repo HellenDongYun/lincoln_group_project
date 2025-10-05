@@ -192,7 +192,7 @@ class GroupRepository(Repository):
         """Get all groups a user is a member of"""
         cursor.execute("""
          SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status,
-             CASE WHEN gm.group_role = 'volunteer' THEN 'member' ELSE gm.group_role END AS group_role,
+             gm.group_role,
              gm.member_status
             FROM Community_Groups g
             JOIN Group_Memberships gm ON g.id = gm.group_id
@@ -206,7 +206,7 @@ class GroupRepository(Repository):
         """Get all members of a group"""
         cursor.execute("""
          SELECT u.id, u.first_name, u.last_name, u.email, u.town,
-             CASE WHEN gm.group_role = 'volunteer' THEN 'member' ELSE gm.group_role END AS group_role,
+             gm.group_role,
              gm.member_status
             FROM Users u
             JOIN Group_Memberships gm ON u.id = gm.user_id
@@ -219,7 +219,7 @@ class GroupRepository(Repository):
     def get_group_membership(cursor, group_id, user_id):
         """Get a specific member's role and status in a group"""
         cursor.execute("""
-         SELECT CASE WHEN group_role = 'volunteer' THEN 'member' ELSE group_role END AS group_role,
+         SELECT group_role,
              member_status
             FROM Group_Memberships
             WHERE group_id = %s AND user_id = %s
@@ -530,7 +530,7 @@ class GroupRepository(Repository):
         cursor.execute("""
             SELECT
                 COUNT(*) AS total_members,
-                SUM(CASE WHEN gm.group_role IN ('member','volunteer') THEN 1 ELSE 0 END) AS participants,
+                SUM(CASE WHEN gm.group_role = 'member' THEN 1 ELSE 0 END) AS participants,
                 SUM(CASE WHEN gm.group_role = 'manager' THEN 1 ELSE 0 END) AS managers
             FROM Group_Memberships gm
             WHERE gm.group_id = %s AND gm.member_status = 'active'

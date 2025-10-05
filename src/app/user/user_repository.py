@@ -4,17 +4,6 @@ from src.app.common.db.repository import Repository
 
 class UserRepository(Repository):
 
-    def get_user_by_email(self, email: str):
-        return self.fetchone(
-            """
-            SELECT
-                *
-            FROM Users
-            WHERE email = %s;
-            """,
-            (email,)
-        )
-
     def create_user(self, user: tuple) -> bool:
         try:
             first_name, last_name, town, email, password_hash, *rest = user

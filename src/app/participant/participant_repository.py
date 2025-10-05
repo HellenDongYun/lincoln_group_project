@@ -83,10 +83,10 @@ class ParticipantRepository(Repository):
                 ) as Position,
                 (
                     SELECT COUNT(*) 
-                    FROM Race_Results rr2 
+                    FROM Event_Results rr2 
                     WHERE rr2.event_id = rr.event_id
                 ) as Total_Participants
-            FROM Race_Results rr
+            FROM Event_Results rr
             JOIN Events e ON rr.event_id = e.id
             WHERE rr.participant_id = %s
             AND DATE(e.datetime) < CURDATE()
