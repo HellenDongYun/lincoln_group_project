@@ -341,7 +341,7 @@ class AdminRepository(Repository):
     def fetch_pending_group_applications(cursor):
         cursor.execute("""
             SELECT ga.id, ga.applicant_id, ga.proposed_name, ga.proposed_description,
-                   ga.proposed_town, ga.visibility, ga.join_type, ga.status,
+                   ga.proposed_town, ga.visibility, ga.status,
                    u.first_name, u.last_name, u.email
             FROM Group_Applications ga
             JOIN Users u ON ga.applicant_id = u.id

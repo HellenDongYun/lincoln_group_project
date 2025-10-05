@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
-from src.app.user.user import GroupVisibility, GroupJoinType, GroupStatus
+from src.app.user.user import GroupVisibility, GroupStatus
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -835,7 +835,6 @@ def submit_group_application():
     proposed_description = request.form.get('proposed_description')
     proposed_town = request.form.get('proposed_town')
     visibility = request.form.get('visibility', 'public')
-    join_type = request.form.get('join_type', 'open')
     
     if not proposed_name or not proposed_town:
         flash('Name and town are required', 'error')
@@ -844,7 +843,7 @@ def submit_group_application():
     try:
         GroupService.create_group_application(
             user_id, proposed_name, proposed_description, 
-            proposed_town, visibility, join_type
+            proposed_town, visibility
         )
         flash('Your group application has been submitted for review', 'success')
         return redirect(url_for('groups.index'))

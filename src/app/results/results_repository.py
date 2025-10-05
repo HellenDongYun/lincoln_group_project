@@ -13,9 +13,9 @@ class ResultsRepository(Repository):
                 DATE(e.datetime) as Event_Date,
                 e.town as Event_Location,
                 e.event_type as Event_Type,
-                COUNT(rr.participant_id) as Result_Count
+                COUNT(er.user_id) as Result_Count
             FROM Events e
-            JOIN Race_Results rr ON e.id = rr.event_id
+            JOIN Event_Results er ON e.id = er.event_id
             GROUP BY e.id, e.name, DATE(e.datetime), e.town, e.event_type
             ORDER BY DATE(e.datetime) DESC, e.name ASC
         """
@@ -69,23 +69,23 @@ class ResultsRepository(Repository):
     def get_event_results(self, event_id):
         """Get race results for a specific event with calculated race times"""
         sql = """
-            SELECT 
-                rr.participant_id as Participant_ID,
+            SELECT
+                er.user_id as Participant_ID,
                 u.first_name as First_Name,
                 u.last_name as Last_Name,
                 u.email as Email,
                 u.town as Town,
-                rr.start_time as Start_Time,
-                rr.end_time as End_Time,
-                TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time)) as Race_Time_Seconds,
-                SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time))) as Race_Time,
-                RANK() OVER (ORDER BY TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time))) as Position
-            FROM Race_Results rr
-            JOIN Users u ON rr.participant_id = u.id
-            WHERE rr.event_id = %s
-            AND rr.start_time IS NOT NULL 
-            AND rr.end_time IS NOT NULL
-            ORDER BY Race_Time_Seconds ASC
+                er.start_time as Start_Time,
+                er.end_time as End_Time,
+                er.total_seconds as Race_Time_Seconds,
+                SEC_TO_TIME(er.total_seconds) as Race_Time,
+                RANK() OVER (ORDER BY er.total_seconds) as Position
+            FROM Event_Results er
+            JOIN Users u ON er.user_id = u.id
+            WHERE er.event_id = %s
+            AND er.start_time IS NOT NULL
+            AND er.end_time IS NOT NULL
+            ORDER BY er.total_seconds ASC
         """
         try:
             return self.fetchall(sql, (event_id,))
@@ -115,7 +115,7 @@ class ResultsRepository(Repository):
         sql = """
             SELECT COUNT(*) as count
             FROM Users u
-            WHERE u.id = %s AND u.role = 'participant'
+            WHERE u.id = %s AND u.global_role = 'participant'
         """
         try:
             result = self.fetchone(sql, (participant_id,))
@@ -147,7 +147,7 @@ class ResultsRepository(Repository):
         sql = """
             SELECT id, first_name, last_name, email
             FROM Users
-            WHERE id = %s AND role = 'participant'
+            WHERE id = %s AND global_role = 'participant'
         """
         try:
             result = self.fetchone(sql, (participant_id,))
@@ -161,7 +161,7 @@ class ResultsRepository(Repository):
         sql = """
             SELECT id, first_name, last_name, email
             FROM Users
-            WHERE email = %s AND role = 'participant'
+            WHERE email = %s AND global_role = 'participant'
         """
         try:
             result = self.fetchone(sql, (email,))
@@ -173,9 +173,9 @@ class ResultsRepository(Repository):
     def save_race_result(self, event_id, participant_id, start_time, end_time):
         """Save or update race result for a participant"""
         sql = """
-            INSERT INTO Race_Results (event_id, participant_id, start_time, end_time)
+            INSERT INTO Event_Results (event_id, user_id, start_time, end_time)
             VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE 
+            ON DUPLICATE KEY UPDATE
                 start_time = VALUES(start_time),
                 end_time = VALUES(end_time)
         """
@@ -191,7 +191,7 @@ class ResultsRepository(Repository):
         """Check if an event already has race results"""
         sql = """
             SELECT COUNT(*) as result_count
-            FROM Race_Results
+            FROM Event_Results
             WHERE event_id = %s
         """
         try:
@@ -204,7 +204,7 @@ class ResultsRepository(Repository):
     def remove_event_results(self, event_id):
         """Remove all race results for a specific event"""
         sql = """
-            DELETE FROM Race_Results
+            DELETE FROM Event_Results
             WHERE event_id = %s
         """
         try:
@@ -218,11 +218,11 @@ class ResultsRepository(Repository):
     def get_event_result_summary(self, event_id):
         """Get summary of existing results for an event"""
         sql = """
-            SELECT 
+            SELECT
                 COUNT(*) as total_results,
                 MIN(start_time) as earliest_start,
                 MAX(end_time) as latest_finish
-            FROM Race_Results
+            FROM Event_Results
             WHERE event_id = %s
         """
         try:

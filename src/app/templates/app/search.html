@@ -20,19 +20,6 @@ block content %}
             <h4 class="fw-bold mb-1">Search Result</h2>
             <p class="text-muted">Find events that suit you</p>
           </div>
-
-          <!-- <div class="col-auto">
-            <div class="d-flex align-items-center">
-              <button class="btn btn-outline-secondary btn-sm me-2">
-                <i class="bi bi-funnel me-1"></i>Filter
-              </button>
-              <select class="form-select form-select-sm" style="width: auto">
-                <option>Order by date</option>
-                <option>order by distance</option>
-                <option>order by popularity</option>
-              </select>
-            </div>
-          </div> -->
         </div>
       </div>
     </div>
@@ -152,16 +139,6 @@ block content %}
             <div class="mb-4">
                 <h4 class="fw-bold">Find {{events|length}} events</h4>
             </div>
-            <!-- <div class="mb-4 p-3 bg-light rounded shadow-sm border">
-                <div class="d-flex align-items-center justify-content-between">
-                    <h5 class="fw-bold text-primary mb-0">
-                    <i class="bi bi-calendar2-event-fill me-2"></i> Found {{ events|length }} Events
-                    </h5>
-                    <span class="badge bg-success bg-opacity-75 text-light px-3 py-2">
-                    {{ event_type|capitalize }}
-                    </span>
-                </div>
-            </div> -->
             <!-- Events Grid -->
             <div class="row g-4 mb-4">
                 <div class="row g-4">
@@ -328,13 +305,6 @@ block content %}
               <div class="card h-100 shadow-sm border-0">
                 <!-- images -->
                 <div class="position-relative">
-                  <!-- <img
-                    src="https://images.unsplash.com/photo-1600255979346-6f714f6a1f5c?ixlib=rb-4.0.3&w=400&h=250&fit=crop"
-                    class="card-img-top"
-                    class="card-img-top"
-                    style="height: 200px; object-fit: cover"
-                    alt="{{ group.name }}"
-                  /> -->
                     <img
                         src="{{ url_for('static', filename='images/group.jpg') }}"
                         class="card-img-top"
@@ -376,7 +346,7 @@ block content %}
                   <div class="mt-auto text-end">
                     {% if group.visibility == 'public' %}
                     <a
-                      href="#"
+                       href="{{ url_for('app.login') }}"
                       class="btn btn-dark btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2"
                     >
                       <i class="bi bi-person-plus-fill"></i>
