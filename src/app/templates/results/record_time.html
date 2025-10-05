@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-stopwatch"></i>
+                        Record Completion Time
+                    </h3>
+                    <small>Record participant completion time by ID</small>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="fas fa-info-circle"></i> Instructions</h5>
+                        <ul class="mb-0">
+                            <li>Select the event from the dropdown</li>
+                            <li>Enter the participant's User ID OR email address</li>
+                            <li>Enter the completion time when participant finished</li>
+                            <li>Only registered participants can have times recorded</li>
+                        </ul>
+                    </div>
+
+                    <!-- Manual Time Recording Form -->
+                    <form method="POST" action="{{ url_for('results.record_time') }}">
+                        <div class="mb-3">
+                            <label for="event_id" class="form-label">
+                                <i class="fas fa-calendar-alt"></i> Select Event *
+                            </label>
+                            <select class="form-select" name="event_id" id="event_id" required>
+                                <option value="">Choose an event...</option>
+                                {% for event in events %}
+                                <option value="{{ event.Event_ID }}">
+                                    {{ event.Event_Name }} - {{ event.Event_Date }} ({{ event.Event_Location }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="participant_id" class="form-label">
+                                <i class="fas fa-user"></i> Participant User ID
+                            </label>
+                            <input type="number"
+                                   class="form-control"
+                                   name="participant_id"
+                                   id="participant_id"
+                                   placeholder="Enter participant's user ID number"
+                                   min="1">
+                            <div class="form-text">
+                                Enter the participant's system user ID (found in their user profile)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="participant_email" class="form-label">
+                                <i class="fas fa-envelope"></i> OR Participant Email
+                            </label>
+                            <input type="email"
+                                   class="form-control"
+                                   name="participant_email"
+                                   id="participant_email"
+                                   placeholder="Enter participant's email address">
+                            <div class="form-text">
+                                Alternative: Use email address if you don't know the user ID
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="completion_time" class="form-label">
+                                <i class="fas fa-clock"></i> Completion Time *
+                            </label>
+                            <input type="time"
+                                   class="form-control"
+                                   name="completion_time"
+                                   id="completion_time"
+                                   step="1"
+                                   required>
+                            <div class="form-text">
+                                Enter the time when participant finished (HH:MM:SS format)
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('results.public_results') }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> Back to Results
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-clock"></i> Record Completion Time
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tips Section -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> Tips for Volunteers
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Identification:</strong> Use either User ID number OR email address to identify participants</li>
+                        <li><strong>User ID:</strong> Ask participants for their system user ID (from their profile)</li>
+                        <li><strong>Email:</strong> More practical - ask for their registered email address</li>
+                        <li><strong>Completion Time:</strong> Enter the actual time participant finished (not current time)</li>
+                        <li><strong>Time Format:</strong> Use HH:MM:SS format (e.g., 14:35:20 for 2:35:20 PM)</li>
+                        <li><strong>Validation:</strong> System will verify participant is registered for the selected event</li>
+                        <li><strong>Duplicates:</strong> If a time already exists, it will be updated with the new time</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

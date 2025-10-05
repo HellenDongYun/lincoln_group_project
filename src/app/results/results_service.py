@@ -395,6 +395,73 @@ class ResultsService:
         
         return None
 
+    def record_completion_time(self, event_id, participant_id=None, participant_email=None, completion_time=None):
+        """Record completion time for a participant using provided completion time"""
+        try:
+            # Lookup participant by email if ID not provided
+            if not participant_id and participant_email:
+                participant_info = self.results_repository.get_participant_info_by_email(participant_email)
+                if not participant_info:
+                    return False, f"Participant with email '{participant_email}' not found."
+                participant_id = participant_info['id']
+            else:
+                # Validate participant exists by ID
+                participant_info = self.results_repository.get_participant_info(participant_id)
+                if not participant_info:
+                    return False, "Invalid participant ID. Participant not found."
+
+            # Validate participant is registered for the event
+            is_registered = self.results_repository.validate_participant_registered_for_event(event_id, participant_id)
+            if not is_registered:
+                return False, f"Participant {participant_info['first_name']} {participant_info['last_name']} is not registered for this event."
+
+            # Get event start time to use as start_time
+            event_start_time = self.results_repository.get_event_start_time(event_id)
+            if not event_start_time:
+                return False, "Event not found or has no start time."
+
+            # Parse completion time input
+            if not completion_time:
+                return False, "Completion time is required."
+
+            try:
+                # Parse time input (HH:MM:SS format) and combine with event date
+                time_parts = completion_time.split(':')
+                if len(time_parts) == 3:
+                    hours, minutes, seconds = map(int, time_parts)
+                elif len(time_parts) == 2:
+                    hours, minutes = map(int, time_parts)
+                    seconds = 0
+                else:
+                    return False, "Invalid time format. Use HH:MM:SS or HH:MM format."
+
+                # Combine with event date to create full datetime
+                event_date = event_start_time.date()
+                from datetime import time
+                completion_time_obj = datetime.combine(event_date, time(hours, minutes, seconds))
+
+            except ValueError:
+                return False, "Invalid time format. Please enter time as HH:MM:SS (e.g., 14:35:20)."
+
+            # Validate that completion time is after event start time
+            if completion_time_obj <= event_start_time:
+                return False, "Completion time cannot be before the event start time."
+
+            # Save the result
+            success = self.results_repository.save_race_result(
+                event_id, participant_id, event_start_time, completion_time_obj
+            )
+
+            if success:
+                participant_name = f"{participant_info['first_name']} {participant_info['last_name']}"
+                formatted_completion_time = completion_time_obj.strftime('%H:%M:%S')
+                return True, f"Successfully recorded completion time {formatted_completion_time} for {participant_name}."
+            else:
+                return False, "Failed to save the completion time. Please try again."
+
+        except Exception as e:
+            return False, f"Error recording completion time: {str(e)}"
+
     def _parse_duration(self, duration_str):
         """Parse duration string in MM:SS or HH:MM:SS format and return timedelta"""
         try:

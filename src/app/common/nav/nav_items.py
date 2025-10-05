@@ -28,12 +28,18 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "url": url_for('results.public_results')
         })
         nav_items.append({
+            "label": "Record Completion Time",
+            "url": url_for('results.record_time')
+        })
+        nav_items.append({
             "label": "Events",
             "url": url_for('app.get_events')
         })
 
     # PARTICIPANT
     elif user_role == GlobalRole.PARTICIPANT and user_id:
+        from src.app.group.group_service import GroupService
+
         encoded_participant_id = encode_id(user_id)
         nav_items.append({
             "label": "My Dashboard",
@@ -43,6 +49,14 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')
         })
+
+        # Add Record Completion Time for participants who are group members (volunteers)
+        if GroupService.user_has_group_memberships(user_id):
+            nav_items.append({
+                "label": "Record Completion Time",
+                "url": url_for('results.record_time')
+            })
+
         nav_items.append({
             "label": "My Applications",
             "url": url_for('participant.myapplications', encoded_participant_id=encoded_participant_id)
