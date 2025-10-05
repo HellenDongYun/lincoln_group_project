@@ -521,7 +521,7 @@
                         body: JSON.stringify({
                             event: eventName,
                             role: roleName,
-                            volunteer_id: 1  // 替换为实际的 volunteer_id（例如从会话获取）
+                            volunteer_id: 1 
                         })
                     })
                     .then(response => response.json())
@@ -548,7 +548,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 event: eventName,
-                                volunteer_id: 1  // 替换为实际的 volunteer_id
+                                volunteer_id: 1 
                             })
                         })
                         .then(response => response.json())
@@ -577,7 +577,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 event: eventName,
-                                volunteer_id: 1  // 替换为实际的 volunteer_id
+                                volunteer_id: 1
                             })
                         })
                         .then(response => response.json())

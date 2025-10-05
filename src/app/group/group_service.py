@@ -509,12 +509,13 @@ class GroupService:
 
         volunteer_participation = []
         for user_id, stats in volunteer_summary.items():
-            hours = stats['seconds'] / 3600
+            hours = float(stats['seconds']) / 3600
+            hours = round(hours, 2)
             volunteer_participation.append({
                 'user_id': user_id,
                 'name': stats['name'],
                 'assignments': stats['assignments'],
-                'hours': round(hours, 2)
+                'hours': hours
             })
         volunteer_participation.sort(key=lambda item: (item['assignments'], item['hours']), reverse=True)
 
