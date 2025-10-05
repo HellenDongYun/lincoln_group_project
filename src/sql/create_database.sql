@@ -48,7 +48,7 @@ CREATE TABLE Group_Applications (
 CREATE TABLE Group_Memberships (
   group_id INT NOT NULL,
   user_id INT NOT NULL,
-  group_role ENUM('manager','volunteer','member') NOT NULL DEFAULT 'member',
+  group_role ENUM('manager','member') NOT NULL DEFAULT 'member',
   member_status ENUM('active','inactive') NOT NULL DEFAULT 'active',
   PRIMARY KEY (group_id, user_id),
   FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
