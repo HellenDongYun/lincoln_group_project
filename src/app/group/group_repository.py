@@ -9,7 +9,8 @@ class GroupRepository(Repository):
     def get_all_groups(cursor, visibility_filter=None, town_filter=None, limit=None, offset=0):
         """Get all groups with optional filtering"""
         query = """
-            SELECT g.id, g.name, g.description, g.town, g.visibility, g.status, g.created_by,
+            SELECT g.id, g.name, g.description, g.town, g.visibility,
+                   g.status, g.created_by,
                    COUNT(gm.user_id) as member_count
             FROM Community_Groups g
             LEFT JOIN Group_Memberships gm ON g.id = gm.group_id AND gm.member_status = 'active'
@@ -73,7 +74,8 @@ class GroupRepository(Repository):
         query = f"""
             SELECT
                 g.id as group_id, g.name as group_name, g.description as group_description,
-                g.town, g.visibility, g.status as group_status,
+                g.town, g.visibility,
+                g.status as group_status,
                 COUNT(DISTINCT gm.user_id) as member_count,
                 COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END) as upcoming_events,
 
@@ -167,7 +169,8 @@ class GroupRepository(Repository):
     def get_group_by_id(cursor, group_id):
         """Get a specific group by ID"""
         cursor.execute("""
-            SELECT g.id, g.name, g.description, g.town, g.visibility, g.status, g.created_by,
+            SELECT g.id, g.name, g.description, g.town, g.visibility,
+                   g.status, g.created_by,
                    u.first_name, u.last_name,
                    COUNT(gm.user_id) as member_count
             FROM Community_Groups g
@@ -191,7 +194,8 @@ class GroupRepository(Repository):
     def get_user_groups(cursor, user_id):
         """Get all groups a user is a member of"""
         cursor.execute("""
-         SELECT g.id, g.name, g.description, g.town, g.visibility, g.join_type, g.status,
+         SELECT g.id, g.name, g.description, g.town, g.visibility,
+             g.status,
              gm.group_role,
              gm.member_status
             FROM Community_Groups g
@@ -694,7 +698,7 @@ class GroupRepository(Repository):
     def get_public_groups_for_discovery(cursor, town_filter=None, search_term=None):
         """Get public groups for discovery by visitors and participants"""
         query = """
-            SELECT g.id, g.name, g.description, g.town, g.visibility,
+         SELECT g.id, g.name, g.description, g.town, g.visibility,
                    COUNT(gm.user_id) as member_count,
                    COUNT(CASE WHEN e.datetime > NOW() THEN 1 END) as upcoming_events
             FROM Community_Groups g

@@ -309,7 +309,6 @@ def create_group():
     description = request.form.get('group_description', '').strip()
     town = request.form.get('group_town', '').strip()
     visibility = request.form.get('group_visibility', 'public').strip() or 'public'
-    join_type = request.form.get('group_join_type', 'open').strip() or 'open'
     manager_email = request.form.get('group_manager_email', '').strip()
 
     created_by = auth_service.get_user_id()
@@ -320,7 +319,6 @@ def create_group():
             description=description,
             town=town,
             visibility=visibility,
-            join_type=join_type,
             created_by=created_by,
             manager_email=manager_email
         )

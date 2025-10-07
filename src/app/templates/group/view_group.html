@@ -30,7 +30,6 @@
             <span class="badge rounded-pill bg-warning text-dark px-3 py-2 text-uppercase">{{ group.visibility }}</span>
             <span class="badge rounded-pill bg-light text-dark px-3 py-2">{{ group.town }}</span>
             <span class="badge rounded-pill bg-light text-dark px-3 py-2"><i class="bi bi-people-fill me-1"></i>{{ group.member_count }} members</span>
-            <span class="badge rounded-pill bg-light text-dark px-3 py-2">Join type: {{ group.join_type|capitalize }}</span>
           </div>
         </div>
         <div class="col-lg-3 mt-4 mt-lg-0 d-flex justify-content-lg-end">
@@ -92,15 +91,6 @@
                   </div>
                 </div>
               </div>
-              <div class="col-md-6">
-                <div class="d-flex align-items-start gap-3">
-                  <span class="text-warning fs-4"><i class="bi bi-door-open"></i></span>
-                  <div>
-                    <h3 class="h6 fw-semibold mb-1">Join type</h3>
-                    <p class="mb-0 text-muted text-capitalize">{{ group.join_type }}</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -114,10 +104,6 @@
               <div class="p-3 rounded bg-white border">
                 <p class="text-muted mb-1">Total members</p>
                 <p class="h4 fw-bold mb-0"><i class="bi bi-people-fill text-warning me-2"></i>{{ group.member_count }}</p>
-              </div>
-              <div class="p-3 rounded bg-white border">
-                <p class="text-muted mb-1">Join availability</p>
-                <p class="fw-semibold mb-0 text-capitalize">{{ group.join_type }}</p>
               </div>
               <div class="p-3 rounded bg-white border">
                 <p class="text-muted mb-1">Group status</p>

@@ -305,14 +305,6 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-uppercase small text-white-50">Join type</label>
-                            <select name="group_join_type" class="form-select bg-dark text-white border-secondary" required>
-                                {% for option in group_filter_options.join_types %}
-                                    <option value="{{ option }}">{{ option.replace('_',' ')|title }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
                         <div class="col-12">
                             <label class="form-label text-uppercase small text-white-50">Description</label>
                             <textarea name="group_description" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Purpose, meeting cadence, notable details..."></textarea>
@@ -489,7 +481,7 @@
                                         <div class="fw-semibold">{{ app.first_name }} {{ app.last_name }}</div>
                                         <div class="text-white-50 small">{{ app.email }}</div>
                                     </td>
-                                    <td class="text-white-50">{{ app.visibility|title }} • {{ app.join_type|title }}</td>
+                                    <td class="text-white-50">{{ app.visibility|title }}</td>
                                     <td class="text-white-50">{{ app.proposed_town or '—' }}</td>
                                     <td class="text-end">
                                         <div class="d-flex gap-2 justify-content-end">
