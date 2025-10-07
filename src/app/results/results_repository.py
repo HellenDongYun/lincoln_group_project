@@ -35,8 +35,8 @@ class ResultsRepository(Repository):
                 town as Event_Location,
                 event_type as Event_Type
             FROM Events
-            WHERE DATE(datetime) >= CURDATE() - INTERVAL 30 DAY
-            ORDER BY datetime ASC
+            WHERE DATE(datetime) >= CURDATE() - INTERVAL 30 DAY and DATE(datetime) < NOW()
+            ORDER BY datetime ASC;
         """
         try:
             return self.fetchall(sql)
