@@ -80,7 +80,7 @@ class GroupRepository(Repository):
                 COUNT(DISTINCT CASE WHEN e.datetime > NOW() THEN e.id END) as upcoming_events,
 
                 -- Event information (JSON-like string with all events)
-                GROUP_CONCAT(
+                GROUP_CONCAT(DISTINCT
                     CASE WHEN e.id IS NOT NULL AND e.datetime > NOW() {event_date_filter} {event_type_filter}
                     THEN CONCAT(e.id, '|', e.name, '|', e.description, '|', e.datetime, '|', e.event_type, '|',
                                 COALESCE(e.max_participants, 0), '|',
@@ -481,6 +481,16 @@ class GroupRepository(Repository):
             FROM Event_Task_Assignments
             WHERE event_id = %s AND task_id = %s AND user_id = %s
         """, (event_id, role_id, user_id))
+        return cursor.fetchone() is not None
+
+    @staticmethod
+    def is_user_volunteer_for_event(cursor, event_id, user_id):
+        cursor.execute("""
+            SELECT 1
+            FROM Event_Task_Assignments
+            WHERE event_id = %s AND user_id = %s
+            LIMIT 1
+        """, (event_id, user_id))
         return cursor.fetchone() is not None
 
     @staticmethod

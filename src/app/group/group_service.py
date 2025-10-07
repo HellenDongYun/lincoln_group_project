@@ -117,7 +117,7 @@ class GroupService:
         return GroupService.is_group_manager(group_id, user_id)
 
     @staticmethod
-    def can_user_join_group(group_id, user_id):
+    def can_user_join_group(group_id, user_id, is_super_admin=False):
         """Check if user can join a group"""
         with get_cursor() as cursor:
             group = GroupRepository.get_group_by_id(cursor, group_id)
@@ -128,8 +128,18 @@ class GroupService:
             if GroupRepository.is_group_member(cursor, group_id, user_id):
                 return False
 
-            # Can join immediately if group is public
-            return group['visibility'] == 'public'
+            visibility = str(group.get('visibility') or '').strip().lower()
+
+            # Public groups are open to join
+            if visibility == 'public':
+                return True
+
+            # Super admins can bypass visibility restrictions
+            if is_super_admin:
+                return True
+
+            # Private or unknown visibility require manual approval
+            return False
 
     # Group Applications
     @staticmethod
@@ -200,11 +210,128 @@ class GroupService:
             return [group for group in groups if group['group_role'] == 'manager']
 
     @staticmethod
-    def get_group_events(group_id, include_past=False, limit=None):
-        """Get events created for a group"""
+    def get_group_events(group_id, include_past=False, limit=None, *, current_user_id=None, user_is_member=False):
+        """Get events created for a group, enriched with registration context"""
         with get_cursor() as cursor:
             rows = GroupRepository.get_group_events(cursor, group_id, include_past, limit)
-            return [Event(**row) for row in rows]
+            events = []
+
+            for row in rows:
+                event = Event(**row)
+
+                # Calculate current registrations and available spaces
+                registrations = GroupRepository.count_event_participants(cursor, event.id)
+                event.current_registrations = registrations
+                if event.max_participants:
+                    event.available_spaces = max(event.max_participants - registrations, 0)
+                else:
+                    event.available_spaces = None
+
+                # Participant registration context
+                event.is_registered = False
+                event.registration_status = None
+                event.can_register = False
+                event.registration_blocked_reason = None
+
+                if current_user_id:
+                    record = GroupRepository.get_event_participant_record(cursor, event.id, current_user_id)
+                    if record:
+                        event.registration_status = record.get('status')
+                        event.is_registered = record.get('status') == 'registered'
+
+                # Volunteer opportunities context
+                requirement_rows = GroupRepository.get_event_volunteer_requirements(cursor, event.id)
+                assignment_rows = GroupRepository.get_event_volunteer_assignments(cursor, event.id)
+
+                assignments_by_role = defaultdict(list)
+                current_user_role_ids = set()
+                for assignment in assignment_rows:
+                    role_id = assignment.get('role_id')
+                    if role_id is None:
+                        continue
+                    assignments_by_role[role_id].append(assignment)
+                    if current_user_id and assignment.get('user_id') == current_user_id:
+                        current_user_role_ids.add(role_id)
+
+                volunteer_roles = []
+                total_assigned = 0
+                total_required = 0
+                finite_required = True
+                total_available = 0
+                user_has_event_role = bool(current_user_role_ids)
+
+                volunteer_blocked_reason = None
+                if event.is_registered:
+                    volunteer_blocked_reason = "You're already registered for this event. Cancel your registration before volunteering."
+
+                for requirement in requirement_rows:
+                    role_id = requirement.get('role_id')
+                    role_name = requirement.get('name')
+                    role_description = requirement.get('description')
+                    spots_raw = requirement.get('spots')
+
+                    required_spots = None
+                    if spots_raw is not None:
+                        try:
+                            required_spots = int(spots_raw)
+                        except (TypeError, ValueError):
+                            required_spots = None
+
+                    assigned_count = len(assignments_by_role.get(role_id, []))
+                    total_assigned += assigned_count
+
+                    if required_spots is None:
+                        finite_required = False
+                    else:
+                        total_required += required_spots
+
+                    available_spots = None
+                    if required_spots is not None:
+                        available_spots = max(required_spots - assigned_count, 0)
+                        total_available += available_spots
+
+                    is_assigned = role_id in current_user_role_ids
+                    has_capacity = available_spots is None or available_spots > 0
+
+                    volunteer_roles.append({
+                        'id': role_id,
+                        'name': role_name,
+                        'description': role_description,
+                        'required_spots': required_spots,
+                        'assigned_count': assigned_count,
+                        'available_spots': available_spots,
+                        'is_assigned': is_assigned,
+                        'can_volunteer': bool(user_is_member) and not is_assigned and not user_has_event_role and not event.is_registered and has_capacity
+                    })
+
+                event.volunteer_roles = volunteer_roles
+                event.has_volunteer_roles = len(volunteer_roles) > 0
+                event.volunteer_assigned = total_assigned
+                if finite_required:
+                    event.volunteer_required = total_required
+                    event.volunteer_available = total_available
+                else:
+                    event.volunteer_required = None
+                    event.volunteer_available = None
+                event.user_is_volunteer = user_has_event_role
+                event.user_volunteer_role_ids = list(current_user_role_ids)
+                event.volunteer_blocked_reason = volunteer_blocked_reason
+
+                if user_is_member and not event.is_registered:
+                    has_capacity = (
+                        event.available_spaces is None or event.available_spaces > 0
+                    )
+                    if has_capacity and not user_has_event_role:
+                        event.can_register = True
+                    elif user_has_event_role:
+                        event.registration_blocked_reason = "You've already signed up to volunteer for this event."
+
+                if event.is_registered and not event.user_is_volunteer:
+                    event.registration_blocked_reason = event.registration_blocked_reason or "You're already registered for this event."
+
+                events.append(event)
+
+            return events
 
     @staticmethod
     def get_group_event(group_id, event_id):
@@ -349,12 +476,19 @@ class GroupService:
             if not membership or membership.get('member_status') != 'active':
                 raise ValueError('Member not found in group')
 
+            participant_record = GroupRepository.get_event_participant_record(cursor, event_id, member_id)
+            if participant_record and participant_record.get('status') == 'registered':
+                raise ValueError("You're already registered for this event. Cancel your registration before volunteering.")
+
+            if GroupRepository.is_user_volunteer_for_event(cursor, event_id, member_id):
+                raise ValueError("You've already signed up to volunteer for this event.")
+
             requirement = GroupRepository.get_event_volunteer_requirement(cursor, event_id, role_id)
             if not requirement:
                 raise ValueError('Volunteer role not configured for this event')
 
             if GroupRepository.is_user_volunteer_for_role(cursor, event_id, role_id, member_id):
-                raise ValueError('Member already assigned to this volunteer role')
+                raise ValueError("You've already signed up to volunteer for this event.")
 
             spots = requirement.get('spots') if isinstance(requirement, dict) else getattr(requirement, 'spots', None)
             if spots is not None:
@@ -568,26 +702,34 @@ class GroupService:
                 # Parse events data if present
                 if processed_result.get('events_data'):
                     events = []
+                    seen_event_ids = set()
                     for event_data in processed_result['events_data'].split(';;'):
                         if event_data.strip():
                             parts = event_data.split('|')
                             if len(parts) >= 7:
+                                event_id = parts[0].strip()
+                                if not event_id:
+                                    continue
+                                unique_key = (event_id, parts[3].strip())
+                                if unique_key in seen_event_ids:
+                                    continue
+                                seen_event_ids.add(unique_key)
                                 event = {
-                                    'id': parts[0],
-                                    'name': parts[1],
-                                    'description': parts[2] if parts[2] != 'None' else '',
-                                    'datetime': parts[3],
-                                    'event_type': parts[4],
+                                    'id': event_id,
+                                    'name': parts[1].strip(),
+                                    'description': parts[2].strip() if parts[2] != 'None' else '',
+                                    'datetime': parts[3].strip(),
+                                    'event_type': parts[4].strip(),
                                     'max_participants': int(parts[5]) if parts[5] != '0' else None,
                                     'registered_count': int(parts[6])
                                 }
                                 # Format datetime
                                 try:
                                     from datetime import datetime
-                                    dt = datetime.strptime(parts[3], '%Y-%m-%d %H:%M:%S')
+                                    dt = datetime.strptime(event['datetime'], '%Y-%m-%d %H:%M:%S')
                                     event['formatted_datetime'] = dt.strftime('%Y-%m-%d %H:%M')
                                 except:
-                                    event['formatted_datetime'] = parts[3]
+                                    event['formatted_datetime'] = event['datetime']
 
                                 # Calculate available spaces
                                 if event['max_participants']:

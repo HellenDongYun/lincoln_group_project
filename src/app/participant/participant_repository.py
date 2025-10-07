@@ -102,18 +102,28 @@ class ParticipantRepository(Repository):
     
     def register_for_event(self, participant_id, event_id):
         """Register a participant for an event"""
-        # First check if already registered (only active registrations)
-        check_sql = """
+        already_registered_sql = """
             SELECT COUNT(*) as count 
             FROM Event_Participants 
             WHERE user_id = %s AND event_id = %s AND status = 'registered'
         """
-        
+
+        volunteer_check_sql = """
+            SELECT COUNT(*) as count
+            FROM Event_Task_Assignments
+            WHERE event_id = %s AND user_id = %s
+        """
+
         try:
-            existing = self.fetchone(check_sql, (participant_id, event_id))
+            # Prevent participants who are already volunteering for this event from registering
+            volunteer_result = self.fetchone(volunteer_check_sql, (event_id, participant_id))
+            if volunteer_result and volunteer_result['count'] > 0:
+                return False, "You've already signed up to volunteer for this event. Cancel your volunteer role before registering."
+
+            existing = self.fetchone(already_registered_sql, (participant_id, event_id))
             if existing and existing['count'] > 0:
-                return False  # Already registered
-            
+                return False, "You're already registered for this event."
+
             # Check if event is full
             capacity_sql = """
                 SELECT 
@@ -124,24 +134,22 @@ class ParticipantRepository(Repository):
                 WHERE e.id = %s
                 GROUP BY e.id, e.max_participants
             """
-            
+
             capacity_check = self.fetchone(capacity_sql, (event_id,))
-            if capacity_check:
+            if capacity_check and capacity_check['max_participants'] is not None:
                 if capacity_check['current_registrations'] >= capacity_check['max_participants']:
-                    return False  # Event is full
-            
+                    return False, "This event is already full."
+
             # Register for the event
-            # First check if there's a cancelled registration we can reactivate
             cancelled_check_sql = """
                 SELECT COUNT(*) as count 
                 FROM Event_Participants 
                 WHERE user_id = %s AND event_id = %s AND status = 'cancelled'
             """
-            
+
             cancelled_record = self.fetchone(cancelled_check_sql, (participant_id, event_id))
-            
+
             if cancelled_record and cancelled_record['count'] > 0:
-                # Reactivate cancelled registration
                 reactivate_sql = """
                     UPDATE Event_Participants 
                     SET status = 'registered'
@@ -149,18 +157,19 @@ class ParticipantRepository(Repository):
                 """
                 result = self.execute(reactivate_sql, (participant_id, event_id))
             else:
-                # Create new registration
                 register_sql = """
                     INSERT INTO Event_Participants (user_id, event_id, status)
                     VALUES (%s, %s, 'registered')
                 """
                 result = self.execute(register_sql, (participant_id, event_id))
-            
-            return result is not None
-            
+
+            if result is not None:
+                return True, "Successfully registered for the event!"
+            return False, "Unable to register for this event right now. Please try again."
+
         except Exception as e:
             print(f"Database error in register_for_event: {e}")
-            return False
+            return False, "An unexpected error occurred while registering. Please try again later."
     
     def cancel_registration(self, participant_id, event_id):
         """Cancel a participant's registration for an event"""

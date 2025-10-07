@@ -6,6 +6,7 @@ from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
 from src.app.user.user import GroupVisibility, GroupStatus
+from src.app.common.nav.encode import encode_id
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -44,25 +45,37 @@ def view_group(group_id):
             return redirect(url_for('groups.index'))
     
     members = GroupService.get_group_members(group_id)
-    upcoming_events = GroupService.get_group_events(group_id)
-    
+
+    current_user_id = auth_service.get_user_id() if auth_service.is_logged_in() else None
+    current_user_encoded_id = encode_id(current_user_id) if current_user_id else None
+
     # Check if current user can join/manage
     can_join = False
     is_member = False
     can_manage = False
     if auth_service.is_logged_in():
-        user_id = auth_service.get_user_id()
+        user_id = current_user_id
         is_member = GroupService.is_group_member(group_id, user_id)
-        can_join = not is_member and GroupService.can_user_join_group(group_id, user_id)
+        can_join = not is_member and GroupService.can_user_join_group(
+            group_id, user_id, is_super_admin=auth_service.is_super_admin()
+        )
         can_manage = GroupService.can_user_manage_group(group_id, user_id, auth_service.is_super_admin())
-    
+        upcoming_events = GroupService.get_group_events(
+            group_id,
+            current_user_id=user_id,
+            user_is_member=is_member
+        )
+    else:
+        upcoming_events = GroupService.get_group_events(group_id)
+
     return render_template('group/view_group.html', 
                          group=group, 
                          members=members,
                          can_join=can_join,
                          is_member=is_member,
                          can_manage=can_manage,
-                         upcoming_events=upcoming_events)
+                         upcoming_events=upcoming_events,
+                         current_user_encoded_id=current_user_encoded_id)
 
 
 @group_blueprint.route('/<int:group_id>/join', methods=['POST'])
@@ -70,17 +83,69 @@ def view_group(group_id):
 def join_group(group_id):
     """Join a group"""
     user_id = auth_service.get_user_id()
-    
-    if not GroupService.can_user_join_group(group_id, user_id):
-        flash('Unable to join this group', 'error')
+    group = GroupService.get_group_by_id(group_id)
+
+    if not group:
+        flash('Group not found or unavailable.', 'error')
+        return redirect(url_for('groups.index'))
+
+    visibility = str(group.get('visibility') or '').strip().lower()
+
+    if GroupService.is_group_member(group_id, user_id):
+        flash('You are already a member of this group.', 'info')
         return redirect(url_for('groups.view_group', group_id=group_id))
-    
+
+    if visibility != 'public' and not auth_service.is_super_admin():
+        flash('This group requires a request to join.', 'warning')
+        return redirect(url_for('groups.view_group', group_id=group_id))
+
     try:
         GroupService.add_member_to_group(group_id, user_id)
         flash('Successfully joined the group!', 'success')
-    except Exception as e:
-        flash('Error joining group', 'error')
-    
+    except Exception:
+        flash('Error joining group. Please try again later.', 'error')
+
+    return redirect(url_for('groups.view_group', group_id=group_id))
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/volunteer/<int:role_id>', methods=['POST'])
+@require_login
+def volunteer_for_role(group_id, event_id, role_id):
+    """Allow a group member to volunteer for a role at an event"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
+    if not (GroupService.is_group_member(group_id, user_id) or is_super_admin):
+        flash('Join this group to volunteer for its events.', 'warning')
+        return redirect(url_for('groups.view_group', group_id=group_id))
+
+    try:
+        GroupService.assign_event_volunteer(group_id, event_id, user_id, role_id)
+        flash('Thanks for volunteering! You are assigned to this role.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'warning')
+    except Exception as exc:
+        current_app.logger.exception('Failed to assign volunteer role: %s', exc)
+        flash('Unable to sign up for that volunteer role right now.', 'error')
+
+    return redirect(url_for('groups.view_group', group_id=group_id))
+
+
+@group_blueprint.route('/<int:group_id>/events/<int:event_id>/volunteer/<int:role_id>/cancel', methods=['POST'])
+@require_login
+def cancel_volunteer_role(group_id, event_id, role_id):
+    """Allow a volunteer to cancel their role assignment"""
+    user_id = auth_service.get_user_id()
+
+    try:
+        GroupService.remove_event_volunteer(group_id, event_id, user_id, role_id)
+        flash('Your volunteer role has been released.', 'info')
+    except ValueError as exc:
+        flash(str(exc), 'warning')
+    except Exception as exc:
+        current_app.logger.exception('Failed to cancel volunteer role: %s', exc)
+        flash('Unable to cancel that volunteer role right now.', 'error')
+
     return redirect(url_for('groups.view_group', group_id=group_id))
 
 

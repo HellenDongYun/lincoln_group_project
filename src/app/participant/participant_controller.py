@@ -45,11 +45,12 @@ def register_for_event(encoded_participant_id: str, event_id: int):
             url_for("participant.dashboard", encoded_participant_id=encoded_participant_id)
         )
 
-    success = participant_service.register_for_event(participant_id, event_id)
+    success, message = participant_service.register_for_event(participant_id, event_id)
+
     if success:
-        flash("Successfully registered for the event!", "success")
+        flash(message, "success")
     else:
-        flash("Unable to register for this event. It may be full or already registered.", "danger")
+        flash(message, "danger")
 
     return redirect(
         url_for("participant.dashboard", encoded_participant_id=encoded_participant_id)

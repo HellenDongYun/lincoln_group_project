@@ -145,7 +145,120 @@
               <span class="badge bg-primary-subtle text-primary text-capitalize">{{ event.visibility }}</span>
             </div>
             <p class="text-muted mb-4"><i class="bi bi-clock text-warning me-1"></i>{{ event.datetime_str or event.datetime }}</p>
-            <p class="text-muted small mb-0">Max participants: {{ event.max_participants }}</p>
+            <p class="text-muted small mb-0">
+              {% if event.max_participants %}
+                <i class="bi bi-people me-1"></i>{{ event.current_registrations or 0 }}/{{ event.max_participants }} registered
+                {% if event.available_spaces is not none %}
+                  • {{ event.available_spaces }} space{{ event.available_spaces == 1 and '' or 's' }} left
+                {% endif %}
+              {% else %}
+                <i class="bi bi-infinity me-1"></i>Unlimited capacity
+              {% endif %}
+            </p>
+            {% if event.has_volunteer_roles %}
+            <p class="text-muted small mt-2 mb-0">
+              <i class="bi bi-people-gear text-warning me-1"></i>
+              {% if event.volunteer_required is not none %}
+                {{ event.volunteer_assigned }}/{{ event.volunteer_required }} volunteer{{ event.volunteer_required != 1 and 's' or '' }} committed
+                {% if event.volunteer_available is not none and event.volunteer_available > 0 %}
+                  • {{ event.volunteer_available }} spot{{ event.volunteer_available == 1 and '' or 's' }} open
+                {% elif event.volunteer_available == 0 %}
+                  • All roles filled
+                {% endif %}
+              {% else %}
+                {{ event.volunteer_assigned }} volunteer{{ event.volunteer_assigned != 1 and 's' or '' }} committed
+              {% endif %}
+            </p>
+            {% endif %}
+            <div class="mt-3">
+              {% if current_user_encoded_id %}
+                {% if event.is_registered %}
+                  <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2">
+                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>You're registered</span>
+                    <form method="post" action="{{ url_for('participant.cancel_registration', encoded_participant_id=current_user_encoded_id, event_id=event.id) }}">
+                      <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                      </button>
+                    </form>
+                  </div>
+                {% elif not is_member %}
+                  <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Join this group to register for events.</span>
+                {% elif event.user_is_volunteer %}
+                  <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>You've already signed up to volunteer for this event.</span>
+                {% elif event.available_spaces is not none and event.available_spaces <= 0 %}
+                  <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-exclamation-circle me-1"></i>Event full</span>
+                {% elif event.can_register %}
+                  <form method="post" action="{{ url_for('participant.register_for_event', encoded_participant_id=current_user_encoded_id, event_id=event.id) }}">
+                    <button type="submit" class="btn btn-warning text-black btn-sm fw-semibold"><i class="bi bi-plus-circle me-1"></i>Register for event</button>
+                  </form>
+                {% else %}
+                  <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>{{ event.registration_blocked_reason or 'Registration unavailable.' }}</span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted small"><i class="bi bi-box-arrow-in-right me-1"></i>Log in to register.</span>
+              {% endif %}
+            </div>
+            {% if event.has_volunteer_roles %}
+            <div class="mt-4 pt-3 border-top">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-semibold text-uppercase small text-muted">Volunteer roles</span>
+                {% if event.volunteer_required is not none %}
+                <span class="badge bg-warning-subtle text-warning fw-semibold">{{ event.volunteer_assigned }}/{{ event.volunteer_required }} filled</span>
+                {% else %}
+                <span class="badge bg-warning-subtle text-warning fw-semibold">{{ event.volunteer_assigned }} active</span>
+                {% endif %}
+              </div>
+              <div class="d-flex flex-column gap-2">
+                {% for role in event.volunteer_roles %}
+                <div class="d-flex align-items-start justify-content-between gap-3 p-2 border rounded">
+                  <div>
+                    <p class="fw-semibold small mb-1">{{ role.name }}</p>
+                    {% if role.description %}
+                    <p class="text-muted small mb-1">{{ role.description }}</p>
+                    {% endif %}
+                    <p class="text-muted small mb-0">
+                      {% if role.required_spots is not none %}
+                        {{ role.assigned_count }}/{{ role.required_spots }} filled
+                        {% if role.available_spots is not none and role.available_spots > 0 %}
+                          • {{ role.available_spots }} spot{{ role.available_spots == 1 and '' or 's' }} left
+                        {% elif role.available_spots == 0 %}
+                          • Full
+                        {% endif %}
+                      {% else %}
+                        {{ role.assigned_count }} volunteer{{ role.assigned_count != 1 and 's' or '' }} confirmed
+                      {% endif %}
+                    </p>
+                  </div>
+                  <div class="text-end">
+                    {% if current_user_encoded_id %}
+                      {% if role.is_assigned %}
+                        <form method="post" action="{{ url_for('groups.cancel_volunteer_role', group_id=group.id, event_id=event.id, role_id=role.id) }}">
+                          <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold"><i class="bi bi-x-circle me-1"></i>Cancel</button>
+                        </form>
+                      {% elif not is_member %}
+                        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Join to volunteer.</span>
+                      {% elif role.available_spots is not none and role.available_spots <= 0 %}
+                        <span class="badge bg-secondary-subtle text-secondary">Full</span>
+                      {% elif role.can_volunteer %}
+                        <form method="post" action="{{ url_for('groups.volunteer_for_role', group_id=group.id, event_id=event.id, role_id=role.id) }}">
+                          <button type="submit" class="btn btn-outline-primary btn-sm fw-semibold">+ Sign up</button>
+                        </form>
+                      {% elif event.is_registered %}
+                        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>You're already registered for this event. Cancel your registration before volunteering.</span>
+                      {% elif event.user_is_volunteer %}
+                        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>You've already signed up to volunteer for this event.</span>
+                      {% else %}
+                        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>{{ event.volunteer_blocked_reason or 'Not available.' }}</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted small"><i class="bi bi-box-arrow-in-right me-1"></i>Log in to volunteer.</span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
           </div>
           {% if can_manage %}
           <a href="{{ url_for('groups.edit_group_event', group_id=group.id, event_id=event.id) }}" class="stretched-link" aria-label="Edit {{ event.name }}"></a>
