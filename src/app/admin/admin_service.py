@@ -61,16 +61,14 @@ class AdminService:
     
     @staticmethod
     def delete_event(event_id: int):
-        with get_cursor() as cursor:
-            AdminRepository.delete_event(cursor, event_id)
+        AdminRepository.delete_event(event_id)
     @staticmethod
     def get_event_details(event_id):
-        with get_cursor() as cursor:
-            event = AdminRepository.get_event_by_id(cursor, event_id)
-            volunteer_roles = AdminRepository.get_volunteer_roles(cursor, event_id)
-            participants = AdminRepository.get_event_participants_by_event_id(cursor, event_id)
-            participant_count = AdminRepository.count_event_participants(cursor, event_id)
-            volunteer_total = AdminRepository.sum_volunteer_spots(cursor, event_id)
+        event = AdminRepository.get_event_by_id(event_id)
+        volunteer_roles = AdminRepository.get_volunteer_roles(event_id)
+        participants = AdminRepository.get_event_participants_by_event_id(event_id)
+        participant_count = AdminRepository.count_event_participants(event_id)
+        volunteer_total = AdminRepository.sum_volunteer_spots(event_id)
 
         return {
             "event": event,
@@ -83,37 +81,31 @@ class AdminService:
         
     @staticmethod
     def get_event_name(event_id):
-        with get_cursor() as cursor:
-            return AdminRepository.fetch_event_name(cursor, event_id)
+        return AdminRepository.fetch_event_name(event_id)
 
     @staticmethod
     def fetch_all_volunteer_roles():
-        with get_cursor() as cursor:
-            return AdminRepository.fetch_all_roles(cursor)
+        return AdminRepository.fetch_all_roles()
 
     @staticmethod
     def get_assigned_roles(event_id):
-        with get_cursor() as cursor:
-            return AdminRepository.fetch_assigned_roles(cursor, event_id)
+        return AdminRepository.fetch_assigned_roles(event_id)
 
     @staticmethod
     def remove_volunteer_role(event_id, role_id):
-        with get_cursor() as cursor:
-            AdminRepository.delete_role_assignment(cursor, event_id, role_id)
+        AdminRepository.delete_role_assignment(event_id, role_id)
 
     @staticmethod
     def upsert_volunteer_role(event_id, role_id, spots):
-        with get_cursor() as cursor:
-            AdminRepository.upsert_role_assignment(cursor, event_id, role_id, spots)    
+        AdminRepository.upsert_role_assignment(event_id, role_id, spots)
     
 
     
     @staticmethod
     def get_all_volunteer_roles(filters: dict, page: int = 1, per_page: int = 10):
-        with get_cursor() as cursor:
-            rows, total_count = AdminRepository.get_all_volunteer_roles(cursor,filters, page, per_page)
-            total_pages = math.ceil(total_count / per_page)
-            return {
+        rows, total_count = AdminRepository.get_all_volunteer_roles(filters, page, per_page)
+        total_pages = math.ceil(total_count / per_page)
+        return {
             "volunteers": rows,
             "page": page,
             "per_page": per_page,
@@ -132,95 +124,84 @@ class AdminService:
     @staticmethod
     def get_event_participants(full_name=None, role=None, status=None, page=1, per_page=10):
         offset = (page - 1) * per_page
-        with get_cursor() as cursor:
-            return AdminRepository.get_event_participants_filtered(cursor,
+        return AdminRepository.get_event_participants_filtered(
             full_name=full_name,
             role=role,
             status=status,
             limit=per_page,
-            offset=offset)   
+            offset=offset)
             
     @staticmethod
     def count_event_participants(full_name=None, role=None, status=None):
-        with get_cursor() as cursor:
-            return AdminRepository.count_event_participants_filtered(
-                cursor,
-                full_name=full_name,
-                role=role,
-                status=status
-            )
+        return AdminRepository.count_event_participants_filtered(
+            full_name=full_name,
+            role=role,
+            status=status
+        )
     
     @staticmethod
     def get_results():
-        with get_cursor() as cursor:
-            return AdminRepository.get_results(cursor)
+        return AdminRepository.get_results()
     
     @staticmethod
     def update_user_role(user_id, new_role):
         """Update a user's role"""
-        with get_cursor() as cursor:
-            return AdminRepository.update_user_role(cursor, user_id, new_role)
+        return AdminRepository.update_user_role(user_id, new_role)
     
     @staticmethod
     def update_user_status(user_id, new_status):
         """Update a user's status"""
-        with get_cursor() as cursor:
-            return AdminRepository.update_user_status(cursor, user_id, new_status)
+        return AdminRepository.update_user_status(user_id, new_status)
     
     @staticmethod
     def get_user_by_id(user_id):
         """Get user details by ID"""
-        with get_cursor() as cursor:
-            return AdminRepository.get_user_by_id(cursor, user_id)
+        return AdminRepository.get_user_by_id(user_id)
     
     @staticmethod
     def get_users_for_role_management(page=1, per_page=10, search_name=None, search_role=None):
         """Get users with pagination for role management"""
-        with get_cursor() as cursor:
-            users, total_count = AdminRepository.get_all_users_simple(cursor, page, per_page, search_name, search_role)
-            total_pages = math.ceil(total_count / per_page) if total_count > 0 else 1
-            
-            return {
-                'users': users,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': total_pages,
-                'total_count': total_count
-            }
+        users, total_count = AdminRepository.get_all_users_simple(page, per_page, search_name, search_role)
+        total_pages = math.ceil(total_count / per_page) if total_count > 0 else 1
+
+        return {
+            'users': users,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages,
+            'total_count': total_count
+        }
 
     @staticmethod
     def get_group_overview(filters=None, limit=6):
-        with get_cursor() as cursor:
-            rows = AdminRepository.fetch_group_overview(cursor, filters, limit)
-            overview = []
-            for row in rows:
-                managers = []
-                raw_names = row.get('manager_names')
-                if raw_names:
-                    managers = [name for name in raw_names.split('|') if name]
-                overview.append({
-                    'group_id': row['group_id'],
-                    'name': row['name'],
-                    'description': row.get('description'),
-                    'town': row.get('town'),
-                    'visibility': row.get('visibility'),
-                    'status': row.get('status'),
-                    'member_count': row.get('member_count', 0),
-                    'manager_count': row.get('manager_count', 0),
-                    'manager_names': managers,
-                    'upcoming_events_count': row.get('upcoming_events_count', 0)
-                })
-            return overview
+        rows = AdminRepository.fetch_group_overview(filters, limit)
+        overview = []
+        for row in rows:
+            managers = []
+            raw_names = row.get('manager_names')
+            if raw_names:
+                managers = [name for name in raw_names.split('|') if name]
+            overview.append({
+                'group_id': row['group_id'],
+                'name': row['name'],
+                'description': row.get('description'),
+                'town': row.get('town'),
+                'visibility': row.get('visibility'),
+                'status': row.get('status'),
+                'member_count': row.get('member_count', 0),
+                'manager_count': row.get('manager_count', 0),
+                'manager_names': managers,
+                'upcoming_events_count': row.get('upcoming_events_count', 0)
+            })
+        return overview
 
     @staticmethod
     def get_pending_group_applications():
-        with get_cursor() as cursor:
-            return AdminRepository.fetch_pending_group_applications(cursor)
+        return AdminRepository.fetch_pending_group_applications()
 
     @staticmethod
     def get_group_filter_options():
-        with get_cursor() as cursor:
-            options = AdminRepository.fetch_group_filter_options(cursor)
+        options = AdminRepository.fetch_group_filter_options()
         return {
             'visibilities': [visibility.value for visibility in GroupVisibility],
             'statuses': [status.value for status in GroupStatus],
@@ -229,13 +210,11 @@ class AdminService:
 
     @staticmethod
     def get_event_filter_options():
-        with get_cursor() as cursor:
-            return AdminRepository.fetch_event_filter_options(cursor)
+        return AdminRepository.fetch_event_filter_options()
 
     @staticmethod
     def get_monitoring_metrics(timeframe_days=30):
-        with get_cursor() as cursor:
-            return AdminRepository.fetch_monitoring_metrics(cursor, timeframe_days)
+        return AdminRepository.fetch_monitoring_metrics(timeframe_days)
 
     @staticmethod
     def assign_group_manager(group_id, manager_email):
@@ -246,11 +225,11 @@ class AdminService:
         if not email:
             raise ValueError("Manager email is required")
 
-        with get_cursor() as cursor:
-            user = AdminRepository.find_user_by_email(cursor, email)
-            if not user:
-                raise ValueError("No user found with that email address")
+        user = AdminRepository.find_user_by_email(email)
+        if not user:
+            raise ValueError("No user found with that email address")
 
+        with get_cursor() as cursor:
             GroupRepository.add_group_member(cursor, group_id, user['id'], group_role='manager')
 
             return {
@@ -271,6 +250,7 @@ class AdminService:
             raise ValueError("Unable to determine creator for the group")
 
         manager_email_normalized = manager_email.strip().lower() if manager_email else None
+        manager_user = AdminRepository.find_user_by_email(manager_email_normalized) if manager_email_normalized else None
 
         with get_cursor() as cursor:
             group_id = GroupRepository.create_group(cursor, name, description, town, visibility, created_by)
@@ -278,13 +258,12 @@ class AdminService:
             manager_info = None
             manager_warning = None
             if manager_email_normalized:
-                user = AdminRepository.find_user_by_email(cursor, manager_email_normalized)
-                if user:
-                    GroupRepository.add_group_member(cursor, group_id, user['id'], group_role='manager')
+                if manager_user:
+                    GroupRepository.add_group_member(cursor, group_id, manager_user['id'], group_role='manager')
                     manager_info = {
-                        'user_id': user['id'],
-                        'full_name': f"{user['first_name']} {user['last_name']}",
-                        'email': user['email']
+                        'user_id': manager_user['id'],
+                        'full_name': f"{manager_user['first_name']} {manager_user['last_name']}",
+                        'email': manager_user['email']
                     }
                 else:
                     manager_warning = "Manager email not found; group created without an assigned manager."
