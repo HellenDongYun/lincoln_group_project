@@ -129,3 +129,23 @@ def require_volunteer_or_manager(callback):
     return guard
 
 
+def require_support_staff(callback):
+    """
+    Require user to be support staff (Super Admin or Support Technician)
+    """
+    @wraps(callback)
+    def guard(*args, **kwargs):
+        auth_service = AuthService()
+
+        if not auth_service.is_logged_in():
+            flash("You must be logged in to view this page.", "warning")
+            return redirect(url_for("app.login"))
+
+        if not (auth_service.is_super_admin() or auth_service.is_support_technician()):
+            flash("You do not have permission to view this page.", "danger")
+            return redirect(url_for("app.home"))
+
+        return callback(*args, **kwargs)
+    return guard
+
+

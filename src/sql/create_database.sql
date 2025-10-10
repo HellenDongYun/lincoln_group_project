@@ -4,7 +4,7 @@ CREATE DATABASE activeloop;
 USE activeloop;
 
 -- Core Users & Roles
--- Global roles simplified to: super_admin, participant
+-- Global roles: super_admin, participant, support_technician
 -- (group-level manager/volunteer responsibilities handled via membership tables)
 CREATE TABLE Users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -13,7 +13,7 @@ CREATE TABLE Users (
   first_name VARCHAR(50) NOT NULL,
   last_name VARCHAR(50) NOT NULL,
   town VARCHAR(100),
-  global_role ENUM('super_admin','participant') NOT NULL DEFAULT 'participant',
+  global_role ENUM('super_admin','participant','support_technician') NOT NULL DEFAULT 'participant',
   status ENUM('active','inactive') NOT NULL DEFAULT 'active'
 );
 
