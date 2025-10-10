@@ -105,7 +105,49 @@ INSERT INTO Volunteer_Tasks (name, description) VALUES
 
 
 -- ------------------------------
--- Events 
+-- Achievements & Challenges
+-- ------------------------------
+INSERT INTO Achievements (id, name, description, points_reward) VALUES
+(1, 'Getting Started', 'Complete your very first event.', 50),
+(2, 'Weekend Warrior', 'Attend events on a Saturday and Sunday in the same weekend.', 75),
+(3, 'Dedicated Participant', 'Complete 5 events in a single month.', 150),
+(4, 'Community Helper', 'Complete your first volunteer task.', 100),
+(5, 'Volunteer Veteran', 'Log a total of 10 volunteer hours.', 200),
+(6, 'Jack of All Trades', 'Volunteer for three different types of tasks.', 150),
+(7, 'Better Than Ever', 'Beat your own personal best time in an event.', 50),
+(8, 'Top 10%', 'Finish in the top 10% of participants in a large event.', 100),
+(9, 'Podium Finish', 'Finish in the top 3 of a competitive event.', 250),
+(10, 'Explorer', 'Attend events in three different towns.', 100),
+(11, 'Adventurer', 'Participate in three different types of events.', 150),
+(12, 'Social Butterfly', 'Join three different Community Groups.', 0),
+(13, 'Founders Trophy', 'Successfully create a new Community Group.', 300);
+
+INSERT INTO Challenges (name, description, target_metric, target_value, timeframe_days, achievement_id_reward) VALUES
+('Ice Breaker', 'Complete your very first event.', 'events_attended', 1, NULL, 1),
+('Monthly Milestone', 'Complete 5 events within a single calendar month.', 'events_attended_monthly', 5, 30, 3),
+('Helping Hand', 'Complete your first volunteer task.', 'volunteer_tasks', 1, NULL, 4),
+('Volunteer Veteran', 'Log a total of 10 volunteer hours.', 'volunteer_hours', 10, NULL, 5),
+('Versatile Volunteer', 'Volunteer for three different types of tasks.', 'volunteer_tasks_distinct', 3, NULL, 6),
+('Event Explorer', 'Participate in 3 different event types.', 'event_types_distinct', 3, NULL, 11),
+('Local Tourist', 'Attend events in three different towns.', 'locations_distinct', 3, NULL, 10),
+('Social Butterfly', 'Become a member of three different Community Groups.', 'groups_joined', 3, NULL, 12),
+('Group Founder', 'Successfully apply for and create a new Community Group.', 'groups_founded', 1, NULL, 13);
+
+INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES
+(2, 1, '2025-04-12 09:10:00'),
+(2, 4, '2025-05-04 10:05:00'),
+(3, 1, '2025-04-18 08:45:00'),
+(3, 3, '2025-07-01 09:30:00'),
+(4, 1, '2025-07-15 08:20:00'),
+(4, 7, '2025-08-05 08:50:00'),
+(5, 4, '2025-07-24 07:40:00'),
+(5, 5, '2025-08-18 09:15:00'),
+(6, 1, '2025-08-02 08:05:00'),
+(7, 4, '2025-06-28 07:35:00');
+
+
+-- ------------------------------
+-- Events
 -- ------------------------------
 INSERT INTO Events (group_id, datetime, town, name, event_type, description, max_participants, visibility, created_by) VALUES
 (1, '2025-09-15 07:30:00', 'Christchurch', 'Avon River Fun Run', '5km Run', 'A scenic 5km loop along the Avon River for all ages.', 50, 'public', 2), -- 1: UPCOMING (Sept 15)

@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 import math
 
 from src.app.auth.route_guard import require_login
-from src.app.common.nav.encode import decode_id
+from src.app.common.nav.encode import decode_id, encode_id
 from src.app.participant.participant_service import ParticipantService
 from src.app.auth.auth_service import AuthService
 
@@ -22,12 +22,55 @@ def dashboard(encoded_participant_id: str):
     my_registrations = participant_service.get_my_registrations(participant_id)
     my_results = participant_service.get_my_race_results(participant_id)
 
+    rewards_snapshot = participant_service.get_rewards_dashboard(participant_id)
+    earned_achievements = [
+        achievement
+        for achievement in rewards_snapshot["achievements"]
+        if achievement.get("earned")
+    ]
+
+    next_active_challenge = next(
+        (
+            challenge
+            for challenge in rewards_snapshot["challenges"]
+            if not challenge.get("earned")
+        ),
+        None,
+    )
+
     return render_template(
         "participant/participant_dashboard.html",
         upcoming_events=upcoming_events,
         my_registrations=my_registrations,
         my_results=my_results,
         participant_id=encoded_participant_id,
+        rewards_summary=rewards_snapshot["summary"],
+        recent_achievements=earned_achievements[:4],
+        next_challenge=next_active_challenge,
+    )
+
+
+@participant_blueprint.route("/<encoded_participant_id>/rewards", methods=["GET"])
+@require_login
+def rewards(encoded_participant_id: str):
+    participant_id = decode_id(encoded_participant_id)
+    current_user_id = auth_service.get_user_id()
+
+    if participant_id != current_user_id:
+        flash("You can only view your own rewards dashboard.", "danger")
+        if current_user_id:
+            redirect_id = encode_id(current_user_id)
+            return redirect(url_for("participant.dashboard", encoded_participant_id=redirect_id))
+        return redirect(url_for("app.home"))
+
+    rewards_data = participant_service.get_rewards_dashboard(participant_id)
+
+    return render_template(
+        "participant/rewards.html",
+        participant_id=encoded_participant_id,
+        achievements=rewards_data["achievements"],
+        challenges=rewards_data["challenges"],
+        summary=rewards_data["summary"],
     )
 
 

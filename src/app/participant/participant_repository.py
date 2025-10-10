@@ -200,10 +200,10 @@ class ParticipantRepository(Repository):
             return False
     
     
-    def show_application(self,status, page,per_page,participant_id):
+    def show_application(self, status, page, per_page, participant_id):
         """Show the applications for a participant"""
         query = '''
-        SELECT 
+        SELECT
             ga.proposed_name AS name,
             ga.proposed_description AS description,
             ga.proposed_town AS town,
@@ -246,33 +246,97 @@ class ParticipantRepository(Repository):
             total = cursor.fetchone()["total"]
         return rows, total
 
-    def create_group_application(self,participant_id, name, description, town, visibility):
+    def create_group_application(self, participant_id, name, description, town, visibility):
         with get_cursor() as cursor:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO Group_Applications (
                     applicant_id, proposed_name, proposed_description, proposed_town, visibility
                 ) VALUES (%s, %s, %s, %s, %s)
-            """, (participant_id, name, description, town, visibility)) 
-            
-    def get_application_by_id(self,participant_id, application_id):
+            """,
+                (participant_id, name, description, town, visibility),
+            )
+
+    def get_application_by_id(self, participant_id, application_id):
         with get_cursor() as cursor:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM Group_Applications WHERE id = %s AND applicant_id = %s
-            """, (application_id, participant_id))
+            """,
+                (application_id, participant_id),
+            )
             return cursor.fetchone()
-        
-    def update_group_application(self,participant_id, application_id, name, town, visibility, description):
+
+    def update_group_application(
+        self, participant_id, application_id, name, town, visibility, description
+    ):
         with get_cursor() as cursor:
-            cursor.execute("""
-                UPDATE Group_Applications 
+            cursor.execute(
+                """
+                UPDATE Group_Applications
                 SET proposed_name = %s, proposed_town = %s, visibility = %s, proposed_description = %s
                 WHERE id = %s AND applicant_id = %s
-            """, (name, town, visibility, description, application_id, participant_id))
-    
-    
-    
-    def delete_group_application(self,participant_id, application_id):
+            """,
+                (name, town, visibility, description, application_id, participant_id),
+            )
+
+    def delete_group_application(self, participant_id, application_id):
         with get_cursor() as cursor:
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM Group_Applications WHERE id = %s AND applicant_id = %s
-            """, (application_id, participant_id))
+            """,
+                (application_id, participant_id),
+            )
+
+    def get_achievements_for_user(self, participant_id):
+        sql = """
+            SELECT
+                a.id,
+                a.name,
+                a.description,
+                a.points_reward,
+                ua.earned_at
+            FROM Achievements a
+            LEFT JOIN User_Achievements ua
+                ON ua.achievement_id = a.id
+                AND ua.user_id = %s
+            ORDER BY
+                ua.earned_at IS NULL,
+                a.points_reward DESC,
+                a.name ASC
+        """
+
+        achievements = self.fetchall(sql, (participant_id,))
+        for achievement in achievements:
+            achievement["earned"] = achievement.get("earned_at") is not None
+        return achievements
+
+    def get_challenges_for_user(self, participant_id):
+        sql = """
+            SELECT
+                c.id,
+                c.name,
+                c.description,
+                c.target_metric,
+                c.target_value,
+                c.timeframe_days,
+                c.achievement_id_reward,
+                a.name AS achievement_name,
+                a.points_reward,
+                ua.earned_at
+            FROM Challenges c
+            JOIN Achievements a ON c.achievement_id_reward = a.id
+            LEFT JOIN User_Achievements ua
+                ON ua.achievement_id = c.achievement_id_reward
+                AND ua.user_id = %s
+            ORDER BY
+                ua.earned_at IS NULL,
+                a.points_reward DESC,
+                c.name ASC
+        """
+
+        challenges = self.fetchall(sql, (participant_id,))
+        for challenge in challenges:
+            challenge["earned"] = challenge.get("earned_at") is not None
+        return challenges

@@ -4,7 +4,7 @@ CREATE DATABASE activeloop;
 USE activeloop;
 
 -- Core Users & Roles
--- Global roles: super_admin, participant, support_technician
+-- Global roles simplified to: super_admin, participant
 -- (group-level manager/volunteer responsibilities handled via membership tables)
 CREATE TABLE Users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -13,7 +13,7 @@ CREATE TABLE Users (
   first_name VARCHAR(50) NOT NULL,
   last_name VARCHAR(50) NOT NULL,
   town VARCHAR(100),
-  global_role ENUM('super_admin','participant','support_technician') NOT NULL DEFAULT 'participant',
+  global_role ENUM('super_admin','participant') NOT NULL DEFAULT 'participant',
   status ENUM('active','inactive') NOT NULL DEFAULT 'active'
 );
 
@@ -146,3 +146,38 @@ CREATE TABLE Group_Join_Requests (
   FOREIGN KEY (reviewed_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE,
   UNIQUE KEY unique_user_group_pending (user_id, group_id, status)
 );
+
+-- Achievement system -------------------------------------------------------
+
+CREATE TABLE Achievements (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL UNIQUE,
+  description TEXT,
+  points_reward INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE Challenges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL UNIQUE,
+  description TEXT,
+  target_metric VARCHAR(100) NOT NULL,
+  target_value INT NOT NULL,
+  timeframe_days INT NULL,
+  achievement_id_reward INT NOT NULL,
+  FOREIGN KEY (achievement_id_reward) REFERENCES Achievements(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE User_Achievements (
+  user_id INT NOT NULL,
+  achievement_id INT NOT NULL,
+  earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, achievement_id),
+  FOREIGN KEY (user_id) REFERENCES Users(id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (achievement_id) REFERENCES Achievements(id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_challenges_reward ON Challenges(achievement_id_reward);
+CREATE INDEX idx_user_achievements_earned ON User_Achievements(earned_at);

@@ -8,7 +8,6 @@ from src.app.common.nav.encode import encode_id
 class GlobalRole(Enum):
     SUPER_ADMIN = 'super_admin'
     PARTICIPANT = 'participant'
-    SUPPORT_TECHNICIAN = 'support_technician'
 
 
 class GroupRole(Enum):
@@ -53,10 +52,6 @@ class User:
     @property
     def is_super_admin(self) -> bool:
         return self.global_role == GlobalRole.SUPER_ADMIN
-
-    @property
-    def is_support_technician(self) -> bool:
-        return self.global_role == GlobalRole.SUPPORT_TECHNICIAN
 
     @property
     def full_name(self) -> str:

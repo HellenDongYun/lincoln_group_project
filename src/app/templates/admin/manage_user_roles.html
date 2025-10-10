@@ -39,7 +39,6 @@
                             <select id="search_role" name="search_role" class="form-select">
                                 <option value="">All Roles</option>
                                 <option value="participant" {% if search_role == 'participant' %}selected{% endif %}>Participant</option>
-                                <option value="support_technician" {% if search_role == 'support_technician' %}selected{% endif %}>Support Technician</option>
                                 <option value="super_admin" {% if search_role == 'super_admin' %}selected{% endif %}>Super Admin</option>
                             </select>
                         </div>
@@ -101,11 +100,10 @@
                                         <span class="badge bg-light text-dark">{{ user.town or 'N/A' }}</span>
                                     </td>
                                     <td>
-                                                                                <span class="badge
+                                                                                <span class="badge 
                                                                                         {% if user.role == 'super_admin' %}bg-dark text-warning
-                                                                                        {% elif user.role == 'support_technician' %}bg-info
                                                                                         {% elif user.role == 'participant' %}bg-success
-                                                                                        {% else %}bg-secondary{% endif %}"
+                                                                                        {% else %}bg-secondary{% endif %}" 
                                               id="role-badge-{{ user.id }}">
                                                                                         {{ user.role.replace('_', ' ')|title }}
                                         </span>
@@ -128,13 +126,13 @@
                                                 Change Role
                                             </button>
                                             <ul class="dropdown-menu" aria-labelledby="roleDropdown{{ user.id }}">
-                                                {% for role in ['participant', 'support_technician', 'super_admin'] %}
+                                                {% for role in ['participant', 'super_admin'] %}
                                                     {% if role != user.role %}
                                                     <li>
-                                                        <a class="dropdown-item role-change-btn"
-                                                           href="#"
-                                                           data-user-id="{{ user.id }}"
-                                                           data-user-name="{{ user.full_name }}"
+                                                        <a class="dropdown-item role-change-btn" 
+                                                           href="#" 
+                                                           data-user-id="{{ user.id }}" 
+                                                           data-user-name="{{ user.full_name }}" 
                                                            data-new-role="{{ role }}"
                                                            data-current-role="{{ user.role }}">
                                                             <i class="fas fa-arrow-right me-2"></i>
@@ -488,8 +486,6 @@ document.addEventListener('DOMContentLoaded', function() {
         switch(role) {
             case 'super_admin':
                 return 'bg-dark text-warning';
-            case 'support_technician':
-                return 'bg-info';
             case 'participant':
                 return 'bg-success';
             default:
@@ -507,11 +503,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateDropdownOptions(userId, newRole) {
         const dropdown = document.querySelector(`#roleDropdown${userId}`).parentNode.querySelector('.dropdown-menu');
-    const allRoles = ['participant', 'support_technician', 'super_admin'];
-
+    const allRoles = ['participant', 'super_admin'];
+        
         // Clear current options
         dropdown.innerHTML = '';
-
+        
         // Add new options (excluding current role)
         allRoles.forEach(role => {
             if (role !== newRole) {
