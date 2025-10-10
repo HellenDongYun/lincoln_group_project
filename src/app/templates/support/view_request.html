@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}ActiveLoop - Support Request #{{ support_request.id }}{% endblock %}
+
+{% block content %}
+<div class="hero-section-dark">
+    <div class="container hero-content">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 text-white">Support Request #{{ support_request.id }}</h1>
+                <p class="lead text-white-50">{{ support_request.subject }}</p>
+            </div>
+            <a href="{{ url_for('support.my_requests') }}" class="btn btn-outline-light">
+                <i class="bi bi-arrow-left me-2"></i>Back to My Requests
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Request Details Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-ticket-detailed text-primary me-2"></i>Request Details
+                        </h5>
+                        <div>
+                            <span class="badge
+                                {% if support_request.status == 'new' %}bg-info
+                                {% elif support_request.status == 'open' %}bg-primary
+                                {% elif support_request.status == 'stalled' %}bg-warning text-dark
+                                {% elif support_request.status == 'resolved' %}bg-success
+                                {% else %}bg-secondary{% endif %} me-2">
+                                {{ support_request.status|title }}
+                            </span>
+                            <span class="badge
+                                {% if support_request.priority == 'high' %}bg-danger
+                                {% elif support_request.priority == 'medium' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ support_request.priority|title }} Priority
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted small">Issue Type:</label>
+                        <p>{{ support_request.issue_type.replace('_', ' ')|title }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted small">Description:</label>
+                        <p class="mb-0" style="white-space: pre-wrap;">{{ support_request.description }}</p>
+                    </div>
+
+                    {% if support_request.screenshot_path %}
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted small">Attached Screenshot:</label>
+                        <div class="mt-2">
+                            <a href="{{ url_for('static', filename=support_request.screenshot_path) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-image me-1"></i>View Screenshot
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">
+                        <i class="bi bi-chat-left-text text-primary me-2"></i>
+                        Conversation ({{ support_request.comments|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if support_request.comments %}
+                        {% for comment in support_request.comments %}
+                        <div class="d-flex mb-3 {% if not loop.last %}pb-3 border-bottom{% endif %}">
+                            <div class="flex-shrink-0">
+                                <div class="avatar-circle
+                                    {% if comment.is_staff_reply %}bg-primary
+                                    {% else %}bg-secondary{% endif %} text-white">
+                                    {{ comment.first_name[0] }}{{ comment.last_name[0] }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-0">
+                                            {{ comment.first_name }} {{ comment.last_name }}
+                                            {% if comment.is_staff_reply %}
+                                                <span class="badge bg-primary ms-2">Support Team</span>
+                                            {% endif %}
+                                        </h6>
+                                        <small class="text-muted">
+                                            {{ comment.created_at.strftime('%d %b %Y at %I:%M %p') }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <p class="mt-2 mb-0" style="white-space: pre-wrap;">{{ comment.comment }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center mb-0">
+                            <i class="bi bi-chat-dots display-4 d-block mb-2"></i>
+                            No comments yet. Add your first comment below.
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Add Comment Form -->
+                {% if support_request.status != 'resolved' %}
+                <div class="card-footer bg-light">
+                    <form method="POST" action="{{ url_for('support.add_comment', request_id=support_request.id) }}">
+                        <div class="mb-3">
+                            <label for="comment" class="form-label fw-bold">Add a Comment</label>
+                            <textarea class="form-control"
+                                      id="comment"
+                                      name="comment"
+                                      rows="4"
+                                      placeholder="Provide additional information or updates..."
+                                      required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send me-2"></i>Submit Comment
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="card-footer bg-light text-center">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    <span class="text-muted">This request has been resolved. Comments are disabled.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Request Info -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-primary me-2"></i>Request Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Submitted By</small>
+                        <strong>{{ support_request.first_name }} {{ support_request.last_name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ support_request.email }}</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Created</small>
+                        <strong>{{ support_request.created_at.strftime('%d %B %Y') }}</strong>
+                        <br>
+                        <small class="text-muted">{{ support_request.created_at.strftime('%I:%M %p') }}</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Last Updated</small>
+                        <strong>{{ support_request.updated_at.strftime('%d %B %Y') }}</strong>
+                        <br>
+                        <small class="text-muted">{{ support_request.updated_at.strftime('%I:%M %p') }}</small>
+                    </div>
+
+                    {% if support_request.assigned_first_name %}
+                    <div class="mb-0">
+                        <small class="text-muted d-block">Assigned To</small>
+                        <strong>{{ support_request.assigned_first_name }} {{ support_request.assigned_last_name }}</strong>
+                    </div>
+                    {% else %}
+                    <div class="mb-0">
+                        <small class="text-muted d-block">Assigned To</small>
+                        <span class="text-muted fst-italic">Not yet assigned</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Status Guide -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-question-circle text-primary me-2"></i>Status Guide
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <span class="badge bg-info">New</span>
+                            <small class="d-block text-muted mt-1">Request submitted, awaiting review</small>
+                        </li>
+                        <li class="mb-2">
+                            <span class="badge bg-primary">Open</span>
+                            <small class="d-block text-muted mt-1">Being actively worked on</small>
+                        </li>
+                        <li class="mb-2">
+                            <span class="badge bg-warning text-dark">Stalled</span>
+                            <small class="d-block text-muted mt-1">Awaiting more information</small>
+                        </li>
+                        <li class="mb-0">
+                            <span class="badge bg-success">Resolved</span>
+                            <small class="d-block text-muted mt-1">Issue has been resolved</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}

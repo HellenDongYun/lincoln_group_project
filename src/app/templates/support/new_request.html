@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}ActiveLoop - Submit Support Request{% endblock %}
+
+{% block content %}
+<div class="hero-section-dark">
+    <div class="container hero-content">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 text-white">Help & Support</h1>
+                <p class="lead text-white-50">Submit a support request and our team will assist you.</p>
+            </div>
+            <a href="{{ url_for('support.my_requests') }}" class="btn btn-outline-light">
+                <i class="bi bi-list-ul me-2"></i>My Requests
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h4 class="card-title mb-4">
+                        <i class="bi bi-question-circle text-primary me-2"></i>Submit a Support Request
+                    </h4>
+
+                    <form method="POST" action="{{ url_for('support.new_request') }}" enctype="multipart/form-data">
+
+                        <!-- Issue Type -->
+                        <div class="mb-3">
+                            <label for="issue_type" class="form-label">Issue Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="issue_type" name="issue_type" required>
+                                <option value="">-- Select Issue Type --</option>
+                                <option value="technical" {% if form_data.issue_type == 'technical' %}selected{% endif %}>Technical Issue</option>
+                                <option value="account" {% if form_data.issue_type == 'account' %}selected{% endif %}>Account Related</option>
+                                <option value="event" {% if form_data.issue_type == 'event' %}selected{% endif %}>Event Management</option>
+                                <option value="group" {% if form_data.issue_type == 'group' %}selected{% endif %}>Group Management</option>
+                                <option value="volunteer" {% if form_data.issue_type == 'volunteer' %}selected{% endif %}>Volunteering</option>
+                                <option value="bug" {% if form_data.issue_type == 'bug' %}selected{% endif %}>Bug Report</option>
+                                <option value="other" {% if form_data.issue_type == 'other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+
+                        <!-- Subject -->
+                        <div class="mb-3">
+                            <label for="subject" class="form-label">Subject <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="subject"
+                                   name="subject"
+                                   maxlength="200"
+                                   placeholder="Brief summary of your issue"
+                                   value="{{ form_data.subject or '' }}"
+                                   required>
+                            <small class="form-text text-muted">Maximum 200 characters</small>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control"
+                                      id="description"
+                                      name="description"
+                                      rows="6"
+                                      placeholder="Please provide detailed information about your issue..."
+                                      required>{{ form_data.description or '' }}</textarea>
+                            <small class="form-text text-muted">Please be as detailed as possible to help us assist you better.</small>
+                        </div>
+
+                        <!-- Priority -->
+                        <div class="mb-3">
+                            <label for="priority" class="form-label">Priority</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="low" {% if form_data.priority == 'low' %}selected{% endif %}>Low</option>
+                                <option value="medium" {% if not form_data.priority or form_data.priority == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="high" {% if form_data.priority == 'high' %}selected{% endif %}>High</option>
+                            </select>
+                            <small class="form-text text-muted">Select 'High' only for urgent issues that prevent you from using the system.</small>
+                        </div>
+
+                        <!-- Screenshot Upload -->
+                        <div class="mb-4">
+                            <label for="screenshot" class="form-label">
+                                Screenshot (Optional)
+                                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Upload a screenshot to help us understand your issue better"></i>
+                            </label>
+                            <input type="file"
+                                   class="form-control"
+                                   id="screenshot"
+                                   name="screenshot"
+                                   accept=".png,.jpg,.jpeg,.gif,.pdf">
+                            <small class="form-text text-muted">Accepted formats: PNG, JPG, JPEG, GIF, PDF (Max 5MB)</small>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send me-2"></i>Submit Request
+                            </button>
+                            <a href="{{ url_for('support.my_requests') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Tips -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightbulb text-warning me-2"></i>Tips for Faster Resolution
+                    </h5>
+                    <ul class="mb-0">
+                        <li>Provide a clear and concise subject line</li>
+                        <li>Include step-by-step details of how the issue occurred</li>
+                        <li>Attach screenshots if applicable</li>
+                        <li>Mention any error messages you received</li>
+                        <li>Note the browser and device you are using</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize Bootstrap tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // File size validation
+    document.getElementById('screenshot').addEventListener('change', function() {
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (this.files[0] && this.files[0].size > maxSize) {
+            alert('File size must not exceed 5MB');
+            this.value = '';
+        }
+    });
+});
+</script>
+{% endblock %}
