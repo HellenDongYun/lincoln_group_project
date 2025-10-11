@@ -2,34 +2,37 @@ from flask import url_for
 
 from src.app.user.user import GlobalRole
 from src.app.common.nav.encode import encode_id
-
 def left_nav_items(user_id: int, user_role: GlobalRole):
-
     nav_items = []
-
+     # if user not logged in 
+    if not user_id:
+        nav_items.append({
+            "label": "Race Results",
+            "url": url_for("results.public_results")
+        })
+        nav_items.append({
+            "label": "Events",
+            "url": url_for("app.get_events")
+        })
+        return nav_items
+    # SUPER_ADMIN
     if user_role == GlobalRole.SUPER_ADMIN and user_id:
         encoded_admin_id = encode_id(user_id)
         nav_items.append({
             "label": "Admin Dashboard",
             "url": url_for('admin.admin_dashboard', encoded_admin_id=encoded_admin_id)
         })
+        nav_items.append({
+            "label": "Race Results",
+            "url": url_for('results.public_results')
+        })
+        nav_items.append({
+            "label": "Events",
+            "url": url_for('app.get_events')
+        })
 
-    #Race Results for all users 
-    nav_items.append({
-        "label": "Race Results",
-        "url": url_for('results.public_results')
-    })
-    
-    #Events for all users 
-    nav_items.append({
-        "label": "Events",
-        "url": url_for('app.get_events')
-    })
-
-    if not user_id:
-        return nav_items
-      
-    if user_role == GlobalRole.PARTICIPANT:
+    # PARTICIPANT
+    elif user_role == GlobalRole.PARTICIPANT and user_id:
         encoded_participant_id = encode_id(user_id)
         nav_items.append({
             "label": "My Dashboard",
@@ -39,14 +42,18 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')
         })
- 
-    # Groups navigation for all logged-in users
-    if user_id:
         nav_items.append({
-            "label": "Community Groups",
-            "url": url_for('groups.index')
+            "label": "My Applications",
+            "url": url_for('participant.myapplications', encoded_participant_id=encoded_participant_id)
         })
-    
+        nav_items.append({
+            "label": "Results",
+            "url": url_for('participant.myresults', encoded_participant_id=encoded_participant_id)
+        })
+      
+
+    # if have other roles add more elif
+
     return nav_items
 
     """def left_nav_items():
@@ -82,33 +89,6 @@ def right_nav_items(user_id: int, user_role: GlobalRole):
         return []
 
     nav_items = []
-
-    # if user_role == Role.PARTICIPANT:
-    #     student = student_service.get_student_by_user_id(user_id)
-    #     nav_items.extend([
-    #         {
-    #             "label": stringcase.pascalcase(student.full_name.split(" ")[0]),
-    #             "url": url_for('student.get_student', encoded_student_id=student.encoded_student_id)
-    #         }
-    #     ])
-    #
-    # if user_role == Role.VOLUNTEER:
-    #     employer = employer_service.get_employer_by_user_id(user_id)
-    #     nav_items.extend([
-    #         {"label": employer.company_name,
-    #          "url": url_for('employer.get_employer', encoded_employer_id=employer.encoded_employer_id)}
-    #     ])
-    #
-    # if user_role == Role.ADMIN:
-    #     admin = admin_service.get_admin_by_admin_id(user_id)
-    #     nav_items.extend([
-    #         {
-    #             "label": stringcase.pascalcase(admin.full_name.split(" ")[0]),
-    #             "url": url_for('admin.get_admin', encoded_admin_id=admin.encoded_admin_id)
-    #         }
-    #         # {"label": "Settings", "url": url_for('admin.settings')}
-    #     ])
-
     nav_items.append({"label": "Settings", "url": url_for("app.settings")})
     nav_items.append( {"label": "Log out",  "url": url_for("app.logout") })
 

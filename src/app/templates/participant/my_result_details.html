@@ -1,0 +1,136 @@
+{%extends 'base.html'%} {%block content%}
+<div class="container py-5">
+  {% set encoded_participant_id = encoded_participant_id %} {% set tab =
+  active_tab %} {% include 'participant/result_top_nav.html' %}
+  <!-- body -->
+  <div class="row">
+    <!-- left event list -->
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="fw-bold mb-0">All Participated Events</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            {% for e in all_events %}
+            <form
+              method="get"
+              action="{{ url_for('participant.resultsdetails',encoded_participant_id=encoded_participant_id) }}"
+            >
+              <input type="hidden" name="event_id" value="{{ e.event_id }}" />
+              <div class="col-12">
+                <div class="card shadow-sm border-0">
+                  <div
+                    class="card-body d-flex justify-content-between align-items-center"
+                  >
+                    <div>
+                      <h6 class="mb-1">{{ e.event_name }}</h6>
+                      <small class="text-muted"
+                        >Date: {{ e.event_date.strftime('%d/%m/%Y') }}</small
+                      >
+                    </div>
+                    <button class="btn btn-primary btn-sm rounded-2 px-3 py-1">
+                      #{{ e.user_rank }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right side detail card -->
+  <div class="col-12 col-lg-6 mb-4">
+  <div class="card shadow-sm h-100 border-0">
+    <div class="card-body">
+      <!-- title and date -->
+      <div
+        class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4"
+      >
+        <div>
+          <h5 class="fw-bold mb-1">Event Statistics</h5>
+          <p
+            class="badge bg-warning-subtle text-secondary fw-semibold px-3 py-2 rounded-2 mb-0"
+          >
+            {{ event_detail.event_name }}
+          </p>
+        </div>
+        <span
+          class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 rounded-2 mt-2 mt-sm-0"
+        >
+          {{ event_detail.event_date.strftime('%d/%m/%Y') }}
+        </span>
+      </div>
+
+      <!-- Top statistics row -->
+      <div class="row text-center g-3 mb-4">
+        <div class="col-6">
+          <div class="p-3 rounded bg-light">
+            <i class="bi bi-people display-6 text-primary d-block mb-2"></i>
+            <h5 class="mb-0 fw-bold">{{ event_detail.total_participants }}</h5>
+            <small class="text-muted">Total participants</small>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="p-3 rounded" style="background-color: #eaf7ea;">
+            <i class="bi bi-graph-up display-6 text-success d-block mb-2"></i>
+            <h5 class="mb-0 fw-bold">{{ event_detail.average_time }}</h5>
+            <small class="text-muted">AVG.Duration</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- datetime-->
+      <ul class="list-group mb-4">
+        <!-- Fastest -->
+        <li
+            class="list-group-item border-0 d-flex justify-content-between align-items-center mb-3"
+            style="background-color: rgba(255, 193, 7, 0.15);" 
+        >
+            <span class="text-dark">The Fastest</span>
+            <span class="text-dark">{{ event_detail.fastest_time }}</span>
+        </li>
+
+        <!-- My Duration -->
+        <li
+            class="list-group-item border-0 d-flex justify-content-between align-items-center mb-3"
+            style="background-color: rgba(13, 110, 253, 0.12);"  
+        >
+            <span class="text-primary">My Duration</span>
+            <span class="text-primary">{{ event_detail.user_duration }}</span>
+        </li>
+
+        <!-- Slowest -->
+        <li
+            class="list-group-item border-0 d-flex justify-content-between align-items-center mb-2"
+            style="background-color: rgba(248, 249, 250, 0.9);"  
+        >
+            <span class="text-dark">The Slowest</span>
+            <span class="text-dark ">{{ event_detail.slowest_time }}</span>
+        </li>
+      </ul>
+
+      <!-- rank -->
+      <div class="p-4 text-center rounded bg-secondary-subtle">
+        <i class="bi bi-trophy display-6 text-secondary d-block mb-2"></i>
+        <h6 class="mb-1">Your Rank</h6>
+        <h3 class="fw-bold text-dark mb-1">#{{ event_detail.user_rank }}</h3>
+        <small class="text-muted">
+            Placed in the top {{
+                ((event_detail.total_participants - event_detail.user_rank)
+                / event_detail.total_participants * 100) | round(1)
+            }}% 
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+      </div>
+
+      {%endblock%}
+    </div>
+  </div>
+</div>

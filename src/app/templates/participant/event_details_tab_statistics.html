@@ -1,0 +1,208 @@
+<div class="container py-4">
+  <!-- statistic card -->
+  <div class="row g-3">
+    {% set stats = [ {'value': event_statistics.participant_count, 'label':
+    'Total participants', 'icon': 'bi-people-fill', 'color': 'text-dark'},
+    {'value': event_statistics.avg_duration, 'label': 'AVG.Duration', 'icon':
+    'bi-stopwatch-fill', 'color': 'text-info'}, {'value':
+    event_statistics.fastest_duration, 'label': 'The Fastest', 'icon':
+    'bi-speedometer', 'color': 'text-success'}, {'value':
+    event_statistics.slowest_duration, 'label': 'The Slowest', 'icon':
+    'bi-hourglass-split', 'color': 'text-warning'} ] %} {% for stat in stats %}
+    <div class="col-6 col-md-3">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <div class="mb-2">
+            <i class="{{ stat.icon }} fs-3 {{ stat.color }}"></i>
+          </div>
+          <div class="fs-5 fw-bold">{{ stat.value }}</div>
+          <small class="text-muted">{{ stat.label }}</small>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+<div class="d-flex flex-wrap justify-content-between align-items-end mb-3 gap-3">
+  <!-- filter -->
+  <form method="get" class="d-flex flex-wrap gap-3 align-items-end mb-0">
+    <input type="hidden" name="id" value="{{ request.args.get('id') }}">
+    <input type="hidden" name="tab" value="statistics">
+
+    <div class="d-flex align-items-center">
+      <label class="form-label mb-0 me-2">Gender</label>
+      <select name="gender" class="form-select form-select-sm">
+        <option value="" {% if not gender %}selected{% endif %}>All</option>
+        <option value="male" {% if gender == 'male' %}selected{% endif %}>Male</option>
+        <option value="female" {% if gender == 'female' %}selected{% endif %}>Female</option>
+      </select>
+    </div>
+
+    <div class="d-flex align-items-center">
+      <label class="form-label mb-0 me-2">Age</label>
+      <select name="age_group" class="form-select form-select-sm">
+        <option value="" {% if not age_group %}selected{% endif %}>All</option>
+        <option value="18-" {% if age_group == '18-' %}selected{% endif %}>18-</option>
+        <option value="18-29" {% if age_group == '18-29' %}selected{% endif %}>18-29</option>
+        <option value="30-44" {% if age_group == '30-44' %}selected{% endif %}>30-44</option>
+        <option value="45+" {% if age_group == '45+' %}selected{% endif %}>46+</option>
+      </select>
+    </div>
+
+    <div class="d-flex align-items-center">
+      <button type="submit" class="btn btn-dark btn-sm rounded-2 me-2 ">Filter</button>
+   <a href="{{ url_for('participant.myresults_eventdetails',
+                    encoded_participant_id=encoded_participant_id,
+                    event_id=event_id,
+                    tab='statistics') }}"
+   class="btn btn-outline-success btn-sm rounded-2">
+  Reset
+</a>
+
+
+
+    </div>
+  </form>
+
+  <!-- control button group -->
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary btn-sm rounded-2" type="button" onclick="toggleChartType()">Switch chart</button>
+    <button class="btn btn-outline-success btn-sm rounded-2" type="button" onclick="exportChart()">Export</button>
+  </div>
+</div>
+
+    <!-- Time distribution chart -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        {% if durations %}
+        <div class="ratio ratio-16x9">
+          <canvas id="durationChart"></canvas>
+        </div>
+        {% else %}
+        <div class="text-muted text-center">No data available.</div>
+        {% endif %}
+      </div>
+    </div>
+
+
+    <!-- chart-->
+    {% block scripts %}
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const durations = {{ durations | tojson | safe }};
+        if (!durations || durations.length === 0) {
+          console.warn("No duration data available.");
+          return;
+        }
+
+        const labels = durations.map(d => d.name);
+        const data = durations.map(d => d.total_seconds);
+        const formatted = durations.map(d => d.duration);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+
+        const canvas = document.getElementById("durationChart");
+        if (!canvas) {
+          console.error("Canvas not found.");
+          return;
+        }
+
+        const ctx = canvas.getContext("2d");
+
+        // Create gradient colors
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(13, 110, 253, 0.8)');
+        gradient.addColorStop(1, 'rgba(13, 110, 253, 0.2)');
+
+        // delete old chart
+        if (window.durationChart && typeof window.durationChart.destroy === "function") {
+          window.durationChart.destroy();
+        }
+
+        window.durationChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [{
+              label: "Completion Time",
+              data: data,
+              backgroundColor: gradient,
+              borderColor: "rgba(13, 110, 253, 1)",
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: "Participant Completion Time Distribution",
+                font: { size: 16 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const index = context.dataIndex;
+                    return ` ${formatted[index]} (${data[index]}s)`;
+                  }
+                }
+              },
+              annotation: {
+                annotations: {
+                  averageLine: {
+                    type: 'line',
+                    yMin: avg,
+                    yMax: avg,
+                    borderColor: 'red',
+                    borderWidth: 1,
+                    label: {
+                      content: `Avg: ${Math.round(avg)}s`,
+                      enabled: true,
+                      position: 'start'
+                    }
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Seconds"
+                },
+                   grid: {
+                            display: false  // hide y line
+                         }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Participants"
+                },
+                   grid: {
+                            display: false  // hide x line
+                            }
+              }
+            }
+          }
+        });
+
+        // switch cahrt
+        let chartType = "bar";
+        window.toggleChartType = function () {
+          chartType = chartType === "bar" ? "line" : "bar";
+          window.durationChart.config.type = chartType;
+          window.durationChart.update();
+        };
+
+        // export
+        window.exportChart = function () {
+          const link = document.createElement("a");
+          link.href = canvas.toDataURL("image/png");
+          link.download = "participant_chart.png";
+          link.click();
+        };
+      });
+    </script>
+
+    {% endblock %}
+  </div>
+</div>
