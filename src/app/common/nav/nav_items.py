@@ -56,6 +56,10 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 "label": "Manager Dashboard",
                 "url": url_for('groups.manager_dashboard', group_id=managed_groups[0]['id'])
             })
+            nav_items.append({
+                "label": "Support Queue",
+                "url": url_for('support.support_queue')
+            })
         nav_items.append({
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')

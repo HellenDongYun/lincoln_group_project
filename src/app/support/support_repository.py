@@ -1,26 +1,24 @@
 from src.app.common.db.cursor import get_cursor
 from typing import Optional, List, Dict
 
-
 class SupportRepository:
-    """Repository for handling support request database operations"""
+    #Repository for handling support request database operations
 
     @staticmethod
     def create_support_request(user_id: int, issue_type: str, subject: str,
                                description: str, screenshot_path: Optional[str] = None,
                                priority: str = 'medium') -> int:
-        """Create a new support request and return its ID"""
+        #Create a new support request and return its ID
         with get_cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO Support_Requests
+            cursor.execute("""INSERT INTO Support_Requests
                 (user_id, issue_type, subject, description, screenshot_path, priority, status)
-                VALUES (%s, %s, %s, %s, %s, %s, 'new')
-            """, (user_id, issue_type, subject, description, screenshot_path, priority))
+                VALUES (%s, %s, %s, %s, %s, %s, 'new')""", 
+                (user_id, issue_type, subject, description, screenshot_path, priority))
             return cursor.lastrowid
 
     @staticmethod
     def get_user_support_requests(user_id: int) -> List[Dict]:
-        """Get all support requests for a specific user"""
+        #Get all support requests for a specific user
         with get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -44,7 +42,7 @@ class SupportRepository:
 
     @staticmethod
     def get_support_request_by_id(request_id: int) -> Optional[Dict]:
-        """Get a specific support request by ID"""
+        #Get a specific support request by ID
         with get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -73,7 +71,7 @@ class SupportRepository:
 
     @staticmethod
     def get_request_comments(request_id: int) -> List[Dict]:
-        """Get all comments for a support request"""
+        #Get all comments for a support request
         with get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -94,7 +92,7 @@ class SupportRepository:
     @staticmethod
     def add_comment(request_id: int, user_id: int, comment: str,
                     is_staff_reply: bool = False) -> int:
-        """Add a comment to a support request"""
+        #Add a comment to a support request
         with get_cursor() as cursor:
             cursor.execute("""
                 INSERT INTO Support_Request_Comments
@@ -105,7 +103,7 @@ class SupportRepository:
 
     @staticmethod
     def update_request_status(request_id: int, new_status: str) -> bool:
-        """Update the status of a support request"""
+        #Update the status of a support request
         with get_cursor() as cursor:
             cursor.execute("""
                 UPDATE Support_Requests
@@ -116,7 +114,7 @@ class SupportRepository:
 
     @staticmethod
     def assign_request(request_id: int, assigned_to: Optional[int]) -> bool:
-        """Assign a support request to a staff member"""
+        #Assign a support request to a staff member
         with get_cursor() as cursor:
             cursor.execute("""
                 UPDATE Support_Requests
@@ -128,8 +126,9 @@ class SupportRepository:
     @staticmethod
     def get_all_support_requests(status_filter: Optional[str] = None,
                                  assigned_filter: Optional[int] = None,
-                                 priority_filter: Optional[str] = None) -> List[Dict]:
-        """Get all support requests with optional filters (for support staff)"""
+                                 priority_filter: Optional[str] = None,
+                                 issue_type_filter: Optional[str] = None) -> List[Dict]:
+        #Get all support requests with optional filters (for support staff)
         with get_cursor() as cursor:
             query = """
                 SELECT
@@ -140,6 +139,7 @@ class SupportRepository:
                     sr.priority,
                     sr.created_at,
                     sr.updated_at,
+                    sr.assigned_to,
                     u.first_name,
                     u.last_name,
                     u.email,
@@ -164,7 +164,53 @@ class SupportRepository:
                 query += " AND sr.priority = %s"
                 params.append(priority_filter)
 
+            if issue_type_filter:
+                query += " AND sr.issue_type = %s"
+                params.append(issue_type_filter)
+
             query += " ORDER BY sr.created_at DESC"
 
             cursor.execute(query, params)
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_user_participation_history(user_id: int) -> List[Dict]:
+        #Get user's event participation history
+        with get_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    e.id AS event_id,
+                    e.name AS event_name,
+                    e.datetime AS event_datetime,
+                    ep.status,
+                    er.total_seconds,
+                    er.start_time,
+                    er.end_time
+                FROM Event_Participants ep
+                INNER JOIN Events e ON ep.event_id = e.id
+                LEFT JOIN Event_Results er ON ep.event_id = er.event_id AND ep.user_id = er.user_id
+                WHERE ep.user_id = %s
+                ORDER BY e.datetime DESC
+                LIMIT 10
+            """, (user_id,))
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_user_volunteer_history(user_id: int) -> List[Dict]:
+        #Get user's volunteer task history
+        with get_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    e.id AS event_id,
+                    e.name AS event_name,
+                    e.datetime AS event_datetime,
+                    vt.name AS task_name,
+                    vt.description AS task_description
+                FROM Event_Task_Assignments eta
+                INNER JOIN Events e ON eta.event_id = e.id
+                INNER JOIN Volunteer_Tasks vt ON eta.task_id = vt.id
+                WHERE eta.user_id = %s
+                ORDER BY e.datetime DESC
+                LIMIT 10
+            """, (user_id,))
             return cursor.fetchall()

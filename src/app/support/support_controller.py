@@ -1,4 +1,3 @@
-import os
 import time
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from werkzeug.utils import secure_filename
@@ -6,23 +5,21 @@ from src.app.support.support_service import SupportService
 from src.app.auth.route_guard import require_login, require_support_staff
 from src.app.auth.auth_service import auth_service
 from src.app.common.file_service import FileService
-
+from src.app.group.group_service import GroupService
 
 support_blueprint = Blueprint('support', __name__, url_prefix='/support')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
-
 def allowed_file(filename):
-    """Check if file extension is allowed"""
+    #Check if file extension is allowed
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 @support_blueprint.route('/new', methods=['GET', 'POST'])
 @require_login
 def new_request():
-    """Create a new support request"""
+    #Create a new support request
     if request.method == 'POST':
         try:
             user_id = auth_service.get_user_id()
@@ -34,18 +31,15 @@ def new_request():
             # Validation
             if not issue_type:
                 flash("Please select an issue type.", "danger")
-                return render_template('support/new_request.html',
-                                     form_data=request.form)
+                return render_template('support/new_request.html', form_data=request.form)
 
             if not subject:
                 flash("Please provide a subject.", "danger")
-                return render_template('support/new_request.html',
-                                     form_data=request.form)
+                return render_template('support/new_request.html', form_data=request.form)
 
             if not description:
                 flash("Please provide a description.", "danger")
-                return render_template('support/new_request.html',
-                                     form_data=request.form)
+                return render_template('support/new_request.html', form_data=request.form)
 
             # Handle file upload
             screenshot_path = None
@@ -74,12 +68,10 @@ def new_request():
 
         except ValueError as e:
             flash(str(e), "danger")
-            return render_template('support/new_request.html',
-                                 form_data=request.form)
+            return render_template('support/new_request.html', form_data=request.form)
         except Exception as e:
             flash(f"An error occurred: {str(e)}", "danger")
-            return render_template('support/new_request.html',
-                                 form_data=request.form)
+            return render_template('support/new_request.html', form_data=request.form)
 
     # GET request
     return render_template('support/new_request.html', form_data={})
@@ -88,17 +80,16 @@ def new_request():
 @support_blueprint.route('/my-requests')
 @require_login
 def my_requests():
-    """View all support requests for the logged-in user"""
+    #View all support requests for the logged-in user
     user_id = auth_service.get_user_id()
     requests = SupportService.get_user_requests(user_id)
 
     return render_template('support/my_requests.html', requests=requests)
 
-
 @support_blueprint.route('/request/<int:request_id>')
 @require_login
 def view_request(request_id):
-    """View details of a specific support request"""
+    #View details of a specific support request
     user_id = auth_service.get_user_id()
     is_staff = auth_service.is_super_admin() or auth_service.is_support_technician()
 
@@ -114,15 +105,14 @@ def view_request(request_id):
         flash("Support request not found.", "danger")
         return redirect(url_for('support.my_requests'))
 
-    return render_template('support/view_request.html',
-                         support_request=support_request,
-                         is_staff=is_staff)
+    return render_template('support/view_request.html', support_request=support_request, is_staff=is_staff)
 
 
 @support_blueprint.route('/request/<int:request_id>/comment', methods=['POST'])
 @require_login
 def add_comment(request_id):
-    """Add a comment to a support request"""
+    #Add a comment to a support request
+
     user_id = auth_service.get_user_id()
     is_staff = auth_service.is_super_admin() or auth_service.is_support_technician()
 
@@ -139,10 +129,7 @@ def add_comment(request_id):
 
     try:
         # Add comment - mark as staff reply if user is staff
-        SupportService.add_comment_to_request(
-            request_id, user_id, comment, is_staff_reply=is_staff
-        )
-
+        SupportService.add_comment_to_request(request_id, user_id, comment, is_staff_reply=is_staff)
         flash("Your comment has been added.", "success")
 
     except ValueError as e:
@@ -152,15 +139,21 @@ def add_comment(request_id):
 
     return redirect(url_for('support.view_request', request_id=request_id))
 
-
 @support_blueprint.route('/queue')
 @require_support_staff
 def support_queue():
-    """Support Queue - View all support requests (for support staff only)"""
+    #Support Queue - View all support requests (for support staff only)
+
+    user_id = auth_service.get_user_id()
+    is_group_manager = len(GroupService.get_user_managed_groups(user_id)) > 0
+    is_admin_or_tech = auth_service.is_super_admin() or auth_service.is_support_technician()
+
     # Get filter parameters
     status_filter = request.args.get('status', '').strip() or None
     priority_filter = request.args.get('priority', '').strip() or None
+    issue_type_filter = request.args.get('issue_type', '').strip() or None
     assigned_filter = request.args.get('assigned', '').strip() or None
+    group_filter = request.args.get('group_filter', '').strip() or None
 
     # Convert 'unassigned' to None for query
     if assigned_filter == 'unassigned':
@@ -172,12 +165,37 @@ def support_queue():
     all_requests = SupportService.get_all_requests(
         status_filter=status_filter,
         assigned_filter=None if assigned_filter == 'null' else assigned_filter,
-        priority_filter=priority_filter
+        priority_filter=priority_filter,
+        issue_type_filter=issue_type_filter
     )
 
     # Filter unassigned if needed
     if assigned_filter == 'null':
         all_requests = [req for req in all_requests if req.get('assigned_to') is None]
+
+    # For Group Managers: filter to show only requests from their group members
+    if is_group_manager and not is_admin_or_tech:
+        managed_groups = GroupService.get_user_managed_groups(user_id)
+        managed_group_ids = [g['id'] for g in managed_groups]
+
+        # Get all members from managed groups
+        group_member_ids = set()
+        for group_id in managed_group_ids:
+            members = GroupService.get_group_members(group_id)
+            group_member_ids.update([m['user_id'] for m in members])
+
+        # Filter requests to only show those from group members
+        all_requests = [req for req in all_requests if req.get('user_id') in group_member_ids]
+
+    # Optional group filter for all support staff
+    if group_filter == 'my_group' and is_group_manager:
+        managed_groups = GroupService.get_user_managed_groups(user_id)
+        managed_group_ids = [g['id'] for g in managed_groups]
+        group_member_ids = set()
+        for group_id in managed_group_ids:
+            members = GroupService.get_group_members(group_id)
+            group_member_ids.update([m['user_id'] for m in members])
+        all_requests = [req for req in all_requests if req.get('user_id') in group_member_ids]
 
     # Calculate statistics
     stats = {
@@ -195,5 +213,9 @@ def support_queue():
                          filters={
                              'status': status_filter or '',
                              'priority': priority_filter or '',
-                             'assigned': request.args.get('assigned', '')
-                         })
+                             'issue_type': issue_type_filter or '',
+                             'assigned': request.args.get('assigned', ''),
+                             'group_filter': group_filter or ''
+                         },
+                         is_group_manager=is_group_manager,
+                         is_admin_or_tech=is_admin_or_tech)

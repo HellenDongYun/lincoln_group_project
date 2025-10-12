@@ -93,6 +93,8 @@ def login():
             # Redirect based on role
             if auth_service.is_super_admin():
                 return redirect(url_for("admin.admin_dashboard", encoded_admin_id=user.encoded_user_id))
+            elif auth_service.is_support_technician():
+                return redirect(url_for("support.support_queue"))
             elif auth_service.is_participant():
                 managed_groups = GroupService.get_user_managed_groups(user.id)
                 if managed_groups:

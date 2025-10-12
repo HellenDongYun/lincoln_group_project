@@ -81,7 +81,7 @@
                         <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>Resolved</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="priority" class="form-label">Priority</label>
                     <select id="priority" name="priority" class="form-select">
                         <option value="">All Priorities</option>
@@ -90,7 +90,20 @@
                         <option value="low" {% if filters.priority == 'low' %}selected{% endif %}>Low</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="issue_type" class="form-label">Request Type</label>
+                    <select id="issue_type" name="issue_type" class="form-select">
+                        <option value="">All Types</option>
+                        <option value="technical" {% if filters.issue_type == 'technical' %}selected{% endif %}>Technical</option>
+                        <option value="account" {% if filters.issue_type == 'account' %}selected{% endif %}>Account</option>
+                        <option value="event" {% if filters.issue_type == 'event' %}selected{% endif %}>Event</option>
+                        <option value="group" {% if filters.issue_type == 'group' %}selected{% endif %}>Group</option>
+                        <option value="volunteer" {% if filters.issue_type == 'volunteer' %}selected{% endif %}>Volunteer</option>
+                        <option value="bug" {% if filters.issue_type == 'bug' %}selected{% endif %}>Bug</option>
+                        <option value="other" {% if filters.issue_type == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label for="assigned" class="form-label">Assignment</label>
                     <select id="assigned" name="assigned" class="form-select">
                         <option value="">All Requests</option>
@@ -98,7 +111,16 @@
                         <option value="me" {% if filters.assigned == 'me' %}selected{% endif %}>Assigned to Me</option>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
+                {% if is_group_manager and is_admin_or_tech %}
+                <div class="col-md-2">
+                    <label for="group_filter" class="form-label">Group Filter</label>
+                    <select id="group_filter" name="group_filter" class="form-select">
+                        <option value="">All Groups</option>
+                        <option value="my_group" {% if filters.group_filter == 'my_group' %}selected{% endif %}>My Group Members</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-{% if is_group_manager and is_admin_or_tech %}1{% else %}3{% endif %} d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-funnel me-2"></i>Filter
                     </button>
