@@ -66,7 +66,6 @@
                                       rows="6"
                                       placeholder="Please provide detailed information about your issue..."
                                       required>{{ form_data.description or '' }}</textarea>
-                            <small class="form-text text-muted">Please be as detailed as possible to help us assist you better.</small>
                         </div>
 
                         <!-- Priority -->
@@ -77,7 +76,6 @@
                                 <option value="medium" {% if not form_data.priority or form_data.priority == 'medium' %}selected{% endif %}>Medium</option>
                                 <option value="high" {% if form_data.priority == 'high' %}selected{% endif %}>High</option>
                             </select>
-                            <small class="form-text text-muted">Select 'High' only for urgent issues that prevent you from using the system.</small>
                         </div>
 
                         <!-- Screenshot Upload -->
@@ -104,22 +102,6 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-
-            <!-- Help Tips -->
-            <div class="card border-0 shadow-sm mt-4">
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="bi bi-lightbulb text-warning me-2"></i>Tips for Faster Resolution
-                    </h5>
-                    <ul class="mb-0">
-                        <li>Provide a clear and concise subject line</li>
-                        <li>Include step-by-step details of how the issue occurred</li>
-                        <li>Attach screenshots if applicable</li>
-                        <li>Mention any error messages you received</li>
-                        <li>Note the browser and device you are using</li>
-                    </ul>
                 </div>
             </div>
         </div>
