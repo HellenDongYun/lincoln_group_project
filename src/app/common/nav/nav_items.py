@@ -25,6 +25,10 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "url": url_for('admin.admin_dashboard', encoded_admin_id=encoded_admin_id)
         })
         nav_items.append({
+            "label": "Support Queue",
+            "url": url_for('support.support_queue')
+        })
+        nav_items.append({
             "label": "Race Results",
             "url": url_for('results.public_results')
         })
@@ -52,6 +56,10 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 "label": "Manager Dashboard",
                 "url": url_for('groups.manager_dashboard', group_id=managed_groups[0]['id'])
             })
+            nav_items.append({
+                "label": "Support Queue",
+                "url": url_for('support.support_queue')
+            })
         nav_items.append({
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')
@@ -67,6 +75,26 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
         nav_items.append({
             "label": "My Applications",
             "url": url_for('participant.myapplications', encoded_participant_id=encoded_participant_id)
+        })
+
+        nav_items.append({
+            "label": "Help & Support",
+            "url": url_for('support.my_requests')
+        })
+
+    # SUPPORT_TECHNICIAN
+    elif user_role == GlobalRole.SUPPORT_TECHNICIAN and user_id:
+        nav_items.append({
+            "label": "Support Queue",
+            "url": url_for('support.support_queue')
+        })
+        nav_items.append({
+            "label": "Events",
+            "url": url_for('app.get_events')
+        })
+        nav_items.append({
+            "label": "Help & Support",
+            "url": url_for('support.my_requests')
         })
 
     # if have other roles add more elif

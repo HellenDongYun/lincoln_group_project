@@ -146,3 +146,32 @@ CREATE TABLE Group_Join_Requests (
   FOREIGN KEY (reviewed_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE,
   UNIQUE KEY unique_user_group_pending (user_id, group_id, status)
 );
+
+-- Support Requests for Helpdesk System
+CREATE TABLE Support_Requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  issue_type ENUM('technical','account','event','group','volunteer','bug','other') NOT NULL,
+  subject VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  screenshot_path VARCHAR(500) NULL,
+  status ENUM('new','open','stalled','resolved') NOT NULL DEFAULT 'new',
+  priority ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
+  assigned_to INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (assigned_to) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Support Request Comments for communication between users and support staff
+CREATE TABLE Support_Request_Comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  request_id INT NOT NULL,
+  user_id INT NOT NULL,
+  comment TEXT NOT NULL,
+  is_staff_reply BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (request_id) REFERENCES Support_Requests(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
