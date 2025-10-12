@@ -60,7 +60,6 @@ def require_group_manager(group_id_param='group_id'):
     def decorator(callback):
         @wraps(callback)
         def guard(*args, **kwargs):
-            from src.app.group.group_service import GroupService
 
             auth_service = AuthService()
 
@@ -89,7 +88,6 @@ def require_volunteer_or_manager(callback):
     # Require user to be a volunteer (have group memberships) or super admin
     @wraps(callback)
     def guard(*args, **kwargs):
-        from src.app.group.group_service import GroupService
 
         auth_service = AuthService()
 
