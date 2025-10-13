@@ -17,6 +17,7 @@ USE activeloop;
 -- vincent.anderson@gmail.com	Vincent123!
 -- vladimir.scott@runclub.org	Vladimir123!
 -- valentina.green@gmail.com	Valentina123!
+-- support.tech@platform.org    Support123!
 
 -- ------------------------------
 INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, town, global_role, status) VALUES
@@ -34,7 +35,8 @@ INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, tow
 ('violet.kumar@lincoln.ac.nz', '$2b$12$fZ4/aA9xbBKgvmwnyLK6tuOj.OruGE3VuKnfIq.mCy8z8VGOiGHqK', 'Violet', 'Kumar', 'female', 24, 'Auckland', 'participant', 'active'),
 ('vincent.anderson@gmail.com', '$2b$12$tB2NJ2ffcQsoGOpcPMQAm.W/ZZ9Jst1yGfD6QlWAzVpEh6Dj8f5Im', 'Vincent', 'Anderson', 'male', 33, 'Dunedin', 'participant', 'active'),
 ('vladimir.scott@runclub.org', '$2b$12$9SiyYX4tvwjX9sbFAb1Y7.mwFiyrG1eRlx/Ms7CrdKgdjnsfqyKbm', 'Vladimir', 'Scott', 'other', 28, 'Rotorua', 'participant', 'active'),
-('valentina.green@gmail.com', '$2b$12$KyC5ouMLtuaSyqyOt5cnAuoveLpRAf/xul6cDJoUwDvGwDMcduzKm', 'Valentina', 'Green', 'female', 30, 'Palmerston North', 'participant', 'active');
+('valentina.green@gmail.com', '$2b$12$KyC5ouMLtuaSyqyOt5cnAuoveLpRAf/xul6cDJoUwDvGwDMcduzKm', 'Valentina', 'Green', 'female', 30, 'Palmerston North', 'participant', 'active'),
+('support.tech@platform.org', '$2b$12$6nK5TrF/e0ItqIj4gfvr8u3bRc0EnNBCDPrCb3RZ0N3WeMM66PnJ2', 'Morgan', 'Reeves', 'other', 35, 'Christchurch', 'support_technician', 'active');
 
 
 -- ------------------------------
@@ -240,3 +242,25 @@ INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (10, 2, '2025-08-10 08:30:00', '2025-08-10 09:12:45'), (10, 5, '2025-08-10 08:30:00', '2025-08-10 09:08:30'),
 (10, 6, '2025-08-10 08:30:00', '2025-08-10 09:15:20'), (10, 7, '2025-08-10 08:30:00', '2025-08-10 09:10:15'),
 (10, 12, '2025-08-10 08:30:00', '2025-08-10 09:06:55'), (10, 13, '2025-08-10 08:30:00', '2025-08-10 09:18:40');
+
+
+-- ------------------------------
+-- Support Requests & Conversations
+-- ------------------------------
+INSERT INTO Support_Requests (user_id, issue_type, subject, description, screenshot_path, status, priority, assigned_to, created_at, updated_at) VALUES
+(2, 'technical', 'Cannot upload run result screenshot', 'I receive a 500 error when trying to upload my run proof for Avon River Fun Run.', '/uploads/support/avon-run-upload-error.png', 'new', 'high', NULL, '2025-09-07 08:45:00', '2025-09-07 08:45:00'),
+(3, 'event', 'Harbour Walk volunteer roster missing task', 'The Course Marshal slot I usually cover is not available for the October Harbour Walk event.', NULL, 'open', 'medium', 16, '2025-09-05 11:20:00', '2025-09-06 09:05:00'),
+(4, 'group', 'Need help approving private group requests', 'Our Auckland Trail Explorers group has pending join requests but I cannot see the approve button.', '/uploads/support/group-approval.png', 'open', 'high', 16, '2025-09-04 18:10:00', '2025-09-08 10:25:00'),
+(5, 'account', 'Reset password email never arrives', 'Tried resetting my password twice and no email shows up.', NULL, 'stalled', 'medium', 16, '2025-08-29 07:55:00', '2025-09-03 13:10:00'),
+(6, 'bug', 'Results table shows duplicate rows', 'My results dashboard duplicates the Hawke’s Bay Sunrise Walk finishing time.', NULL, 'resolved', 'low', 16, '2025-08-20 09:30:00', '2025-08-22 16:15:00'),
+(9, 'volunteer', 'Unable to claim Timekeeper spot', 'I click claim for Timekeeper on event ID 5 and nothing happens.', NULL, 'new', 'medium', NULL, '2025-09-09 14:05:00', '2025-09-09 14:05:00');
+
+INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_reply, created_at) VALUES
+(1, 2, 'Here is the exact time the error occurs: right after selecting the file.', FALSE, '2025-09-07 08:46:00'),
+(2, 3, 'Hi team, is there a way to reopen that marshal slot?', FALSE, '2025-09-05 11:22:00'),
+(2, 16, 'Thanks Bob, I have re-enabled the Course Marshal task for October. Please reload.', TRUE, '2025-09-06 09:05:00'),
+(3, 4, 'Two runners are waiting on approval so hoping to get this sorted.', FALSE, '2025-09-04 18:12:00'),
+(3, 16, 'Issue traced to missing manager flag. Patch deployed; can you try again?', TRUE, '2025-09-08 10:20:00'),
+(4, 16, 'We see mail logs showing a bounce. Confirming with provider now.', TRUE, '2025-09-01 09:15:00'),
+(5, 6, 'Duplicate row only appears after refreshing the page.', FALSE, '2025-08-20 09:35:00'),
+(5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00');

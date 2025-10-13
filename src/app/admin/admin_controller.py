@@ -498,9 +498,9 @@ def update_user_role_ajax(user_id):
     """Update user role via AJAX"""
     try:
         new_role = request.form.get('new_role')
-        
+
         # Validate role
-        valid_roles = ['participant', 'group_manager', 'super_admin']
+        valid_roles = ['participant', 'group_manager', 'support_technician', 'super_admin']
         if new_role not in valid_roles:
             return {'success': False, 'message': 'Invalid role specified'}, 400
         
