@@ -103,8 +103,6 @@ class ParticipantService:
         return self.participant_repository.delete_group_application(
             participant_id, application_id
         )
-    def delete_group_application(self,participant_id, application_id):
-        return self.participant_repository.delete_group_application(participant_id, application_id, )
     
     def get_all_eventresults_for_participant(self,participant_id):
         return self.participant_repository.get_all_eventresults_for_participant(participant_id ) 

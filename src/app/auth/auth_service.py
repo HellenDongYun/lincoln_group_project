@@ -1,6 +1,5 @@
 import os
 from flask import session
-from typing import Optional
 
 from src.app.user.user import GlobalRole, Role
 from src.app.common.nav.encode import encode_id
@@ -30,15 +29,15 @@ class AuthService:
     def is_logged_in(self) -> bool:
         return self.get_user_id() is not None
 
-    def get_user_id(self) -> int:
+    def get_user_id(self):
         return session.get('user_id')
 
-    def get_user_resource_id(self) -> str:
+    def get_user_resource_id(self):
         "Get the encoded user ID for resource access control"
         user_id = self.get_user_id()
         return encode_id(user_id) if user_id else None
 
-    def get_global_role(self) -> GlobalRole:
+    def get_global_role(self):
         role_str = session.get('global_role')
         if role_str:
             return GlobalRole(role_str)
@@ -50,13 +49,18 @@ class AuthService:
     def is_participant(self) -> bool:
         return self.get_global_role() == GlobalRole.PARTICIPANT
 
+    def is_support_technician(self) -> bool:
+        return self.get_global_role() == GlobalRole.SUPPORT_TECHNICIAN
+
     # Legacy methods for backward compatibility
-    def get_user_role(self) -> Role:
+    def get_user_role(self):
         global_role = self.get_global_role()
         if global_role == GlobalRole.SUPER_ADMIN:
             return Role.ADMIN
         elif global_role == GlobalRole.PARTICIPANT:
             return Role.PARTICIPANT
+        elif global_role == GlobalRole.SUPPORT_TECHNICIAN:
+            return Role.ADMIN
         return None
 
     def is_admin(self) -> bool:

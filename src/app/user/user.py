@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
-
 from src.app.common.nav.encode import encode_id
+from typing import Any
 
 
 class GlobalRole(Enum):
     SUPER_ADMIN = 'super_admin'
     PARTICIPANT = 'participant'
+    SUPPORT_TECHNICIAN = 'support_technician'
 
 
 class GroupRole(Enum):
@@ -28,21 +28,24 @@ class GroupStatus(Enum):
 
 @dataclass
 class User:
-    id: int = None
-    first_name: str = None
-    last_name: str = None
-    town: str = None
-    email: str = None
-    password_hash: str = None
-    global_role: GlobalRole = None
-    status: str = None
+    id: Any = None
+    first_name: Any = None
+    last_name: Any = None
+    gender: Any = None
+    age: Any = None
+    age_group: Any = None
+    town: Any = None
+    email: Any = None
+    password_hash: Any = None
+    global_role: Any = None
+    status: Any = None
 
     @property
-    def encoded_user_id(self) -> str:
-        return encode_id(self.id)
+    def encoded_user_id(self):
+        return encode_id(self.id) if self.id is not None else None
 
     @property
-    def resource_id(self) -> int:
+    def resource_id(self):
         """
         Returns the resource ID for this user based on their role.
         For route guarding and authorization purposes.
@@ -60,17 +63,17 @@ class User:
 
 @dataclass
 class CommunityGroup:
-    id: int = None
-    name: str = None
-    description: str = None
-    town: str = None
-    visibility: GroupVisibility = None
-    status: GroupStatus = None
-    created_by: int = None
+    id: Any = None
+    name: Any = None
+    description: Any = None
+    town: Any = None
+    visibility: Any = None
+    status: Any = None
+    created_by: Any = None
 
     @property
-    def encoded_group_id(self) -> str:
-        return encode_id(self.id)
+    def encoded_group_id(self):
+        return encode_id(self.id) if self.id is not None else None
 
     @property
     def is_public(self) -> bool:
@@ -79,14 +82,14 @@ class CommunityGroup:
 
 @dataclass
 class GroupMembership:
-    group_id: int = None
-    user_id: int = None
-    group_role: GroupRole = None
-    member_status: str = None
-    
+    group_id: Any = None
+    user_id: Any = None
+    group_role: Any = None
+    member_status: Any = None
+
     # Additional fields for joined data
-    group_name: str = None
-    user_name: str = None
+    group_name: Any = None
+    user_name: Any = None
 
     @property
     def is_manager(self) -> bool:
@@ -99,18 +102,18 @@ class GroupMembership:
 
 @dataclass
 class GroupApplication:
-    id: int = None
-    applicant_id: int = None
-    proposed_name: str = None
-    proposed_description: str = None
-    proposed_town: str = None
-    visibility: GroupVisibility = None
-    status: str = None
-    decision_by: Optional[int] = None
-    
+    id: Any = None
+    applicant_id: Any = None
+    proposed_name: Any = None
+    proposed_description: Any = None
+    proposed_town: Any = None
+    visibility: Any = None
+    status: Any = None
+    decision_by: Any = None
+
     # Additional fields for joined data
-    applicant_name: str = None
-    decision_maker_name: str = None
+    applicant_name: Any = None
+    decision_maker_name: Any = None
 
     @property
     def is_pending(self) -> bool:

@@ -233,34 +233,38 @@ class ParticipantRepository(Repository):
             total = cursor.fetchone()["total"]
         return rows, total
 
-    def create_group_application(self, participant_id, name, description, town, visibility):
+    def create_group_application(
+        self, participant_id, name, description, town, visibility
+    ):
         with get_cursor() as cursor:
             cursor.execute(
                 """
+                SELECT COUNT(*) AS count
+                FROM Group_Applications
+                WHERE proposed_name = %s
+            """,
+                (name,),
+            )
+            if cursor.fetchone()["count"] > 0:
+                raise ValueError(
+                    "Group name already exists. Please choose a different name."
+                )
+
+            cursor.execute(
+                """
                 INSERT INTO Group_Applications (
-                    applicant_id, proposed_name, proposed_description, proposed_town, visibility
+                    applicant_id,
+                    proposed_name,
+                    proposed_description,
+                    proposed_town,
+                    visibility
                 ) VALUES (%s, %s, %s, %s, %s)
             """,
                 (participant_id, name, description, town, visibility),
             )
+            return cursor.lastrowid
 
     def get_application_by_id(self, participant_id, application_id):
-             # check if there are same group name in the database
-            cursor.execute("""
-               SELECT COUNT(*) AS count FROM Group_Applications 
-               WHERE proposed_name = %s
-            """, (name,))
-            if cursor.fetchone()["count"] > 0:
-                raise ValueError("Group name already exists. Please choose a different name.")
-
-            # insert date
-            cursor.execute("""
-                INSERT INTO Group_Applications (
-                    applicant_id, proposed_name, proposed_description, proposed_town, visibility
-                ) VALUES (%s, %s, %s, %s, %s)
-            """, (participant_id, name, description, town, visibility))
-            
-    def get_application_by_id(self,participant_id, application_id):
         with get_cursor() as cursor:
             cursor.execute(
                 """
@@ -343,9 +347,10 @@ class ParticipantRepository(Repository):
         for challenge in challenges:
             challenge["earned"] = challenge.get("earned_at") is not None
         return challenges
-            """, (application_id, participant_id))              
+
     def format_duration_seconds(self,seconds):
         return str(timedelta(seconds=seconds)) 
+
     def get_all_eventresults_for_participant(self,participant_id):
         with get_cursor() as cursor:
             try:

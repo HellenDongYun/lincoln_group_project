@@ -12,8 +12,20 @@ CREATE TABLE Users (
   password_hash VARCHAR(255) NOT NULL,
   first_name VARCHAR(50) NOT NULL,
   last_name VARCHAR(50) NOT NULL,
+  gender ENUM('male', 'female', 'other') DEFAULT NULL,
+  age INT DEFAULT NULL,
+  age_group VARCHAR(20)
+    GENERATED ALWAYS AS (
+      CASE
+        WHEN age < 18 THEN 'Under 18'
+        WHEN age BETWEEN 18 AND 29 THEN '18-29'
+        WHEN age BETWEEN 30 AND 44 THEN '30-44'
+        WHEN age >= 45 THEN '45+'
+        ELSE 'Unknown'
+      END
+    ) STORED,
   town VARCHAR(100),
-  global_role ENUM('super_admin','participant') NOT NULL DEFAULT 'participant',
+  global_role ENUM('super_admin','participant','support_technician') NOT NULL DEFAULT 'participant',
   status ENUM('active','inactive') NOT NULL DEFAULT 'active'
 );
 
@@ -183,19 +195,6 @@ CREATE INDEX idx_challenges_reward ON Challenges(achievement_id_reward);
 CREATE INDEX idx_user_achievements_earned ON User_Achievements(earned_at);
 ALTER TABLE Group_Applications
 ADD COLUMN application_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE Users
-ADD COLUMN gender ENUM('male', 'female', 'other') DEFAULT NULL AFTER last_name,
-ADD COLUMN age INT DEFAULT NULL AFTER gender,
-ADD COLUMN age_group VARCHAR(20)
-GENERATED ALWAYS AS (
-    CASE
-        WHEN age < 18 THEN 'Under 18'
-        WHEN age BETWEEN 18 AND 29 THEN '18-29'
-        WHEN age BETWEEN 30 AND 44 THEN '30-44'
-        WHEN age >= 45 THEN '45+'
-        ELSE 'Unknown'
-    END
-) STORED;
 
 
 -- Support Requests for Helpdesk System

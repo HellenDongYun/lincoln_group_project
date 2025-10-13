@@ -54,13 +54,14 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
         )
 
         managed_groups = GroupService.get_user_managed_groups(user_id)
-        if managed_groups:
+        first_managed_group_id = managed_groups[0]["id"] if managed_groups else None
+        if first_managed_group_id:
             nav_items.append(
                 {
                     "label": "Manager Dashboard",
                     "url": url_for(
                         "groups.manager_dashboard",
-                        group_id=managed_groups[0]["id"],
+                        group_id=first_managed_group_id,
                     ),
                 }
             )
@@ -77,17 +78,9 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 }
             )
             nav_items.append({
-                "label": "Manager Dashboard",
-                "url": url_for('groups.manager_dashboard', group_id=managed_groups[0]['id'])
-            })
-            nav_items.append({
                 "label": "Support Queue",
                 "url": url_for('support.support_queue')
             })
-        nav_items.append({
-            "label": "Find Groups & Events",
-            "url": url_for('groups.participant_search')
-        })
         nav_items.append({
             "label": "My Applications",
             "url": url_for('participant.myapplications', encoded_participant_id=encoded_participant_id)
@@ -105,6 +98,7 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
 
     # SUPPORT_TECHNICIAN
     elif user_role == GlobalRole.SUPPORT_TECHNICIAN and user_id:
+        encoded_user_id = encode_id(user_id)
         nav_items.append({
             "label": "Support Queue",
             "url": url_for('support.support_queue')
@@ -123,7 +117,7 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 "label": "My Applications",
                 "url": url_for(
                     "participant.myapplications",
-                    encoded_participant_id=encoded_participant_id,
+                    encoded_participant_id=encoded_user_id,
                 ),
             }
         )

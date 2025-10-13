@@ -113,3 +113,28 @@ def require_volunteer_or_manager(callback):
     return guard
 
 
+def require_support_staff(callback):
+    """Require the current user to be support staff (super admin, support technician, or group manager)."""
+    @wraps(callback)
+    def guard(*args, **kwargs):
+        auth_service = AuthService()
+
+        if not auth_service.is_logged_in():
+            flash("You must be logged in to view this page.", "warning")
+            return redirect(url_for("app.login"))
+
+        user_id = auth_service.get_user_id()
+
+        if auth_service.is_super_admin() or auth_service.is_support_technician():
+            return callback(*args, **kwargs)
+
+        managed_groups = GroupService.get_user_managed_groups(user_id) or []
+        if managed_groups:
+            return callback(*args, **kwargs)
+
+        flash("You do not have permission to view this page.", "danger")
+        return redirect(url_for("app.home"))
+
+    return guard
+
+

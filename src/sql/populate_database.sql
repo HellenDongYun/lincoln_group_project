@@ -19,22 +19,22 @@ USE activeloop;
 -- valentina.green@gmail.com	Valentina123!
 
 -- ------------------------------
-INSERT INTO Users (email, password_hash, first_name, last_name, town, global_role, status) VALUES
-('super.admin@platform.org', '$2a$12$MJ1uykG7aegnqalX4IYmYOpuBsv3Z62g2eZyb6djTa4I0r7kQ8dV.', 'Super', 'Admin', 'Christchurch', 'super_admin', 'active'),
-('alice.wong@gmail.com', '$2b$12$6nK5TrF/e0ItqIj4gfvr8u3bRc0EnNBCDPrCb3RZ0N3WeMM66PnJ2', 'Alice', 'Wong', 'Christchurch', 'participant', 'active'),
-('bob.jones@outlook.com', '$2b$12$rXr.7YWS7v3UWdVt23djuu5OuSBOzPVVZ1f35xhbpDaLNsw8u9SwO', 'Bob', 'Jones', 'Wellington', 'participant', 'active'),
-('carol.smith@yahoo.com', '$2b$12$7CUP0m4wnmZQMowRwOXqmuWHvOYal/csTzfZ83ACu6ZasyxeAeqGe', 'Carol', 'Smith', 'Auckland', 'participant', 'active'),
-('dave.brown@xtra.co.nz', '$2b$12$K4cqIZQUes39Cl8kK9DP4eVOgP1qMEQNAFLVX/8odG8f6Meb8tnta', 'Dave', 'Brown', 'Dunedin', 'participant', 'active'),
-('emma.taylor@gmail.com', '$2b$12$KILmHs90ksFzgKx1ImkfC.GG81zhBwFzGLz0I8Uv26y6AQ8Jd1ebO', 'Emma', 'Taylor', 'Hamilton', 'participant', 'active'),
-('frank.wilson@runclub.org', '$2b$12$TD.dSSVR7fBDcmRJOc6oPeytAISuiCxznOXddgxz/LwwHWneRoxNa', 'Frank', 'Wilson', 'Napier', 'participant', 'active'),
-('grace.johnson@gmail.com', '$2b$12$5/yaUQR50jHJnbNsSCkKzOvDNVyb3cBz3r3wwewARSNe2f7Tp6bQm', 'Grace', 'Johnson', 'Queenstown', 'participant', 'active'),
-('harry.lee@outlook.com', '$2b$12$/bniUKEWogvboR37pK9o/e68HnNWdsdWAexplfXKaJrBYom3tf/Ii', 'Harry', 'Lee', 'Nelson', 'participant', 'active'),
-('irene.martin@yahoo.com', '$2b$12$T3Ei39UaHvUyBAKX2r/Nj.Jyw8Mwwmda6ePzoDUz9ybUAR/3vJ5kK', 'Irene', 'Martin', 'Rotorua', 'participant', 'active'),
-('jack.white@xtra.co.nz', '$2b$12$r7F.kNhiIXwgd8anMNHIWeGniwK5Yg2IkdhS80BzOP46KsNDf6Mri', 'Jack', 'White', 'Palmerston North', 'participant', 'active'),
-('violet.kumar@lincoln.ac.nz', '$2b$12$fZ4/aA9xbBKgvmwnyLK6tuOj.OruGE3VuKnfIq.mCy8z8VGOiGHqK', 'Violet', 'Kumar', 'Auckland', 'participant', 'active'),
-('vincent.anderson@gmail.com', '$2b$12$tB2NJ2ffcQsoGOpcPMQAm.W/ZZ9Jst1yGfD6QlWAzVpEh6Dj8f5Im', 'Vincent', 'Anderson', 'Dunedin', 'participant', 'active'),
-('vladimir.scott@runclub.org', '$2b$12$9SiyYX4tvwjX9sbFAb1Y7.mwFiyrG1eRlx/Ms7CrdKgdjnsfqyKbm', 'Vladimir', 'Scott', 'Rotorua', 'participant', 'active'),
-('valentina.green@gmail.com', '$2b$12$KyC5ouMLtuaSyqyOt5cnAuoveLpRAf/xul6cDJoUwDvGwDMcduzKm', 'Valentina', 'Green', 'Palmerston North', 'participant', 'active');
+INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, town, global_role, status) VALUES
+('super.admin@platform.org', '$2a$12$MJ1uykG7aegnqalX4IYmYOpuBsv3Z62g2eZyb6djTa4I0r7kQ8dV.', 'Super', 'Admin', 'male', 48, 'Christchurch', 'super_admin', 'active'),
+('alice.wong@gmail.com', '$2b$12$6nK5TrF/e0ItqIj4gfvr8u3bRc0EnNBCDPrCb3RZ0N3WeMM66PnJ2', 'Alice', 'Wong', 'female', 29, 'Christchurch', 'participant', 'active'),
+('bob.jones@outlook.com', '$2b$12$rXr.7YWS7v3UWdVt23djuu5OuSBOzPVVZ1f35xhbpDaLNsw8u9SwO', 'Bob', 'Jones', 'male', 34, 'Wellington', 'participant', 'active'),
+('carol.smith@yahoo.com', '$2b$12$7CUP0m4wnmZQMowRwOXqmuWHvOYal/csTzfZ83ACu6ZasyxeAeqGe', 'Carol', 'Smith', 'female', 41, 'Auckland', 'participant', 'active'),
+('dave.brown@xtra.co.nz', '$2b$12$K4cqIZQUes39Cl8kK9DP4eVOgP1qMEQNAFLVX/8odG8f6Meb8tnta', 'Dave', 'Brown', 'male', 22, 'Dunedin', 'participant', 'active'),
+('emma.taylor@gmail.com', '$2b$12$KILmHs90ksFzgKx1ImkfC.GG81zhBwFzGLz0I8Uv26y6AQ8Jd1ebO', 'Emma', 'Taylor', 'female', 27, 'Hamilton', 'participant', 'active'),
+('frank.wilson@runclub.org', '$2b$12$TD.dSSVR7fBDcmRJOc6oPeytAISuiCxznOXddgxz/LwwHWneRoxNa', 'Frank', 'Wilson', 'male', 36, 'Napier', 'participant', 'active'),
+('grace.johnson@gmail.com', '$2b$12$5/yaUQR50jHJnbNsSCkKzOvDNVyb3cBz3r3wwewARSNe2f7Tp6bQm', 'Grace', 'Johnson', 'female', 31, 'Queenstown', 'participant', 'active'),
+('harry.lee@outlook.com', '$2b$12$/bniUKEWogvboR37pK9o/e68HnNWdsdWAexplfXKaJrBYom3tf/Ii', 'Harry', 'Lee', 'male', 19, 'Nelson', 'participant', 'active'),
+('irene.martin@yahoo.com', '$2b$12$T3Ei39UaHvUyBAKX2r/Nj.Jyw8Mwwmda6ePzoDUz9ybUAR/3vJ5kK', 'Irene', 'Martin', 'female', 46, 'Rotorua', 'participant', 'active'),
+('jack.white@xtra.co.nz', '$2b$12$r7F.kNhiIXwgd8anMNHIWeGniwK5Yg2IkdhS80BzOP46KsNDf6Mri', 'Jack', 'White', 'male', 52, 'Palmerston North', 'participant', 'active'),
+('violet.kumar@lincoln.ac.nz', '$2b$12$fZ4/aA9xbBKgvmwnyLK6tuOj.OruGE3VuKnfIq.mCy8z8VGOiGHqK', 'Violet', 'Kumar', 'female', 24, 'Auckland', 'participant', 'active'),
+('vincent.anderson@gmail.com', '$2b$12$tB2NJ2ffcQsoGOpcPMQAm.W/ZZ9Jst1yGfD6QlWAzVpEh6Dj8f5Im', 'Vincent', 'Anderson', 'male', 33, 'Dunedin', 'participant', 'active'),
+('vladimir.scott@runclub.org', '$2b$12$9SiyYX4tvwjX9sbFAb1Y7.mwFiyrG1eRlx/Ms7CrdKgdjnsfqyKbm', 'Vladimir', 'Scott', 'other', 28, 'Rotorua', 'participant', 'active'),
+('valentina.green@gmail.com', '$2b$12$KyC5ouMLtuaSyqyOt5cnAuoveLpRAf/xul6cDJoUwDvGwDMcduzKm', 'Valentina', 'Green', 'female', 30, 'Palmerston North', 'participant', 'active');
 
 
 -- ------------------------------
@@ -240,42 +240,3 @@ INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (10, 2, '2025-08-10 08:30:00', '2025-08-10 09:12:45'), (10, 5, '2025-08-10 08:30:00', '2025-08-10 09:08:30'),
 (10, 6, '2025-08-10 08:30:00', '2025-08-10 09:15:20'), (10, 7, '2025-08-10 08:30:00', '2025-08-10 09:10:15'),
 (10, 12, '2025-08-10 08:30:00', '2025-08-10 09:06:55'), (10, 13, '2025-08-10 08:30:00', '2025-08-10 09:18:40');
-
-UPDATE Users
-SET 
-  gender = CASE id
-    WHEN 1 THEN 'male'
-    WHEN 2 THEN 'female'
-    WHEN 3 THEN 'male'
-    WHEN 4 THEN 'female'
-    WHEN 5 THEN 'male'
-    WHEN 6 THEN 'female'
-    WHEN 7 THEN 'male'
-    WHEN 8 THEN 'female'
-    WHEN 9 THEN 'male'
-    WHEN 10 THEN 'female'
-    WHEN 11 THEN 'male'
-    WHEN 12 THEN 'female'
-    WHEN 13 THEN 'male'
-    WHEN 14 THEN 'male'
-    WHEN 15 THEN 'female'
-  END,
-  age = CASE id
-    WHEN 1 THEN 35
-    WHEN 2 THEN 28
-    WHEN 3 THEN 32
-    WHEN 4 THEN 29
-    WHEN 5 THEN 41
-    WHEN 6 THEN 26
-    WHEN 7 THEN 38
-    WHEN 8 THEN 31
-    WHEN 9 THEN 27
-    WHEN 10 THEN 30
-    WHEN 11 THEN 33
-    WHEN 12 THEN 24
-    WHEN 13 THEN 36
-    WHEN 14 THEN 34
-    WHEN 15 THEN 25
-  END
-WHERE id BETWEEN 1 AND 15;
-

@@ -1,7 +1,6 @@
 from datetime import datetime
 import math
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
-import math
 
 from src.app.auth.route_guard import require_login
 from src.app.common.nav.encode import decode_id, encode_id
@@ -93,12 +92,12 @@ def register_for_event(encoded_participant_id: str, event_id: int):
             url_for("participant.dashboard", encoded_participant_id=encoded_participant_id)
         )
 
-    success, message = participant_service.register_for_event(participant_id, event_id)
+    success = participant_service.register_for_event(participant_id, event_id)
 
     if success:
-        flash(message, "success")
+        flash("Successfully registered for the event.", "success")
     else:
-        flash(message, "danger")
+        flash("Unable to register for this event. It may be full or you may already be registered.", "danger")
 
     return redirect(
         url_for("participant.dashboard", encoded_participant_id=encoded_participant_id)
@@ -234,84 +233,25 @@ def create_group_applyform(encoded_participant_id: str):
 @require_login
 def delete_group_application(encoded_participant_id: str, application_id: str):
     participant_id = decode_id(encoded_participant_id)
+    current_user_id = auth_service.get_user_id()
+    if participant_id != current_user_id:
+        flash("You can only manage your own group applications.", "danger")
+        if current_user_id:
+            redirect_id = encode_id(current_user_id)
+            return redirect(
+                url_for("participant.myapplications", encoded_participant_id=redirect_id)
+            )
+        return redirect(url_for("app.home"))
 
-    try:
-        success = participant_service.cancel_registration(participant_id, event_id)
-        
-        if success:
-            flash("Successfully cancelled your registration for the event.", "success")
-        else:
-            flash("Cancellation failed. You may not be registered for this event.", "danger")
-    except Exception as e:
-        flash(f"Cancellation error: {str(e)}", "danger")
-    
-    return redirect(url_for('participant.dashboard', encoded_participant_id=encoded_participant_id))
-
-
-@participant_blueprint.route("/<encoded_participant_id>/applications", methods=["GET"])
-def myapplications(encoded_participant_id):
-    participant_id = decode_id(encoded_participant_id)
-    #  get filter parameters
-    status = request.args.get("status", "all")
-    page = int(request.args.get("page", 1))  # current page, default is 1
-    per_page = 5  # every page show 5 data
-    applications,total = participant_service.get_participant_applications(status=status, page= page,per_page=per_page,participant_id=participant_id)
-    total_pages = math.ceil(total / per_page)
-    return render_template("participant/applications.html", encoded_participant_id=encoded_participant_id, applications=applications, total_pages = total_pages, page=page, per_page=per_page,status=status)
-
-@participant_blueprint.route("/<encoded_participant_id>/applications/apply", methods=["GET","POST"])
-def create_group_applyform(encoded_participant_id):
-    participant_id = decode_id(encoded_participant_id)
-    application_id = request.args.get("app_id") 
-    is_edit_mode = bool(application_id)
-    application = None
-    if is_edit_mode:
-        application = participant_service.get_application_by_id(participant_id, application_id)
-    if request.method == 'POST':
-        name = request.form.get("groupName")
-        town = request.form.get("location")
-        visibility = request.form.get("privacy")
-        description = request.form.get("description")
-        # temporary application data to retain the input
-        application = {
-            "proposed_name": name,
-            "proposed_town": town,
-            "visibility": visibility,
-            "proposed_description": description
-        }
-         # added New field verification logic
-        if not name or not town or not visibility:
-            flash("Please fill in all required fields: group name, location, and visibility.", "danger")
-            return render_template("participant/create_group_form.html",
-                                   encoded_participant_id=encoded_participant_id,
-                                   application=application,is_edit_mode =is_edit_mode )
-        try:
-            if is_edit_mode:  # update
-                participant_service.update_group_application(
-                    participant_id, application_id, name, town, visibility, description
-                )
-                flash("Your group application has been updated successfully!", "success")
-            else:  # add
-                participant_service.submit_create_group_application(
-                    participant_id, name, town, visibility, description
-                )
-                flash("Your group application has been submitted successfully!", "success")
-
-            return redirect(url_for("participant.myapplications", encoded_participant_id=encoded_participant_id,is_edit_mode =is_edit_mode ))
-        except ValueError as e:
-            flash(str(e), "danger")  
-    return render_template("participant/create_group_form.html", encoded_participant_id=encoded_participant_id,application=application,is_edit_mode =is_edit_mode )
-
-
-@participant_blueprint.route("/<encoded_participant_id>/applications/<application_id>/delete", methods=["POST"])
-def delete_group_application(encoded_participant_id, application_id):
-    participant_id = decode_id(encoded_participant_id)
     try:
         participant_service.delete_group_application(participant_id, application_id)
         flash("Group application deleted successfully.", "success")
-    except Exception as e:
-        flash(f"Error deleting group application: {str(e)}", "danger")
-    return redirect(url_for("participant.myapplications", encoded_participant_id=encoded_participant_id))
+    except Exception as error:
+        flash(f"Error deleting group application: {error}", "danger")
+
+    return redirect(
+        url_for("participant.myapplications", encoded_participant_id=encoded_participant_id)
+    )
 
 
 
@@ -454,15 +394,6 @@ def group_event_result(encoded_participant_id):
     group_result = participant_service.get_user_group_membership_results(participant_id)
     print(group_result)
     return render_template("participant/my_result_group.html", encoded_participant_id=encoded_participant_id,active_tab="group",group_result=group_result)
-    
-        participant_service.delete_group_application(participant_id, application_id)
-        flash("Group application deleted successfully.", "success")
-    except Exception as error:
-        flash(f"Error deleting group application: {error}", "danger")
-
-    return redirect(
-        url_for("participant.myapplications", encoded_participant_id=encoded_participant_id)
-    )
 
 
 # Legacy volunteer sign-up endpoints — retained as no-op JSON responses to avoid 404s
