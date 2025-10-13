@@ -1,0 +1,64 @@
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <!-- filter-->
+    <form method="get"
+  action="{{ url_for('participant.myresults_eventdetails',
+                     encoded_participant_id=encoded_participant_id,
+                     event_id=event_id,
+                     tab='ranking') }}"
+  class="mb-4">
+  <input type="hidden" name="tab" value="ranking">
+  <div class="row g-3 align-items-end">
+   <div class="col-auto">
+ <div class="d-flex align-items-center gap-2">
+  <span class="me-1">Group by</span>
+  <select name="group_by" class="form-select form-select-sm w-auto">
+    <option value="gender" {% if group_by == 'gender' %}selected{% endif %}>Gender</option>
+    <option value="age" {% if group_by == 'age' %}selected{% endif %}>Age</option>
+  </select>
+</div>
+</div>
+
+
+    <div class="col-auto">
+      <button type="submit" class="btn btn-dark btn-sm rounded-2">Apply</button>
+    </div>
+  </div>
+</form>
+
+    {% if top3_grouped %}
+    <!-- card -->
+    <div class="row gy-4">
+      {% for label, group in top3_grouped.items() %}
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body pb-0">
+            <div class="fw-bold fs-5">{{ label | capitalize}} Group</div>
+            <small class="text-muted">{{ group.group_size }} Participants</small>
+          </div>
+          <div class="card-body">
+            <div class="d-flex flex-column gap-2">
+              {% for person in group.top3 %}
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">
+                  {% if person.rank == 1 %}🥇{% elif person.rank == 2 %}🥈{% elif person.rank == 3 %}🥉{% endif %}
+                  {{ person.name }}
+                </span>
+                <span class="text-muted">{{ person.duration }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+  <div class="alert alert-warning text-center mt-4">
+    No matching data found for the selected group.
+  </div>
+{% endif %}
+  </div>
+</div>
+  </div>
+</div>

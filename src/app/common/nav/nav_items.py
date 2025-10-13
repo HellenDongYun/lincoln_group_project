@@ -64,18 +64,15 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')
         })
-
-        # Add Record Completion Time for participants who are group members (volunteers)
-        if GroupService.user_has_group_memberships(user_id):
-            nav_items.append({
-                "label": "Record Completion Time",
-                "url": url_for('results.record_time')
-            })
-
         nav_items.append({
             "label": "My Applications",
             "url": url_for('participant.myapplications', encoded_participant_id=encoded_participant_id)
         })
+        nav_items.append({
+            "label": "Results",
+            "url": url_for('participant.myresults', encoded_participant_id=encoded_participant_id)
+        })
+      
 
         nav_items.append({
             "label": "Help & Support",

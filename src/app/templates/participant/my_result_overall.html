@@ -1,0 +1,172 @@
+{% extends 'base.html'%} {%block content%}
+<div class="container py-5">
+  {% set encoded_participant_id = encoded_participant_id %} {% set tab =
+  active_tab %} {% include 'participant/result_top_nav.html' %}
+
+  <!-- overview of grades -->
+  <div class="row text-center mb-5">
+    <!-- index 1 -->
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold">Total Participants</h5>
+          <p class="display-4 text-primary mb-0">
+            {{event_results.events | length}}
+          </p>
+          <small class="text-muted">Times</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- index 2 -->
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold">Total Duration</h5>
+          <p class="display-4 text-success mb-0">
+            {{event_results.total_duration}}
+          </p>
+          <small class="text-muted">HH:MM:SS</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- index 3 -->
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="fw-bold">Average Duration</h5>
+          <p class="display-4 text-warning mb-0">
+            {{event_results.shortest_duration}}
+          </p>
+          <small class="text-muted">HH:MM:SS</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <!-- recent events-->
+      <h5 class="fw-bold">Your Recent Activity</h5>
+      <small class="text-muted d-block mb-3">Click to See More Details</small>
+      <!-- 🔍 Search and Filter -->
+      <div class="card bg-light border-0 shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <form class="row gx-3 gy-2 align-items-center" method="get">
+        <!-- Filter group: search input + date + type -->
+        <div class="col-md-9 d-flex align-items-center gap-3">
+            <!-- Search input -->
+            <input
+            type="text"
+            name="search"
+            class="form-control form-control-sm"
+            placeholder="Search events..."
+            style="border-radius: 4px; min-width: 280px;"
+            value="{{ request.args.get('search', '') }}"
+            />
+
+            <!-- Date picker -->
+            <input
+            type="date"
+            name="date"
+            class="form-control form-control-sm"
+            style="border-radius: 4px; width: 160px;"
+            value="{{ request.args.get('date', '') }}"
+            />
+
+            <!-- Filter dropdown -->
+            <select
+            name="type"
+            class="form-select form-select-sm"
+            style="border-radius: 4px; width: 160px;"
+            >
+            <option value="">Filter by type</option>
+            <option value="run" {% if request.args.get('type') == 'run' %}selected{% endif %}>Run</option>
+            <option value="walk" {% if request.args.get('type') == 'walk' %}selected{% endif %}>Walk</option>
+            <option value="trail" {% if request.args.get('type') == 'trail' %}selected{% endif %}>Trail</option>
+            <option value="cycling" {% if request.args.get('type') == 'cycling' %}selected{% endif %}>Cycling</option>
+            </select>
+        </div>
+
+        <!-- Button group: Search + Reset -->
+        <div class="col-md-3 d-flex justify-content-end align-items-center gap-2">
+            <button
+            type="submit"
+            class="btn btn-outline-dark btn-sm"
+            style="border-radius: 4px; white-space: nowrap;"
+            >
+            Search
+            </button>
+            <a
+            href="{{ url_for('participant.myresults', encoded_participant_id=encoded_participant_id) }}"
+            class="btn btn-success btn-sm"
+            style="border-radius: 4px; white-space: nowrap;"
+            >
+            Reset
+            </a>
+        </div>
+        </form>
+
+        </div>
+      </div>
+
+      <div class="row">
+         {% if event_results.events|length == 0 %}
+            <div class="col-12">
+            <div class="alert alert-warning text-center" role="alert">
+                <i class="bi bi-exclamation-circle me-2"></i>
+                No events match your current filters.
+            </div>
+            </div>
+        {% endif %}
+        {% for event in event_results.events %}
+        <div class="col-md-12 mb-3">
+          <div class="card shadow-sm">
+            <div
+              class="card-body d-flex justify-content-between align-items-center"
+            >
+              <!-- left icon -->
+              <div class="me-3">
+                <i class="bi bi-clock fs-3 text-primary"></i>
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1">{{ event.event_name }}</h6>
+                <small class="text-muted">
+                  <span class="me-4">
+                    <i class="bi bi-calendar-event me-1"></i>{{
+                    event.event_date.strftime("%d/%m/%Y") }}</span
+                  >
+                  <span class="me-4"
+                    ><i class="bi bi-geo-alt me-1"></i>{{ event.town }}</span
+                  >
+                  <span class="me-4"
+                    ><i class="bi bi-people me-1"></i> {{event.total_completed}}
+                    / {{ event.max_participants }} participants</span
+                  >
+                  <span class="me-4"
+                    ><i class="bi bi-tag me-1"></i>{{ event.event_type }}</span
+                  >
+                  <span class="me-4"
+                    ><i class="bi bi-clock me-1"></i>{{ event.duration }}
+                  </span>
+                </small>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <a
+                  href="{{ url_for('participant.myresults_eventdetails',encoded_participant_id=encoded_participant_id,event_id=event.event_id) }}"
+                  class="btn btn-outline-dark btn-sm rounded-2"
+                >
+                  View Details
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{%endblock%}

@@ -146,6 +146,22 @@ CREATE TABLE Group_Join_Requests (
   FOREIGN KEY (reviewed_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE,
   UNIQUE KEY unique_user_group_pending (user_id, group_id, status)
 );
+ALTER TABLE Group_Applications
+ADD COLUMN application_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE Users
+ADD COLUMN gender ENUM('male', 'female', 'other') DEFAULT NULL AFTER last_name,
+ADD COLUMN age INT DEFAULT NULL AFTER gender,
+ADD COLUMN age_group VARCHAR(20)
+GENERATED ALWAYS AS (
+    CASE
+        WHEN age < 18 THEN 'Under 18'
+        WHEN age BETWEEN 18 AND 29 THEN '18-29'
+        WHEN age BETWEEN 30 AND 44 THEN '30-44'
+        WHEN age >= 45 THEN '45+'
+        ELSE 'Unknown'
+    END
+) STORED;
+
 
 -- Support Requests for Helpdesk System
 CREATE TABLE Support_Requests (

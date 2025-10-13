@@ -1,0 +1,141 @@
+{% extends "base.html" %} {% block content %}
+<div class="container py-4">
+  <!-- {{event_result.participants}} -->
+  <!-- return button -->
+  <div class="d-flex justify-content-end mb-3">
+    <a
+      href="{{ url_for('participant.myresults',encoded_participant_id=encoded_participant_id) }}"
+      class="btn btn-outline-secondary btn-sm"
+      >Return</a
+    >
+  </div>
+
+  <!-- event title -->
+  <h3 class="fw-bold">{{event_result.event.name}}</h3>
+  <div class="text-muted mb-3">
+    <i class="bi bi-calendar-event me-2"></i>
+    {{event_result.event.date.strftime('%d/%m/%Y')}}
+    <span class="mx-2">|</span>
+    {{event_result.event.town}}
+    <span class="mx-2">|</span>
+      {{event_result.event.type}}
+    </span>
+  </div>
+
+  <!-- event result -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body row text-center">
+      <div class="col-6 col-md-3">
+        {% if event_result.user_result.rank == 1 %}
+        <i class="bi bi-trophy-fill text-warning me-1 fs-5"></i>
+        <h5 class="fw-bold text-warning">🥇 1st Place</h5>
+        {% elif event_result.user_result.rank == 2 %}
+        <i class="bi bi-trophy-fill text-secondary me-1 fs-5"></i>
+        <h5 class="fw-bold text-secondary">🥈 2nd Place</h5>
+        {% elif event_result.user_result.rank == 3 %}
+        <i
+          class="bi bi-trophy-fill text-orange me-1 fs-5"
+          style="color: #ff7f50"
+        ></i>
+        <h5 class="fw-bold" style="color: #ff7f50">🥉 3rd Place</h5>
+        {% else %}
+        <i class="bi bi-trophy me-1"></i>
+        <h5 class="fw-bold">#{{ event_result.user_result.rank }}</h5>
+        {% endif %}
+        <small class="text-muted">Ranking</small>
+      </div>
+      <div class="col-6 col-md-3">
+        <i class="bi bi-stopwatch me-2"></i>
+        <h5 class="fw-bold">{{event_result.user_result.duration}}</h5>
+        <small class="text-muted">Duration</small>
+      </div>
+      <div class="col-6 col-md-3 mt-3 mt-md-0">
+        <i class="bi bi-tag me-2"></i>
+        <h5 class="fw-bold">{{event_result.event.type}}</h5>
+        <small class="text-muted">Category</small>
+      </div>
+        {% set total = event_result.all_participants|length %}
+        {% set rank = event_result.user_result.rank %}
+        {% if total > 1 %}
+        {% set percent = ((total - rank) * 100.0 / (total - 1)) | round(2) %}
+        {% else %}
+        {% set percent = 100 %}
+        {% endif %}
+      <div class="col-6 col-md-3 mt-3 mt-md-0">
+        <i class="bi bi-graph-up-arrow me-2"></i>
+        <h5 class="fw-bold">{{ percent }}%</h5>
+        <small class="text-muted">Excess Participants</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab -->
+   <div class="container px-0 mb-3">
+  <div class="p-2 bg-light rounded-pill shadow-sm">
+    <ul class="nav nav-pills w-100 flex-nowrap" id="resultsTab" role="tablist">
+      <li class="nav-item flex-fill text-center" role="presentation">
+        <a
+          class="nav-link text-dark rounded-pill py-2 px-3 
+                 {% if sub_active_tab == 'result' %}
+                    active bg-white shadow-sm fw-bold
+                 {% else %}
+                    bg-transparent
+                 {% endif %}"
+          id="result-tab"
+          href="{{ url_for('participant.myresults_eventdetails', encoded_participant_id=encoded_participant_id, event_id=event_result.event.id, tab='result') }}"
+          role="tab"
+          aria-controls="result"
+          aria-selected="{% if sub_active_tab == 'result' %}true{% else %}false{% endif %}"
+        >
+          Event Results
+        </a>
+      </li>
+      
+      <li class="nav-item flex-fill text-center" role="presentation">
+        <a
+          class="nav-link text-dark rounded-pill py-2 px-3 
+                 {% if sub_active_tab == 'statistics' %}
+                    active bg-white shadow-sm fw-bold
+                 {% else %}
+                    bg-transparent
+                 {% endif %}"
+          id="statistics-tab"
+          href="{{ url_for('participant.myresults_eventdetails', encoded_participant_id=encoded_participant_id, event_id=event_result.event.id, tab='statistics') }}"
+          role="tab"
+          aria-controls="statistics"
+          aria-selected="{% if sub_active_tab == 'statistics' %}true{% else %}false{% endif %}"
+        >
+          Statistics
+        </a>
+      </li>
+      
+      <li class="nav-item flex-fill text-center" role="presentation">
+        <a
+          class="nav-link text-dark rounded-pill py-2 px-3 
+                 {% if sub_active_tab == 'ranking' %}
+                    active bg-white shadow-sm fw-bold
+                 {% else %}
+                    bg-transparent
+                 {% endif %}"
+          id="ranking-tab"
+          href="{{ url_for('participant.myresults_eventdetails', encoded_participant_id=encoded_participant_id, event_id=event_result.event.id, tab='ranking') }}"
+          role="tab"
+          aria-controls="ranking"
+          aria-selected="{% if sub_active_tab == 'ranking' %}true{% else %}false{% endif %}"
+        >
+          Ranking
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+  <!-- Tab Content -->
+  {% if sub_active_tab == 'result' %}
+    {% include 'participant/event_details_tab_result.html' %}
+  {% elif sub_active_tab == 'statistics' %}
+    {% include 'participant/event_details_tab_statistics.html' %}
+  {% elif sub_active_tab == 'ranking' %}
+    {% include 'participant/event_details_tab_ranking.html' %}
+  {% endif %}
+</div>
+{% endblock %}

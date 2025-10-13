@@ -66,30 +66,32 @@
           >
             <!-- title + status -->
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title fw-bold mb-0">{{ app.name }}</h5>
+              <h5 class="card-title fw-bold mb-0">{{ app.name | capitalize}}</h5>
               <span
                 class="badge{% if app.visibility == 'private' %} bg-danger {% else %} bg-success {% endif %}"
                 >{{ app.visibility|capitalize }}</span
               >
             </div>
-            <p class="text-muted small mb-2">{{ app.description }}</p>
+            <p class="text-muted small mb-2">{{ app.description | capitalize | truncate(100)}}</p>
             <p class="text-muted small mb-1">
-              <i class="bi bi-geo-alt fs-6 me-1"></i>Location: {{ app.town }}
+              <i class="bi bi-geo-alt fs-6 me-1"></i>Location: {{ app.town | capitalize }}
             </p>
 
             <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <i class="bi bi-calendar-event me-1"></i>
-                <span class="text-muted small">Apply Time: 15/09/2015</span>
+              <div class="text-muted small"> 
+                <i class="bi bi-calendar me-1"></i> Application Time: {{ app.application_time.strftime("%d/%m/%Y %H:%M") }}             
               </div>
+
               <span
                 class="badge {% if app.status|lower == 'pending' %} bg-warning {% elif app.status|lower == 'rejected' %} bg-danger {% else %} bg-success {% endif %}"
                 >{{ app.status|capitalize }}</span
               >
             </div>
+            {% if app.status|lower != 'pending' %}
             <p class="text-muted small mt-2">
-              Approved by: {{app.full_name}} | {{app.email}}
+              Approved by: {{ app.full_name }} | {{ app.email }}
             </p>
+          {% endif %}
 
             <!-- status description -->
             {% if app.status|lower == 'approved' %}
