@@ -20,7 +20,7 @@ content %}
                   >Email <span class="text-danger">*</span></label
                 >
                 <input
-                  type="text"
+                  type="email"
                   name="email"
                   id="email"
                   required
@@ -50,9 +50,9 @@ content %}
                   class="form-control {% if form_group.get('password').errors %}is-invalid{% endif %}"
                   value="{{ form_group.get('password').value }}"
                 />
-                {% if not form_group.get('email').errors %}
-                <div class="invalid-feedback">Please enter your email.</div>
-                {% endif %} {% for error in form_group.get('email').errors %}
+                {% if not form_group.get('password').errors %}
+                <div class="invalid-feedback">Please enter your password.</div>
+                {% endif %} {% for error in form_group.get('password').errors %}
                 <div class="invalid-feedback">{{error}}</div>
                 {% endfor %}
               </div>
