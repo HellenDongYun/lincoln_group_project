@@ -30,7 +30,15 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
         nav_items.append(
             {"label": "Record Completion Time", "url": url_for("results.record_time")}
         )
+        nav_items.append({
+            "label": "Support Queue",
+            "url": url_for('support.support_queue')
+        })
         nav_items.append({"label": "Events", "url": url_for("app.get_events")})
+        nav_items.append({
+            "label": "Help & Support",
+            "url": url_for('support.my_requests')
+        })
 
     elif user_role == GlobalRole.PARTICIPANT:
         encoded_participant_id = encode_id(user_id)

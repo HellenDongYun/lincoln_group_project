@@ -538,7 +538,7 @@ class ParticipantRepository(Repository):
                         SEC_TO_TIME(MIN(total_seconds)) AS fastest_duration,
                         SEC_TO_TIME(MAX(total_seconds)) AS slowest_duration
                     FROM
-                        event_results
+                        Event_Results
                     WHERE
                         event_id = %s;
                 """, (event_id,))
@@ -556,8 +556,8 @@ class ParticipantRepository(Repository):
                     CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                     SEC_TO_TIME(er.total_seconds) AS raw_duration,
                     er.total_seconds
-                FROM event_results er
-                JOIN users u ON er.user_id = u.id
+                FROM Event_Results er
+                JOIN Users u ON er.user_id = u.id
                 WHERE er.event_id = %s
             """
             params = [event_id]
