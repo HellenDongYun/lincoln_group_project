@@ -264,6 +264,8 @@ class ParticipantRepository(Repository):
                 WHERE id = %s AND applicant_id = %s
             """, (name, town, visibility, description, application_id, participant_id))
     
+    
+    
     def delete_group_application(self,participant_id, application_id):
         with get_cursor() as cursor:
             cursor.execute("""

@@ -8,6 +8,7 @@ from src.app.common.nav.encode import encode_id
 class GlobalRole(Enum):
     SUPER_ADMIN = 'super_admin'
     PARTICIPANT = 'participant'
+    SUPPORT_TECHNICIAN = 'support_technician'
 
 
 class GroupRole(Enum):
@@ -18,11 +19,6 @@ class GroupRole(Enum):
 class GroupVisibility(Enum):
     PUBLIC = 'public'
     PRIVATE = 'private'
-
-
-class GroupJoinType(Enum):
-    OPEN = 'open'
-    CLOSED = 'closed'
 
 
 class GroupStatus(Enum):
@@ -59,6 +55,10 @@ class User:
         return self.global_role == GlobalRole.SUPER_ADMIN
 
     @property
+    def is_support_technician(self) -> bool:
+        return self.global_role == GlobalRole.SUPPORT_TECHNICIAN
+
+    @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
@@ -70,7 +70,6 @@ class CommunityGroup:
     description: str = None
     town: str = None
     visibility: GroupVisibility = None
-    join_type: GroupJoinType = None
     status: GroupStatus = None
     created_by: int = None
 
@@ -81,10 +80,6 @@ class CommunityGroup:
     @property
     def is_public(self) -> bool:
         return self.visibility == GroupVisibility.PUBLIC
-
-    @property
-    def is_open_join(self) -> bool:
-        return self.join_type == GroupJoinType.OPEN
 
 
 @dataclass
@@ -115,7 +110,6 @@ class GroupApplication:
     proposed_description: str = None
     proposed_town: str = None
     visibility: GroupVisibility = None
-    join_type: GroupJoinType = None
     status: str = None
     decision_by: Optional[int] = None
     

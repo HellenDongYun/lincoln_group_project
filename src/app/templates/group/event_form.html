@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · {{ group.name }}{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-dark text-white">
+  <div class="container">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+      <div>
+        <span class="text-warning text-uppercase small fw-semibold">{{ 'Edit' if is_edit else 'Create' }} event</span>
+        <h1 class="display-6 fw-bold mb-1">{{ group.name }}</h1>
+        <p class="text-white-50 mb-0">Plan community activities that keep members engaged.</p>
+      </div>
+      <a href="{{ url_for('groups.manage_group', group_id=group.id) }}" class="btn btn-outline-light">
+        <i class="bi bi-arrow-left me-2"></i>Back to group management
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-xl-8 col-lg-9">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4 p-lg-5">
+            <h2 class="h4 fw-semibold mb-4">{{ 'Update event details' if is_edit else 'Create a new event' }}</h2>
+
+            <form method="post" class="row gy-4">
+              <div class="col-md-7">
+                <label for="name" class="form-label fw-semibold">Event name</label>
+                <input type="text" class="form-control" id="name" name="name" required value="{{ form_data.name }}">
+              </div>
+              <div class="col-md-5">
+                <label for="event_type" class="form-label fw-semibold">Event type</label>
+                <input type="text" class="form-control" id="event_type" name="event_type" required placeholder="e.g. Community run" value="{{ form_data.event_type }}">
+              </div>
+
+              <div class="col-md-4">
+                <label for="event_date" class="form-label fw-semibold">Date</label>
+                <input type="date" class="form-control" id="event_date" name="event_date" required value="{{ form_data.event_date }}">
+              </div>
+              <div class="col-md-3">
+                <label for="event_time" class="form-label fw-semibold">Time</label>
+                <input type="time" class="form-control" id="event_time" name="event_time" required value="{{ form_data.event_time }}">
+              </div>
+              <div class="col-md-5">
+                <label for="town" class="form-label fw-semibold">Town / suburb</label>
+                <input type="text" class="form-control" id="town" name="town" required placeholder="e.g. Wellington" value="{{ form_data.town }}">
+              </div>
+
+              <div class="col-md-4">
+                <label for="max_participants" class="form-label fw-semibold">Max participants</label>
+                <input type="number" min="1" class="form-control" id="max_participants" name="max_participants" required value="{{ form_data.max_participants }}">
+              </div>
+              <div class="col-md-4">
+                <label for="visibility" class="form-label fw-semibold">Visibility</label>
+                <select class="form-select" id="visibility" name="visibility">
+                  <option value="public" {% if form_data.visibility == 'public' %}selected{% endif %}>Public</option>
+                  <option value="private" {% if form_data.visibility == 'private' %}selected{% endif %}>Private</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label for="description" class="form-label fw-semibold">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="4" placeholder="Add context, schedule, or equipment notes">{{ form_data.description }}</textarea>
+              </div>
+
+              <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div>
+                    <span class="fw-semibold">Volunteer requirements</span>
+                    <p class="text-muted small mb-0">Select each volunteer role your event needs and how many people you require.</p>
+                  </div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="add-volunteer-role">
+                    <i class="bi bi-plus-lg me-1"></i>Add role
+                  </button>
+                </div>
+
+                {% set requirement_rows = form_data.volunteer_requirements if form_data.volunteer_requirements else [{'role_id': '', 'spots': ''}] %}
+                <script type="application/json" id="volunteer-role-options">{{ volunteer_roles | tojson | safe }}</script>
+                <div id="volunteer-role-rows" class="vstack gap-3">
+                  {% for requirement in requirement_rows %}
+                  <div class="row g-3 align-items-end volunteer-role-row">
+                    <div class="col-md-7">
+                      <label class="form-label fw-semibold">Volunteer role</label>
+                      <select class="form-select" name="volunteer_role_ids[]">
+                        <option value="">Select a role</option>
+                        {% for role in volunteer_roles %}
+                        <option value="{{ role.id }}" {% if requirement.role_id and requirement.role_id|int == role.id %}selected{% endif %}>{{ role.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label fw-semibold">Required volunteers</label>
+                      <input type="number" min="1" class="form-control" name="volunteer_role_spots[]" value="{{ requirement.spots }}" placeholder="e.g. 5">
+                    </div>
+                    <div class="col-md-1 d-flex justify-content-end">
+                      <button type="button" class="btn btn-outline-danger remove-volunteer-role" title="Remove role">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="col-12 d-flex flex-wrap gap-2 justify-content-end">
+                <a href="{{ url_for('groups.manage_group', group_id=group.id) }}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-warning text-black">{{ submit_label }}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const optionsSource = document.getElementById('volunteer-role-options');
+      const volunteerRoles = optionsSource ? JSON.parse(optionsSource.textContent) : [];
+      const container = document.getElementById('volunteer-role-rows');
+      const addButton = document.getElementById('add-volunteer-role');
+
+      if (!container || !addButton) {
+        return;
+      }
+
+      const buildRoleOptions = (selectedValue) => {
+        const placeholderOption = '<option value="">Select a role</option>';
+        const roleOptions = volunteerRoles.map(role => {
+          const selected = String(selectedValue || '') === String(role.id) ? ' selected' : '';
+          return `<option value="${role.id}"${selected}>${role.name}</option>`;
+        }).join('');
+        return placeholderOption + roleOptions;
+      };
+
+      const createRow = (roleId = '', spots = '') => {
+        const row = document.createElement('div');
+        row.className = 'row g-3 align-items-end volunteer-role-row';
+        row.innerHTML = `
+          <div class="col-md-7">
+            <label class="form-label fw-semibold">Volunteer role</label>
+            <select class="form-select" name="volunteer_role_ids[]">
+              ${buildRoleOptions(roleId)}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Required volunteers</label>
+            <input type="number" min="1" class="form-control" name="volunteer_role_spots[]" placeholder="e.g. 5" value="${spots}">
+          </div>
+          <div class="col-md-1 d-flex justify-content-end">
+            <button type="button" class="btn btn-outline-danger remove-volunteer-role" title="Remove role">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(row);
+      };
+
+      addButton.addEventListener('click', () => {
+        createRow();
+      });
+
+      container.addEventListener('click', (event) => {
+        if (!event.target.closest('.remove-volunteer-role')) {
+          return;
+        }
+
+        const rows = container.querySelectorAll('.volunteer-role-row');
+        if (rows.length === 1) {
+          const select = rows[0].querySelector('select');
+          const input = rows[0].querySelector('input');
+          if (select) select.value = '';
+          if (input) input.value = '';
+          return;
+        }
+
+        const row = event.target.closest('.volunteer-role-row');
+        if (row) {
+          row.remove();
+        }
+      });
+    });
+  </script>
+{% endblock %}

@@ -88,7 +88,7 @@
                         <div class="hero-stat-card glass-card h-100">
                             <span class="stat-label">Active groups</span>
                             <span class="stat-number">{{ active_groups }}</span>
-                            <span class="stat-meta text-white-50">of {{ total_groups }} total</span>
+                            <span class="stat-meta text-white-50">Groups</span>
                         </div>
                     </div>
                     <div class="col-sm-6">
@@ -102,7 +102,7 @@
                         <div class="hero-stat-card glass-card h-100">
                             <span class="stat-label">Group managers</span>
                             <span class="stat-number">{{ active_managers }}</span>
-                            <span class="stat-meta text-white-50">Trusted leaders in place</span>
+                            <span class="stat-meta text-white-50">Leaders</span>
                         </div>
                     </div>
                     <div class="col-sm-6">
@@ -261,46 +261,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="card bg-warning-subtle border border-warning-subtle h-100 shadow-sm">
-                    <div class="card-body d-flex flex-column gap-3">
-                        <div>
-                            <span class="text-uppercase small text-black-50">Trend watch</span>
-                            <h5 class="fw-semibold text-black mb-2">Operational alerts</h5>
-                            <p class="text-black-50 small mb-0">Surface the hotspots needing a super admin decision today.</p>
-                        </div>
-                        <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
-                            <li class="d-flex gap-3 align-items-start">
-                                <span class="badge bg-dark text-warning rounded-pill mt-1"><i class="bi bi-diagram-3"></i></span>
-                                <div>
-                                    <div class="fw-semibold text-black">{{ active_groups }} / {{ total_groups }} groups active</div>
-                                    <div class="small text-black-50">Keep visibility fresh and sunset inactive spaces promptly.</div>
-                                </div>
-                            </li>
-                            <li class="d-flex gap-3 align-items-start">
-                                <span class="badge bg-dark text-warning rounded-pill mt-1"><i class="bi bi-envelope-open"></i></span>
-                                <div>
-                                    <div class="fw-semibold text-black">{{ pending_apps }} pending applications</div>
-                                    <div class="small text-black-50">Prioritise approvals to unlock new member communities.</div>
-                                </div>
-                            </li>
-                            <li class="d-flex gap-3 align-items-start">
-                                <span class="badge bg-dark text-warning rounded-pill mt-1"><i class="bi bi-flag"></i></span>
-                                <div>
-                                    <div class="fw-semibold text-black">{{ open_roles }} roles still open</div>
-                                    <div class="small text-black-50">Escalate to managers to close the last volunteer gaps.</div>
-                                </div>
-                            </li>
-                        </ul>
-                        <div class="mt-auto">
-                            <a href="#groups-insights" class="btn btn-dark w-100">
-                                <i class="bi bi-lightning-charge me-2"></i>Jump to group actions
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </section>
@@ -341,14 +301,6 @@
                             <label class="form-label text-uppercase small text-white-50">Visibility</label>
                             <select name="group_visibility" class="form-select bg-dark text-white border-secondary" required>
                                 {% for option in group_filter_options.visibilities %}
-                                    <option value="{{ option }}">{{ option.replace('_',' ')|title }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-uppercase small text-white-50">Join type</label>
-                            <select name="group_join_type" class="form-select bg-dark text-white border-secondary" required>
-                                {% for option in group_filter_options.join_types %}
                                     <option value="{{ option }}">{{ option.replace('_',' ')|title }}</option>
                                 {% endfor %}
                             </select>
@@ -529,7 +481,7 @@
                                         <div class="fw-semibold">{{ app.first_name }} {{ app.last_name }}</div>
                                         <div class="text-white-50 small">{{ app.email }}</div>
                                     </td>
-                                    <td class="text-white-50">{{ app.visibility|title }} • {{ app.join_type|title }}</td>
+                                    <td class="text-white-50">{{ app.visibility|title }}</td>
                                     <td class="text-white-50">{{ app.proposed_town or '—' }}</td>
                                     <td class="text-end">
                                         <div class="d-flex gap-2 justify-content-end">

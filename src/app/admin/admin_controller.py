@@ -309,7 +309,6 @@ def create_group():
     description = request.form.get('group_description', '').strip()
     town = request.form.get('group_town', '').strip()
     visibility = request.form.get('group_visibility', 'public').strip() or 'public'
-    join_type = request.form.get('group_join_type', 'open').strip() or 'open'
     manager_email = request.form.get('group_manager_email', '').strip()
 
     created_by = auth_service.get_user_id()
@@ -320,7 +319,6 @@ def create_group():
             description=description,
             town=town,
             visibility=visibility,
-            join_type=join_type,
             created_by=created_by,
             manager_email=manager_email
         )
@@ -465,9 +463,12 @@ def view_event_results():
 
 
 @admin_blueprint.route('/users/roles')
-# @route_guard(Role.ADMIN)
+@require_super_admin
 def manage_user_roles():
-    """Page for managing user roles"""
+    """
+    Page for managing user roles
+    Note: Only Super Admins can access this page. Support Technicians cannot change user roles.
+    """
     page = int(request.args.get('page', 1))
     per_page = 15
     search_name = request.args.get('search_name', '').strip()
@@ -500,9 +501,9 @@ def update_user_role_ajax(user_id):
     """Update user role via AJAX"""
     try:
         new_role = request.form.get('new_role')
-        
+
         # Validate role
-        valid_roles = ['participant', 'group_manager', 'super_admin']
+        valid_roles = ['participant', 'group_manager', 'support_technician', 'super_admin']
         if new_role not in valid_roles:
             return {'success': False, 'message': 'Invalid role specified'}, 400
         

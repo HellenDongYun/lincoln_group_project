@@ -2,6 +2,8 @@ from flask import url_for
 
 from src.app.user.user import GlobalRole
 from src.app.common.nav.encode import encode_id
+from src.app.group.group_service import GroupService
+
 def left_nav_items(user_id: int, user_role: GlobalRole):
     nav_items = []
      # if user not logged in 
@@ -23,8 +25,16 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "url": url_for('admin.admin_dashboard', encoded_admin_id=encoded_admin_id)
         })
         nav_items.append({
+            "label": "Support Queue",
+            "url": url_for('support.support_queue')
+        })
+        nav_items.append({
             "label": "Race Results",
             "url": url_for('results.public_results')
+        })
+        nav_items.append({
+            "label": "Record Completion Time",
+            "url": url_for('results.record_time')
         })
         nav_items.append({
             "label": "Events",
@@ -33,11 +43,23 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
 
     # PARTICIPANT
     elif user_role == GlobalRole.PARTICIPANT and user_id:
+        from src.app.group.group_service import GroupService
+
         encoded_participant_id = encode_id(user_id)
         nav_items.append({
             "label": "My Dashboard",
             "url": url_for('participant.dashboard', encoded_participant_id=encoded_participant_id)
         })
+        managed_groups = GroupService.get_user_managed_groups(user_id)
+        if managed_groups:
+            nav_items.append({
+                "label": "Manager Dashboard",
+                "url": url_for('groups.manager_dashboard', group_id=managed_groups[0]['id'])
+            })
+            nav_items.append({
+                "label": "Support Queue",
+                "url": url_for('support.support_queue')
+            })
         nav_items.append({
             "label": "Find Groups & Events",
             "url": url_for('groups.participant_search')
@@ -52,9 +74,30 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
         })
       
 
+        nav_items.append({
+            "label": "Help & Support",
+            "url": url_for('support.my_requests')
+        })
+
+    # SUPPORT_TECHNICIAN
+    elif user_role == GlobalRole.SUPPORT_TECHNICIAN and user_id:
+        nav_items.append({
+            "label": "Support Queue",
+            "url": url_for('support.support_queue')
+        })
+        nav_items.append({
+            "label": "Events",
+            "url": url_for('app.get_events')
+        })
+        nav_items.append({
+            "label": "Help & Support",
+            "url": url_for('support.my_requests')
+        })
+
     # if have other roles add more elif
 
     return nav_items
+
 
     """def left_nav_items():
     return [

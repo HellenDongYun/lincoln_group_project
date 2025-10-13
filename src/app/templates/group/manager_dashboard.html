@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} · Manager analytics{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-dark text-white position-relative overflow-hidden">
+  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(135deg, rgba(255,193,7,0.85), rgba(33,37,41,0.9)); opacity: 0.9; z-index: 1;"></div>
+  <div class="container position-relative" style="z-index: 2;">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-8">
+        <span class="text-uppercase text-warning small fw-semibold">Group manager analytics</span>
+        <h1 class="display-5 fw-bold mb-2">{{ group.name }}</h1>
+        <p class="text-white-50 mb-0">Track participation, volunteer coverage, and performance trends for your community.</p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <a href="{{ url_for('groups.manage_group', group_id=group.id) }}" class="btn btn-outline-light mb-3 mb-lg-0"><i class="bi bi-gear me-2"></i>Manage members and events</a>
+      </div>
+    </div>
+    <div class="row align-items-center g-3 mt-4">
+      <div class="col-lg-6">
+        {% if managed_groups|length > 1 %}
+        <form method="get" class="d-flex gap-2 align-items-center">
+          <label for="groupSelect" class="text-white-50 small mb-0">Switch group</label>
+          <select id="groupSelect" name="group_id" class="form-select form-select-sm w-auto">
+            {% for item in managed_groups %}
+              <option value="{{ item.id }}" {% if item.id == selected_group_id %}selected{% endif %}>{{ item.name }}</option>
+            {% endfor %}
+          </select>
+          <input type="hidden" name="events" value="{{ events_scope }}">
+          <button type="submit" class="btn btn-warning text-black btn-sm">Update</button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="col-lg-6 text-lg-end">
+        <span class="badge bg-warning text-dark me-2">{{ dashboard.membership_counts.total_members }} total members</span>
+        <span class="badge bg-light text-dark">{{ dashboard.events.total }} events tracked</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-3 col-sm-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <p class="text-muted text-uppercase small mb-1">Participants</p>
+            <h3 class="fw-bold">{{ dashboard.membership_counts.participants }}</h3>
+            <p class="small mb-0 text-muted">Active members engaging as participants.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <p class="text-muted text-uppercase small mb-1">Volunteers</p>
+            <h3 class="fw-bold">{{ dashboard.membership_counts.volunteers }}</h3>
+            <p class="small mb-0 text-muted">Members available to cover event roles.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <p class="text-muted text-uppercase small mb-1">Managers</p>
+            <h3 class="fw-bold">{{ dashboard.membership_counts.managers }}</h3>
+            <p class="small mb-0 text-muted">Leaders coordinating the group.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6">
+        <div class="card shadow-sm border-0 h-100 bg-warning text-black">
+          <div class="card-body">
+            <p class="text-uppercase small mb-1">Total members</p>
+            <h3 class="fw-bold">{{ dashboard.membership_counts.total_members }}</h3>
+            <p class="small mb-0">Combined active community size.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-3">
+              <div>
+                <h5 class="fw-bold mb-1">Event participation & volunteer coverage</h5>
+                <p class="text-muted small mb-0">Compare registrations, attendance, and filled volunteer roles for each event.</p>
+              </div>
+              <div class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Event scope">
+                  <a class="btn btn-outline-secondary {% if events_scope != 'all' %}active{% endif %}" href="{{ url_for('groups.manager_dashboard', group_id=selected_group_id, events='upcoming') }}">Upcoming</a>
+                  <a class="btn btn-outline-secondary {% if events_scope == 'all' %}active{% endif %}" href="{{ url_for('groups.manager_dashboard', group_id=selected_group_id, events='all') }}">All events</a>
+                </div>
+                <a href="{{ url_for('groups.manage_group', group_id=group.id) }}#events" class="btn btn-outline-secondary btn-sm"><i class="bi bi-calendar2-week me-1"></i>Manage events</a>
+              </div>
+            </div>
+            {% if dashboard.events['items'] %}
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Event</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Registrations</th>
+                      <th scope="col">Attendance</th>
+                      <th scope="col">No-shows</th>
+                      <th scope="col">Volunteer coverage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for event in dashboard.events['items'] %}
+                    <tr>
+                      <td class="fw-semibold">
+                        {{ event.name }}
+                        {% if not event.is_past %}
+                          <span class="badge bg-info text-dark ms-1 align-middle">upcoming</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ event.datetime.strftime('%d %b %Y %H:%M') if event.datetime else '-' }}</td>
+                      <td>{{ event.registrations }}</td>
+                      <td>{{ event.attendance_display }}</td>
+                      <td>{{ event.no_shows_display }}</td>
+                      <td>
+                        {% if event.volunteer_needed > 0 %}
+                          <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px;">
+                              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ event.volunteer_coverage_percent }}%;" aria-valuenow="{{ event.volunteer_coverage_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <span class="small text-muted">{{ event.volunteer_assigned }}/{{ event.volunteer_needed }}</span>
+                          </div>
+                        {% else %}
+                          <span class="badge bg-secondary-subtle text-secondary">No volunteers requested</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <canvas id="volunteerCoverageChart" height="160"></canvas>
+            {% else %}
+              {% if events_scope == 'all' %}
+                <p class="text-muted text-center mb-0">No events have been recorded for this group yet.</p>
+              {% else %}
+                <p class="text-muted text-center mb-0">No upcoming events match this filter. Switch to “All events” to review past activity.</p>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <h5 class="fw-bold mb-2">Performance stats</h5>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <div class="border rounded-3 p-3 h-100">
+                  <p class="text-muted small mb-1">Average finish time</p>
+                  <h4 class="fw-bold">{{ dashboard.performance.average_time_display or '–' }}</h4>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="border rounded-3 p-3 h-100">
+                  <p class="text-muted small mb-1">Group record</p>
+                  {% if dashboard.performance.group_record %}
+                    <h4 class="fw-bold">{{ dashboard.performance.group_record.formatted }}</h4>
+                    <p class="small text-muted mb-0">{{ dashboard.performance.group_record.name }} · {{ dashboard.performance.group_record.event_name }}</p>
+                  {% else %}
+                    <h4 class="fw-bold">–</h4>
+                    <p class="small text-muted mb-0">No results recorded yet.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="mt-4">
+              <h6 class="fw-semibold">Personal bests</h6>
+              {% if dashboard.performance.personal_bests %}
+              <ul class="list-group list-group-flush">
+                {% for best in dashboard.performance.personal_bests[:5] %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>{{ best.name }}</span>
+                  <span class="badge bg-warning text-black">{{ best.formatted }}</span>
+                </li>
+                {% endfor %}
+              </ul>
+              {% else %}
+                <p class="text-muted small mb-0">Once event results are recorded, personal bests will appear here.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <h5 class="fw-bold mb-2">Engagement insights</h5>
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="border rounded-3 p-3 h-100">
+                  <p class="text-muted small mb-2">Most active members</p>
+                  {% if dashboard.engagement.most_active %}
+                    <ul class="list-group list-group-numbered list-group-flush">
+                      {% for member in dashboard.engagement.most_active[:5] %}
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                          <span class="fw-semibold">{{ member.name }}</span>
+                          <p class="small mb-0 text-muted">{{ member.attended_events }} attended · {{ member.registrations }} registrations</p>
+                        </div>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <p class="text-muted small mb-0">Members will appear once event participation begins.</p>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="border rounded-3 p-3 h-100">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <p class="text-muted small mb-0">Volunteer participation</p>
+                    <span class="badge bg-warning text-black">{{ dashboard.engagement.volunteer_hours_total }} hrs logged</span>
+                  </div>
+                  {% if dashboard.engagement.volunteer_participation %}
+                    <ul class="list-group list-group-flush">
+                      {% for volunteer in dashboard.engagement.volunteer_participation[:5] %}
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                          <span class="fw-semibold">{{ volunteer.name }}</span>
+                          <p class="small mb-0 text-muted">{{ volunteer.assignments }} shifts</p>
+                        </div>
+                        <span class="badge bg-light text-dark">{{ volunteer.hours }} hrs</span>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <p class="text-muted small mb-0">Assign volunteer tasks to start capturing coverage and hours.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-LZpjkacrTP2PumoefRg2fzGEGZm4G6dkprdFM5lTyBC0bYKT1eZqUPVHtV6nRvWv" crossorigin="anonymous"></script>
+<script type="application/json" id="dashboard-events-data">{{ dashboard.events['items']|tojson|safe }}</script>
+<script>
+  (function() {
+    function parseJsonScript(id) {
+      const el = document.getElementById(id);
+      if (!el) return [];
+      try {
+        return JSON.parse(el.textContent || '[]');
+      } catch (error) {
+        console.error('Unable to parse dashboard data', id, error);
+        return [];
+      }
+    }
+
+    const eventsData = parseJsonScript('dashboard-events-data');
+
+    const volunteerCtx = document.getElementById('volunteerCoverageChart');
+    if (volunteerCtx && eventsData.length) {
+      new Chart(volunteerCtx, {
+        type: 'radar',
+        data: {
+          labels: eventsData.map(item => item.name),
+          datasets: [{
+            label: 'Volunteer coverage %',
+            data: eventsData.map(item => item.volunteer_coverage_percent),
+            backgroundColor: 'rgba(13,110,253,0.15)',
+            borderColor: 'rgba(13,110,253,0.65)',
+            borderWidth: 2,
+            pointBackgroundColor: '#0d6efd'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            r: {
+              beginAtZero: true,
+              suggestedMax: 100,
+              angleLines: { color: 'rgba(0,0,0,0.05)' },
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { showLabelBackdrop: false }
+            }
+          }
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}
