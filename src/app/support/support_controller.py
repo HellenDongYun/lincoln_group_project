@@ -182,7 +182,10 @@ def support_queue():
         group_member_ids = set()
         for group_id in managed_group_ids:
             members = GroupService.get_group_members(group_id)
-            group_member_ids.update([m['user_id'] for m in members])
+            for member in members:
+                member_id = member.get('user_id') or member.get('id')
+                if member_id is not None:
+                    group_member_ids.add(member_id)
 
         # Filter requests to only show those from group members
         all_requests = [req for req in all_requests if req.get('user_id') in group_member_ids]
@@ -194,7 +197,10 @@ def support_queue():
         group_member_ids = set()
         for group_id in managed_group_ids:
             members = GroupService.get_group_members(group_id)
-            group_member_ids.update([m['user_id'] for m in members])
+            for member in members:
+                member_id = member.get('user_id') or member.get('id')
+                if member_id is not None:
+                    group_member_ids.add(member_id)
         all_requests = [req for req in all_requests if req.get('user_id') in group_member_ids]
 
     # Calculate statistics
