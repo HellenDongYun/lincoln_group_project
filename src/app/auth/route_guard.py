@@ -112,26 +112,4 @@ def require_volunteer_or_manager(callback):
         return callback(*args, **kwargs)
     return guard
 
-def require_support_staff(callback):
-    #Require user to be support staff (Super Admin, Support Technician, or Group Manager)
-    @wraps(callback)
-    def guard(*args, **kwargs):
-        
 
-        auth_service = AuthService()
-
-        if not auth_service.is_logged_in():
-            flash("You must be logged in to view this page.", "warning")
-            return redirect(url_for("app.login"))
-
-        user_id = auth_service.get_user_id()
-        is_admin = auth_service.is_super_admin()
-        is_support_tech = auth_service.is_support_technician()
-        is_group_manager = len(GroupService.get_user_managed_groups(user_id)) > 0
-
-        if not (is_admin or is_support_tech or is_group_manager):
-            flash("You do not have permission to view this page.", "danger")
-            return redirect(url_for("app.home"))
-
-        return callback(*args, **kwargs)
-    return guard

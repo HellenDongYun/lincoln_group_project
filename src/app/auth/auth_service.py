@@ -50,9 +50,6 @@ class AuthService:
     def is_participant(self) -> bool:
         return self.get_global_role() == GlobalRole.PARTICIPANT
 
-    def is_support_technician(self) -> bool:
-        return self.get_global_role() == GlobalRole.SUPPORT_TECHNICIAN
-
     # Legacy methods for backward compatibility
     def get_user_role(self) -> Role:
         global_role = self.get_global_role()

@@ -463,12 +463,9 @@ def view_event_results():
 
 
 @admin_blueprint.route('/users/roles')
-@require_super_admin
+# @route_guard(Role.ADMIN)
 def manage_user_roles():
-    """
-    Page for managing user roles
-    Note: Only Super Admins can access this page. Support Technicians cannot change user roles.
-    """
+    """Page for managing user roles"""
     page = int(request.args.get('page', 1))
     per_page = 15
     search_name = request.args.get('search_name', '').strip()
@@ -501,9 +498,9 @@ def update_user_role_ajax(user_id):
     """Update user role via AJAX"""
     try:
         new_role = request.form.get('new_role')
-
+        
         # Validate role
-        valid_roles = ['participant', 'group_manager', 'support_technician', 'super_admin']
+        valid_roles = ['participant', 'group_manager', 'super_admin']
         if new_role not in valid_roles:
             return {'success': False, 'message': 'Invalid role specified'}, 400
         
