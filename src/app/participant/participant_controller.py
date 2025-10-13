@@ -1,4 +1,5 @@
-
+from datetime import datetime
+import math
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 import math
 
@@ -21,6 +22,10 @@ def dashboard(encoded_participant_id: str):
     upcoming_events = participant_service.get_upcoming_events(participant_id)
     my_registrations = participant_service.get_my_registrations(participant_id)
     my_results = participant_service.get_my_race_results(participant_id)
+    
+    # Get participant's group applications
+    # my_applications = participant_service.get_my_applications(participant_id)
+    
 
     rewards_snapshot = participant_service.get_rewards_dashboard(participant_id)
     earned_achievements = [
@@ -231,6 +236,225 @@ def delete_group_application(encoded_participant_id: str, application_id: str):
     participant_id = decode_id(encoded_participant_id)
 
     try:
+        success = participant_service.cancel_registration(participant_id, event_id)
+        
+        if success:
+            flash("Successfully cancelled your registration for the event.", "success")
+        else:
+            flash("Cancellation failed. You may not be registered for this event.", "danger")
+    except Exception as e:
+        flash(f"Cancellation error: {str(e)}", "danger")
+    
+    return redirect(url_for('participant.dashboard', encoded_participant_id=encoded_participant_id))
+
+
+@participant_blueprint.route("/<encoded_participant_id>/applications", methods=["GET"])
+def myapplications(encoded_participant_id):
+    participant_id = decode_id(encoded_participant_id)
+    #  get filter parameters
+    status = request.args.get("status", "all")
+    page = int(request.args.get("page", 1))  # current page, default is 1
+    per_page = 5  # every page show 5 data
+    applications,total = participant_service.get_participant_applications(status=status, page= page,per_page=per_page,participant_id=participant_id)
+    total_pages = math.ceil(total / per_page)
+    return render_template("participant/applications.html", encoded_participant_id=encoded_participant_id, applications=applications, total_pages = total_pages, page=page, per_page=per_page,status=status)
+
+@participant_blueprint.route("/<encoded_participant_id>/applications/apply", methods=["GET","POST"])
+def create_group_applyform(encoded_participant_id):
+    participant_id = decode_id(encoded_participant_id)
+    application_id = request.args.get("app_id") 
+    is_edit_mode = bool(application_id)
+    application = None
+    if is_edit_mode:
+        application = participant_service.get_application_by_id(participant_id, application_id)
+    if request.method == 'POST':
+        name = request.form.get("groupName")
+        town = request.form.get("location")
+        visibility = request.form.get("privacy")
+        description = request.form.get("description")
+        # temporary application data to retain the input
+        application = {
+            "proposed_name": name,
+            "proposed_town": town,
+            "visibility": visibility,
+            "proposed_description": description
+        }
+         # added New field verification logic
+        if not name or not town or not visibility:
+            flash("Please fill in all required fields: group name, location, and visibility.", "danger")
+            return render_template("participant/create_group_form.html",
+                                   encoded_participant_id=encoded_participant_id,
+                                   application=application,is_edit_mode =is_edit_mode )
+        try:
+            if is_edit_mode:  # update
+                participant_service.update_group_application(
+                    participant_id, application_id, name, town, visibility, description
+                )
+                flash("Your group application has been updated successfully!", "success")
+            else:  # add
+                participant_service.submit_create_group_application(
+                    participant_id, name, town, visibility, description
+                )
+                flash("Your group application has been submitted successfully!", "success")
+
+            return redirect(url_for("participant.myapplications", encoded_participant_id=encoded_participant_id,is_edit_mode =is_edit_mode ))
+        except ValueError as e:
+            flash(str(e), "danger")  
+    return render_template("participant/create_group_form.html", encoded_participant_id=encoded_participant_id,application=application,is_edit_mode =is_edit_mode )
+
+
+@participant_blueprint.route("/<encoded_participant_id>/applications/<application_id>/delete", methods=["POST"])
+def delete_group_application(encoded_participant_id, application_id):
+    participant_id = decode_id(encoded_participant_id)
+    try:
+        participant_service.delete_group_application(participant_id, application_id)
+        flash("Group application deleted successfully.", "success")
+    except Exception as e:
+        flash(f"Error deleting group application: {str(e)}", "danger")
+    return redirect(url_for("participant.myapplications", encoded_participant_id=encoded_participant_id))
+
+
+
+
+
+@participant_blueprint.route("/<encoded_participant_id>/myresult")
+def myresults(encoded_participant_id):
+    participant_id = decode_id(encoded_participant_id)
+       # get the query parameters
+    search = request.args.get("search", "").strip().lower()
+    date = request.args.get("date", "")
+    event_type = request.args.get("type", "").strip().lower()
+
+    # get all the data
+    event_results = participant_service.get_all_eventresults_for_participant(participant_id)
+
+    # filter data
+    filtered_events = []
+    for event in event_results["events"]:
+        match = True
+
+        # Search by event name
+        event_name = event.get("event_name", "").lower()
+        if search and search not in event_name:
+            match = False
+
+        # Filter by date
+        raw_date = event.get("event_date")
+        if date:
+            try:
+                if isinstance(raw_date, str):
+                    from datetime import datetime
+                    raw_date = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S")  # adjust format if needed
+                if raw_date.strftime("%Y-%m-%d") != date:
+                    match = False
+            except Exception as e:
+                match = False
+
+        # Filter by type (partial match)
+        raw_type = event.get("event_type", "").lower()
+        if event_type and event_type not in raw_type:
+            match = False
+
+        if match:
+            filtered_events.append(event)
+
+    event_results["events"] = filtered_events
+
+
+    return render_template(
+        "participant/my_result_overall.html",
+        encoded_participant_id=encoded_participant_id,
+        active_tab="overview",
+        event_results=event_results)
+    
+
+@participant_blueprint.route("/<encoded_participant_id>/myresult/eventdetail/<event_id>")
+def myresults_eventdetails(encoded_participant_id,event_id):
+    tab = request.args.get('tab', 'result')
+    search_name = request.args.get("search", "").lower()
+    gender = request.args.get("gender")
+    age_group = request.args.get("age_group")
+    participant_id = decode_id(encoded_participant_id)
+    all_participant_event_result = participant_service.get_participant_result_for_event(participant_id, event_id,search_name )
+    event_statistics=participant_service.get_participant_result_for_event_statistics(event_id)
+    participant_durations = participant_service.get_event_participant_durations(event_id,gender,age_group)
+    group_by = request.args.get("group_by", "gender")  # 可选参数
+    top3_grouped = participant_service.get_event_top3_grouped(event_id, group_by)
+     # according to different tab render different page
+    if tab == "statistics":
+        return render_template(
+            "participant/event_result.html",
+            encoded_participant_id=encoded_participant_id,
+            event_id=event_id,
+            event_result=all_participant_event_result,
+            active_tab="overview",
+            sub_active_tab=tab,
+            event_statistics=event_statistics,
+            durations= participant_durations, 
+            search_name=search_name,
+            gender=gender,
+            age_group=age_group
+        )
+    elif tab == "ranking":
+        return render_template(
+            "participant/event_result.html",
+            encoded_participant_id=encoded_participant_id,
+            event_id=event_id,
+            event_result=all_participant_event_result,
+            active_tab="overview",
+            sub_active_tab=tab,
+            top3_grouped=top3_grouped,
+            group_by=group_by
+        )
+    else:  # default result page
+        return render_template(
+            "participant/event_result.html",
+            encoded_participant_id=encoded_participant_id,
+            event_result=all_participant_event_result,
+            active_tab="overview",
+            sub_active_tab=tab
+        )
+
+
+@participant_blueprint.route("/<encoded_participant_id>/resultsdetails")
+def resultsdetails(encoded_participant_id):
+    participant_id = decode_id(encoded_participant_id)
+    # display all events list
+    all_events = participant_service.get_all_events_for_participant(participant_id)
+
+    # get current event id from query parameters
+    event_id = request.args.get("event_id")
+    if not event_id and all_events:
+        event_id = all_events[0]["event_id"]  
+
+    # current event
+    event_detail = None
+    if event_id:
+        event_detail = participant_service.get_event_details_for_participant(participant_id, event_id)
+
+    return render_template("participant/my_result_details.html", encoded_participant_id=encoded_participant_id,active_tab="details",all_events =all_events,event_detail=event_detail )
+
+
+@participant_blueprint.route("/<encoded_participant_id>/resultanalysis")
+def resultsanalysis(encoded_participant_id):
+    participant_id = decode_id(encoded_participant_id)
+    personal_event_data = participant_service.get_event_summary_split(participant_id)
+    event_type = request.args.get("event_type")
+    chart_data = participant_service.get_user_event_chart_data(participant_id, event_type) 
+    return render_template("participant/my_result_analysis.html", encoded_participant_id=encoded_participant_id,active_tab="tags",data=personal_event_data,chart_data=chart_data,event_type=event_type)
+
+
+
+
+
+
+@participant_blueprint.route("/<encoded_participant_id>/group")
+def group_event_result(encoded_participant_id):
+    participant_id = decode_id(encoded_participant_id)
+    group_result = participant_service.get_user_group_membership_results(participant_id)
+    print(group_result)
+    return render_template("participant/my_result_group.html", encoded_participant_id=encoded_participant_id,active_tab="group",group_result=group_result)
+    
         participant_service.delete_group_application(participant_id, application_id)
         flash("Group application deleted successfully.", "success")
     except Exception as error:

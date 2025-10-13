@@ -1,13 +1,8 @@
 from src.app.common.db.cursor import get_cursor
 from src.app.common.db.repository import Repository
+from datetime import timedelta
 
-
-class ParticipantRepository(Repository):
-    
-    """
-    参与者仓储类，用于处理参与者相关的数据库操作。
-    继承自Repository基类，提供参与者相关数据访问方法。
-    """
+class ParticipantRepository(Repository):  
     def get_upcoming_events(self, participant_id):
         """Get all upcoming events that the participant is not already registered for"""
         sql = """
@@ -83,10 +78,10 @@ class ParticipantRepository(Repository):
                 ) as Position,
                 (
                     SELECT COUNT(*) 
-                    FROM Event_Results rr2 
+                    FROM Race_Results rr2 
                     WHERE rr2.event_id = rr.event_id
                 ) as Total_Participants
-            FROM Event_Results rr
+            FROM Race_Results rr
             JOIN Events e ON rr.event_id = e.id
             WHERE rr.participant_id = %s
             AND DATE(e.datetime) < CURDATE()
@@ -102,28 +97,18 @@ class ParticipantRepository(Repository):
     
     def register_for_event(self, participant_id, event_id):
         """Register a participant for an event"""
-        already_registered_sql = """
+        # First check if already registered (only active registrations)
+        check_sql = """
             SELECT COUNT(*) as count 
             FROM Event_Participants 
             WHERE user_id = %s AND event_id = %s AND status = 'registered'
         """
-
-        volunteer_check_sql = """
-            SELECT COUNT(*) as count
-            FROM Event_Task_Assignments
-            WHERE event_id = %s AND user_id = %s
-        """
-
+        
         try:
-            # Prevent participants who are already volunteering for this event from registering
-            volunteer_result = self.fetchone(volunteer_check_sql, (event_id, participant_id))
-            if volunteer_result and volunteer_result['count'] > 0:
-                return False, "You've already signed up to volunteer for this event. Cancel your volunteer role before registering."
-
-            existing = self.fetchone(already_registered_sql, (participant_id, event_id))
+            existing = self.fetchone(check_sql, (participant_id, event_id))
             if existing and existing['count'] > 0:
-                return False, "You're already registered for this event."
-
+                return False  # Already registered
+            
             # Check if event is full
             capacity_sql = """
                 SELECT 
@@ -134,22 +119,24 @@ class ParticipantRepository(Repository):
                 WHERE e.id = %s
                 GROUP BY e.id, e.max_participants
             """
-
+            
             capacity_check = self.fetchone(capacity_sql, (event_id,))
-            if capacity_check and capacity_check['max_participants'] is not None:
+            if capacity_check:
                 if capacity_check['current_registrations'] >= capacity_check['max_participants']:
-                    return False, "This event is already full."
-
+                    return False  # Event is full
+            
             # Register for the event
+            # First check if there's a cancelled registration we can reactivate
             cancelled_check_sql = """
                 SELECT COUNT(*) as count 
                 FROM Event_Participants 
                 WHERE user_id = %s AND event_id = %s AND status = 'cancelled'
             """
-
+            
             cancelled_record = self.fetchone(cancelled_check_sql, (participant_id, event_id))
-
+            
             if cancelled_record and cancelled_record['count'] > 0:
+                # Reactivate cancelled registration
                 reactivate_sql = """
                     UPDATE Event_Participants 
                     SET status = 'registered'
@@ -157,19 +144,18 @@ class ParticipantRepository(Repository):
                 """
                 result = self.execute(reactivate_sql, (participant_id, event_id))
             else:
+                # Create new registration
                 register_sql = """
                     INSERT INTO Event_Participants (user_id, event_id, status)
                     VALUES (%s, %s, 'registered')
                 """
                 result = self.execute(register_sql, (participant_id, event_id))
-
-            if result is not None:
-                return True, "Successfully registered for the event!"
-            return False, "Unable to register for this event right now. Please try again."
-
+            
+            return result is not None
+            
         except Exception as e:
             print(f"Database error in register_for_event: {e}")
-            return False, "An unexpected error occurred while registering. Please try again later."
+            return False
     
     def cancel_registration(self, participant_id, event_id):
         """Cancel a participant's registration for an event"""
@@ -209,6 +195,7 @@ class ParticipantRepository(Repository):
             ga.proposed_town AS town,
             ga.visibility,
             ga.status,
+            ga.application_time,
             ga.id,
             reviewer.email,
             CONCAT(reviewer.first_name, ' ', reviewer.last_name) AS full_name
@@ -258,6 +245,22 @@ class ParticipantRepository(Repository):
             )
 
     def get_application_by_id(self, participant_id, application_id):
+             # check if there are same group name in the database
+            cursor.execute("""
+               SELECT COUNT(*) AS count FROM Group_Applications 
+               WHERE proposed_name = %s
+            """, (name,))
+            if cursor.fetchone()["count"] > 0:
+                raise ValueError("Group name already exists. Please choose a different name.")
+
+            # insert date
+            cursor.execute("""
+                INSERT INTO Group_Applications (
+                    applicant_id, proposed_name, proposed_description, proposed_town, visibility
+                ) VALUES (%s, %s, %s, %s, %s)
+            """, (participant_id, name, description, town, visibility))
+            
+    def get_application_by_id(self,participant_id, application_id):
         with get_cursor() as cursor:
             cursor.execute(
                 """
@@ -340,3 +343,466 @@ class ParticipantRepository(Repository):
         for challenge in challenges:
             challenge["earned"] = challenge.get("earned_at") is not None
         return challenges
+            """, (application_id, participant_id))              
+    def format_duration_seconds(self,seconds):
+        return str(timedelta(seconds=seconds)) 
+    def get_all_eventresults_for_participant(self,participant_id):
+        with get_cursor() as cursor:
+            try:
+                cursor.execute("""
+                    SELECT 
+                        e.id AS event_id,
+                        e.name AS event_name,
+                        e.datetime AS event_date,
+                        e.max_participants,
+                        e.event_type,
+                        e.town,
+                        er.start_time,
+                        er.end_time,
+                        er.total_seconds,
+
+                        ep.status AS participant_status,
+
+                        completed.total_completed
+
+                    FROM Events e
+
+                    -- current user's participation status
+                    INNER JOIN Event_Participants ep 
+                        ON e.id = ep.event_id AND ep.user_id = %s
+
+                    -- current user results
+                    INNER JOIN Event_Results er 
+                        ON e.id = er.event_id AND er.user_id = %s
+
+                    -- participants in every event 
+                    LEFT JOIN (
+                        SELECT event_id, COUNT(DISTINCT user_id) AS total_completed
+                        FROM Event_Results
+                        GROUP BY event_id
+                    ) completed ON completed.event_id = e.id
+
+                    ORDER BY e.datetime DESC;
+                """, (participant_id, participant_id))
+
+                rows = cursor.fetchall()
+                if not rows:
+                    rows = []
+
+            except Exception as e:
+                print("SQL execution error:", e)
+                rows = []
+
+            # Initialize the statistical variables
+            total_seconds = 0
+            min_seconds = None
+
+            for row in rows:
+                raw_seconds = row.get('total_seconds')
+                if raw_seconds is not None:
+                    row['duration'] = self.format_duration_seconds(raw_seconds)
+                    total_seconds += raw_seconds
+                    if min_seconds is None or raw_seconds < min_seconds:
+                        min_seconds = raw_seconds
+                else:
+                    row['duration'] = "no records"
+            summary = {
+                "total_duration": self.format_duration_seconds(total_seconds) if total_seconds else "00:00:00",
+                "shortest_duration": self.format_duration_seconds(min_seconds) if min_seconds is not None else "no records",
+                "events": rows
+            }
+            return summary
+        
+       
+    def get_participant_result_for_event(self,participant_id, event_id,search_name):
+       with get_cursor() as cursor:
+            # 1. get all the participants for the event
+            full_query = """
+                SELECT 
+                    ranked.event_id,
+                    ranked.event_name,
+                    ranked.event_date,
+                    ranked.town,
+                    ranked.event_type,
+                    ranked.max_participants,
+                    ranked.start_time,
+                    ranked.end_time,
+                    SEC_TO_TIME(ranked.total_seconds) AS formatted_duration,
+                    ranked.participant_name,
+                    ranked.user_id,
+                    (
+                        SELECT COUNT(*) + 1
+                        FROM Event_Results er2
+                        WHERE er2.event_id = ranked.event_id
+                        AND er2.total_seconds < ranked.total_seconds
+                    ) AS ranking
+                FROM (
+                    SELECT 
+                        e.id AS event_id,
+                        e.name AS event_name,
+                        e.datetime AS event_date,
+                        e.town,
+                        e.event_type,
+                        e.max_participants,
+                        er.start_time,
+                        er.end_time,
+                        er.total_seconds,
+                        CONCAT(u.first_name, ' ', u.last_name) AS participant_name,
+                        u.id AS user_id
+                    FROM Events e
+                    INNER JOIN Event_Results er ON e.id = er.event_id
+                    INNER JOIN Users u ON er.user_id = u.id
+                    WHERE e.id = %s
+                    ) AS ranked
+            ORDER BY ranking ASC
+            """
+            cursor.execute(full_query, (event_id,))
+            all_participants = cursor.fetchall()
+
+            # if have search_name then filter
+            if search_name:
+                filtered_participants = [
+                    p for p in all_participants
+                    if search_name.lower() in p["participant_name"].lower()
+                ]
+            else:
+                filtered_participants = all_participants
+
+            # 2. get current user
+            cursor.execute("""
+                SELECT 
+                    r.event_id,
+                    r.event_name,
+                    r.event_date,
+                    r.town,
+                    r.event_type,
+                    r.max_participants,
+                    SEC_TO_TIME(r.total_seconds) AS formatted_duration,
+                    r.participant_name,
+                    r.user_id,
+                    (
+                        SELECT COUNT(*) + 1
+                        FROM Event_Results er2
+                        WHERE er2.event_id = r.event_id
+                        AND er2.total_seconds < r.total_seconds
+                    ) AS ranking
+                FROM (
+                    SELECT 
+                        e.id AS event_id,
+                        e.name AS event_name,
+                        e.datetime AS event_date,
+                        e.town,
+                        e.event_type,
+                        e.max_participants,
+                        er.total_seconds,
+                        CONCAT(u.first_name, ' ', u.last_name) AS participant_name,
+                        u.id AS user_id
+                    FROM Events e
+                    INNER JOIN Event_Results er ON e.id = er.event_id
+                    INNER JOIN Users u ON er.user_id = u.id
+                    WHERE e.id = %s AND u.id = %s
+                ) r
+            """, (event_id, participant_id))
+            user_result = cursor.fetchone()
+            return {
+    "event": {
+        "id": user_result["event_id"],
+        "name": user_result["event_name"],
+        "date": user_result["event_date"],
+        "town": user_result["town"],
+        "type": user_result["event_type"],
+        "max_participants": user_result["max_participants"],
+    },
+    "user_result": {
+        "user_id": user_result["user_id"],
+        "name": user_result["participant_name"],
+        "duration": user_result["formatted_duration"],
+        "rank": user_result["ranking"],
+    },
+    "participants": filtered_participants,  
+    "all_participants": all_participants   
+}
+    def format_duration(self,td):
+      return str(td).split('.')[0] if td else None         
+    def get_participant_result_for_event_statistics(self, event_id):
+           with get_cursor() as cursor:
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) AS participant_count,
+                        SEC_TO_TIME(AVG(total_seconds)) AS avg_duration,
+                        SEC_TO_TIME(MIN(total_seconds)) AS fastest_duration,
+                        SEC_TO_TIME(MAX(total_seconds)) AS slowest_duration
+                    FROM
+                        event_results
+                    WHERE
+                        event_id = %s;
+                """, (event_id,))
+                row = cursor.fetchone()
+                return {
+                    'participant_count': row['participant_count'],
+                    'avg_duration': self.format_duration(row['avg_duration']),
+                    'fastest_duration': self.format_duration(row['fastest_duration']),
+                    'slowest_duration': self.format_duration(row['slowest_duration']),
+                }
+    def get_event_participant_durations(self, event_id,gender=None, age_group=None):
+        with get_cursor() as cursor:
+            query = """
+                SELECT
+                    CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                    SEC_TO_TIME(er.total_seconds) AS raw_duration,
+                    er.total_seconds
+                FROM event_results er
+                JOIN users u ON er.user_id = u.id
+                WHERE er.event_id = %s
+            """
+            params = [event_id]
+
+            if gender:
+                query += " AND u.gender = %s"
+                params.append(gender)
+
+            if age_group:
+                query += " AND u.age_group = %s"
+                params.append(age_group)
+
+            query += " ORDER BY er.total_seconds ASC"
+
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
+
+            return [
+                {
+                    'name': row['full_name'],
+                    'duration': self.format_duration(row['raw_duration']),
+                    'total_seconds': row['total_seconds']
+                }
+                for row in rows
+            ]
+            
+      
+    def get_event_details_for_participant(self, participant_id, event_id):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    e.id AS event_id,
+                    e.name AS event_name,
+                    e.datetime AS event_date,
+                    e.event_type,
+                    e.town,
+
+                    -- current user results
+                    er.total_seconds AS user_total_seconds,
+                    SEC_TO_TIME(er.total_seconds) AS user_duration,
+
+                    -- current user ranking
+                    (
+                        SELECT COUNT(*) + 1
+                        FROM Event_Results er2
+                        WHERE er2.event_id = e.id
+                        AND er2.total_seconds < er.total_seconds
+                    ) AS user_rank,
+
+                    -- all user info
+                    TIME_FORMAT(SEC_TO_TIME(MIN(er_all.total_seconds)), '%%H:%%i:%%s') AS fastest_time,
+                    TIME_FORMAT(SEC_TO_TIME(MAX(er_all.total_seconds)), '%%H:%%i:%%s') AS slowest_time,
+                    TIME_FORMAT(SEC_TO_TIME(AVG(er_all.total_seconds)), '%%H:%%i:%%s') AS average_time,
+                    COUNT(er_all.user_id) AS total_participants
+
+                FROM Events e
+
+                -- current user results
+                INNER JOIN Event_Results er ON e.id = er.event_id AND er.user_id = %s
+
+                -- all other users results
+                LEFT JOIN Event_Results er_all ON e.id = er_all.event_id
+
+                WHERE e.id = %s
+                GROUP BY e.id;
+            """, (participant_id, event_id))
+            return cursor.fetchone()
+
+                   
+    def get_all_events_for_participant(self, participant_id):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    e.id AS event_id,
+                    e.name AS event_name,
+                    e.datetime AS event_date,
+                    (
+                        SELECT COUNT(*) + 1
+                        FROM Event_Results er2
+                        WHERE er2.event_id = e.id
+                        AND er2.total_seconds < er.total_seconds
+                    ) AS user_rank
+                FROM Events e
+                INNER JOIN Event_Results er ON e.id = er.event_id
+                WHERE er.user_id = %s
+                ORDER BY e.datetime DESC;
+            """, (participant_id,))
+            return cursor.fetchall()
+                
+                
+    def get_personal_event_analysis_for_participant(self, participant_id):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                        SELECT 
+                    e.id AS event_id,
+                    e.name AS event_name,
+                    e.datetime AS event_date,
+                    e.event_type,
+                    e.town,
+                    er.total_seconds,
+                    SEC_TO_TIME(er.total_seconds) AS formatted_duration,
+                    (
+                        SELECT COUNT(*) + 1
+                        FROM Event_Results er2
+                        WHERE er2.event_id = e.id
+                          AND er2.total_seconds < er.total_seconds
+                    ) AS user_rank
+                FROM Events e
+                INNER JOIN Event_Results er ON e.id = er.event_id
+                WHERE er.user_id = %s
+                ORDER BY e.datetime DESC;
+            """, (participant_id,))
+            return cursor.fetchall()
+        
+        
+    def get_user_group_membership_results(self, participant_id):
+        with get_cursor() as cursor:
+            cursor.execute("""
+                    SELECT
+                        g.id AS group_id,
+                        g.name AS group_name,
+                        g.description AS group_description,
+                        e.id AS event_id,
+                        e.name AS event_name,
+                        e.event_type,
+                        e.town,
+                        e.datetime AS event_date,
+                        e.max_participants,
+                        COUNT(DISTINCT ep.user_id) AS total_participants,
+                        
+                        -- current user result
+                        er_user.start_time AS user_start_time,
+                        er_user.end_time AS user_end_time,
+                        er_user.total_seconds AS user_total_seconds,
+
+                        -- current user ranking
+                        (
+                            SELECT COUNT(*) + 1
+                            FROM Event_Results er2
+                            WHERE er2.event_id = e.id
+                            AND er2.total_seconds < er_user.total_seconds
+                        ) AS user_rank,
+
+                        --  top1 info
+                        (SELECT CONCAT(u1.first_name, ' ', u1.last_name)
+                        FROM Event_Results er1
+                        JOIN Users u1 ON u1.id = er1.user_id
+                        WHERE er1.event_id = e.id
+                        ORDER BY er1.total_seconds ASC
+                        LIMIT 1) AS first_user_name,
+                        (SELECT er1.total_seconds
+                        FROM Event_Results er1
+                        WHERE er1.event_id = e.id
+                        ORDER BY er1.total_seconds ASC
+                        LIMIT 1) AS first_user_time,
+
+                        --  top2 info
+                        (SELECT CONCAT(u2.first_name, ' ', u2.last_name)
+                        FROM Event_Results er2
+                        JOIN Users u2 ON u2.id = er2.user_id
+                        WHERE er2.event_id = e.id
+                        ORDER BY er2.total_seconds ASC
+                        LIMIT 1 OFFSET 1) AS second_user_name,
+                        (SELECT er2.total_seconds
+                        FROM Event_Results er2
+                        WHERE er2.event_id = e.id
+                        ORDER BY er2.total_seconds ASC
+                        LIMIT 1 OFFSET 1) AS second_user_time,
+
+                        -- top3 info
+                        (SELECT CONCAT(u3.first_name, ' ', u3.last_name)
+                        FROM Event_Results er3
+                        JOIN Users u3 ON u3.id = er3.user_id
+                        WHERE er3.event_id = e.id
+                        ORDER BY er3.total_seconds ASC
+                        LIMIT 1 OFFSET 2) AS third_user_name,
+                        (SELECT er3.total_seconds
+                        FROM Event_Results er3
+                        WHERE er3.event_id = e.id
+                        ORDER BY er3.total_seconds ASC
+                        LIMIT 1 OFFSET 2) AS third_user_time
+
+                    FROM Group_Memberships gm
+                    JOIN Community_Groups g ON gm.group_id = g.id
+                    JOIN Events e ON e.group_id = g.id
+                    LEFT JOIN Event_Participants ep ON ep.event_id = e.id
+                    LEFT JOIN Event_Results er_user 
+                        ON er_user.event_id = e.id 
+                        AND er_user.user_id = gm.user_id
+
+                    WHERE gm.user_id = %s
+                    AND er_user.total_seconds IS NOT NULL
+
+                    GROUP BY 
+                        g.id, g.name, g.description,
+                        e.id, e.name, e.event_type, e.town, e.datetime, e.max_participants,
+                        er_user.start_time, er_user.end_time, er_user.total_seconds
+
+                    ORDER BY e.datetime DESC;
+                """, (participant_id,))
+            return cursor.fetchall()
+        
+        
+    # participant_repository.py
+
+    def get_top3_by_group(self,event_id, group_by="gender"):
+        group_field = "u.gender" if group_by == "gender" else """
+        CASE
+            WHEN u.age < 18 THEN 'Under 18'
+            WHEN u.age BETWEEN 18 AND 29 THEN '18-29'
+            WHEN u.age BETWEEN 30 AND 44 THEN '30-44'
+            ELSE '45+'
+        END
+    """
+
+        query = f"""
+            SELECT
+                {group_field} AS group_label,
+                CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                er.total_seconds
+            FROM Event_Results er
+            JOIN Users u ON er.user_id = u.id
+            WHERE er.event_id = %s
+            ORDER BY group_label, er.total_seconds ASC
+        """
+
+        with get_cursor() as cursor:
+            cursor.execute(query, (event_id,))
+            return cursor.fetchall()
+        
+        
+    def get_user_event_durations(self,user_id, event_type=None):
+        query = """
+            SELECT e.datetime, er.total_seconds, e.event_type
+            FROM Event_Results er
+            JOIN Events e ON er.event_id = e.id
+            WHERE er.user_id = %s
+        """
+        params = [user_id]
+
+        if event_type:
+             query += " AND LOWER(e.event_type) LIKE LOWER(%s)"
+             params.append(f"%{event_type}%")  
+
+        query += " ORDER BY e.datetime"
+
+        with get_cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall()
+    
+
+    
+            

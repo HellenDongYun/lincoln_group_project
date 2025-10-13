@@ -1,0 +1,41 @@
+<div class="mb-4">
+  <h2 class="fw-bold">My Event Results</h2>
+  <p class="text-muted">
+    Check your event results, conversions and see your performance
+  </p>
+</div>
+
+<!-- Tab nav  -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <!-- Tab nav -->
+  <ul class="nav nav-tabs border-bottom border-2 w-100">
+    <li class="nav-item">
+      <a
+        class="nav-link text-dark {% if active_tab == 'overview' %}active bg-dark text-white{% endif %}"
+        href="{{ url_for('participant.myresults', encoded_participant_id=encoded_participant_id) }}"
+        >Results Overview</a
+      >
+    </li>
+    <!-- <li class="nav-item">
+      <a
+        class="nav-link text-dark {% if active_tab == 'group' %}active bg-dark text-white{% endif %}"
+        href="{{ url_for('participant.group_event_result', encoded_participant_id=encoded_participant_id) }}"
+        >Group Relevant</a
+      >
+    </li> -->
+    <li class="nav-item">
+      <a
+        class="nav-link text-dark {% if active_tab == 'details' %}active bg-dark text-white{% endif %}"
+        href="{{ url_for('participant.resultsdetails', encoded_participant_id=encoded_participant_id) }}"
+        >Result Details</a
+      >
+    </li>
+    <li class="nav-item">
+      <a
+        class="nav-link text-dark {% if active_tab == 'tags' %}active bg-dark text-white{% endif %}"
+        href="{{ url_for('participant.resultsanalysis', encoded_participant_id=encoded_participant_id) }}"
+        >Analysis</a
+      >
+    </li>
+  </ul>
+</div>

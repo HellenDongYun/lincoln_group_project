@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}ActiveLoop - My Support Requests{% endblock %}
+
+{% block content %}
+<div class="hero-section-dark">
+    <div class="container hero-content">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 text-white">My Support Requests</h1>
+                <p class="lead text-white-50">Track and manage your support tickets.</p>
+            </div>
+            <a href="{{ url_for('support.new_request') }}" class="btn btn-light">
+                <i class="bi bi-plus-circle me-2"></i>Submit New Request
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    {% if requests %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" width="8%">ID</th>
+                                    <th scope="col" width="12%">Type</th>
+                                    <th scope="col" width="30%">Subject</th>
+                                    <th scope="col" width="10%">Status</th>
+                                    <th scope="col" width="10%">Priority</th>
+                                    <th scope="col" width="15%">Created</th>
+                                    <th scope="col" width="15%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for req in requests %}
+                                <tr>
+                                    <td class="fw-bold text-muted">#{{ req.id }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            {{ req.issue_type.replace('_', ' ')|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 300px;">
+                                            {{ req.subject }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if req.status == 'new' %}bg-info
+                                            {% elif req.status == 'open' %}bg-primary
+                                            {% elif req.status == 'stalled' %}bg-warning text-dark
+                                            {% elif req.status == 'resolved' %}bg-success
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ req.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if req.priority == 'high' %}bg-danger
+                                            {% elif req.priority == 'medium' %}bg-warning text-dark
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ req.priority|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ req.created_at.strftime('%d %b %Y') }}<br>
+                                            {{ req.created_at.strftime('%I:%M %p') }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('support.view_request', request_id=req.id) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="text-info">{{ requests|selectattr('status', 'equalto', 'new')|list|length }}</h3>
+                            <p class="text-muted mb-0">New</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="text-primary">{{ requests|selectattr('status', 'equalto', 'open')|list|length }}</h3>
+                            <p class="text-muted mb-0">In Progress</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="text-warning">{{ requests|selectattr('status', 'equalto', 'stalled')|list|length }}</h3>
+                            <p class="text-muted mb-0">Stalled</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <h3 class="text-success">{{ requests|selectattr('status', 'equalto', 'resolved')|list|length }}</h3>
+                            <p class="text-muted mb-0">Resolved</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                    <h4 class="text-muted">No Support Requests Yet</h4>
+                    <p class="text-muted mb-4">
+                        You haven't submitted any support requests. If you need help or encounter any issues,
+                        feel free to submit a new request.
+                    </p>
+                    <a href="{{ url_for('support.new_request') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Submit Your First Request
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

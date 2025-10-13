@@ -241,3 +241,41 @@ INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (10, 6, '2025-08-10 08:30:00', '2025-08-10 09:15:20'), (10, 7, '2025-08-10 08:30:00', '2025-08-10 09:10:15'),
 (10, 12, '2025-08-10 08:30:00', '2025-08-10 09:06:55'), (10, 13, '2025-08-10 08:30:00', '2025-08-10 09:18:40');
 
+UPDATE Users
+SET 
+  gender = CASE id
+    WHEN 1 THEN 'male'
+    WHEN 2 THEN 'female'
+    WHEN 3 THEN 'male'
+    WHEN 4 THEN 'female'
+    WHEN 5 THEN 'male'
+    WHEN 6 THEN 'female'
+    WHEN 7 THEN 'male'
+    WHEN 8 THEN 'female'
+    WHEN 9 THEN 'male'
+    WHEN 10 THEN 'female'
+    WHEN 11 THEN 'male'
+    WHEN 12 THEN 'female'
+    WHEN 13 THEN 'male'
+    WHEN 14 THEN 'male'
+    WHEN 15 THEN 'female'
+  END,
+  age = CASE id
+    WHEN 1 THEN 35
+    WHEN 2 THEN 28
+    WHEN 3 THEN 32
+    WHEN 4 THEN 29
+    WHEN 5 THEN 41
+    WHEN 6 THEN 26
+    WHEN 7 THEN 38
+    WHEN 8 THEN 31
+    WHEN 9 THEN 27
+    WHEN 10 THEN 30
+    WHEN 11 THEN 33
+    WHEN 12 THEN 24
+    WHEN 13 THEN 36
+    WHEN 14 THEN 34
+    WHEN 15 THEN 25
+  END
+WHERE id BETWEEN 1 AND 15;
+
