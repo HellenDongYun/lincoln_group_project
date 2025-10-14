@@ -1,7 +1,7 @@
 from datetime import datetime
 import math
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
-
+from src.app.group.group_service import GroupService
 from src.app.auth.route_guard import require_login
 from src.app.common.nav.encode import decode_id, encode_id
 from src.app.participant.participant_service import ParticipantService
@@ -450,7 +450,6 @@ def leaderboard(encoded_participant_id):
     selected_group_id = None
     user_groups = []
     try:
-        from src.app.group.group_service import GroupService
         user_groups = GroupService.get_user_groups(participant_id) or []
     except Exception:
         user_groups = []
