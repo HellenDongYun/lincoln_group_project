@@ -1,54 +1,64 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid mt-4 rewards-page">
-    <div class="row align-items-center mb-4">
-        <div class="col-lg-8">
-            <h1 class="mb-2">Rewards &amp; Achievements</h1>
-            <p class="text-muted mb-0">Celebrate your milestones and discover the next goals to unlock.</p>
-        </div>
-        <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
-            <span class="badge rounded-pill bg-primary-subtle text-primary fw-semibold">
-                <i class="fas fa-gem me-2"></i>Updated from your event activity
-            </span>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-5">
-        <div class="col-sm-6 col-xl-3">
-            <div class="reward-summary-card h-100">
-                <span class="summary-icon text-primary"><i class="fas fa-coins"></i></span>
-                <div class="summary-value">{{ summary.total_points }}</div>
-                <div class="summary-label">Reward Points Earned</div>
+<!-- Hero adopted from participant dashboard -->
+<div class="hero-section-dark participant-hero" style="--hero-image: url('{{ url_for('static', filename='images/cycling.jpg') }}');">
+    <div class="hero-content container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <span class="badge-soft mb-3">Rewards centre</span>
+                <h1 class="display-5 fw-bold text-white mb-3">Your rewards &amp; achievements</h1>
+                <p class="lead text-white-50 mb-4">
+                    Celebrate milestones, track progress, and see what's next to unlock.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ url_for('participant.dashboard', encoded_participant_id=participant_id) }}" class="btn btn-outline-light px-4">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                    <a href="{{ url_for('app.get_events') }}" class="btn btn-warning px-4">
+                        <i class="fas fa-calendar-plus me-2"></i>Browse events
+                    </a>
+                </div>
             </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="reward-summary-card h-100">
-                <span class="summary-icon text-success"><i class="fas fa-trophy"></i></span>
-                <div class="summary-value">{{ summary.earned_count }}/{{ summary.total_achievements }}</div>
-                <div class="summary-label">Achievements Unlocked</div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="reward-summary-card h-100">
-                <span class="summary-icon text-info"><i class="fas fa-chart-line"></i></span>
-                <div class="summary-value">{{ summary.progress_percent }}%</div>
-                <div class="summary-label">Completion Progress</div>
-                <div class="progress progress-thin mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ summary.progress_percent }}">
-                    <div class="progress-bar bg-info" style="width: {{ summary.progress_percent }}%"></div>
+            <div class="col-lg-5">
+                <div class="row g-3 hero-stat-grid">
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Reward points</span>
+                            <span class="stat-number">{{ summary.total_points }}</span>
+                            <span class="stat-meta">Earned to date</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Badges unlocked</span>
+                            <span class="stat-number">{{ summary.earned_count }}/{{ summary.total_achievements }}</span>
+                            <span class="stat-meta">Total achievements</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Completed challenges</span>
+                            <span class="stat-number">{{ summary.completed_challenges }}</span>
+                            <span class="stat-meta">Out of {{ summary.total_challenges }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="hero-stat-card glass-card h-100">
+                            <span class="stat-label">Completion progress</span>
+                            <span class="stat-number">{{ summary.progress_percent }}%</span>
+                            <span class="stat-meta">Towards all achievements</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="reward-summary-card h-100">
-                <span class="summary-icon text-warning"><i class="fas fa-flag-checkered"></i></span>
-                <div class="summary-value">{{ summary.completed_challenges }}/{{ summary.total_challenges }}</div>
-                <div class="summary-label">Challenges Completed</div>
-                <p class="summary-subtitle text-muted mb-0">{{ summary.active_challenges }} challenge{{ summary.active_challenges != 1 and 's' or '' }} in progress</p>
-            </div>
-        </div>
     </div>
+</div>
 
+<section class="py-5 bg-light">
+    <div class="container rewards-page">
+    
     <div class="card mb-5">
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
@@ -144,5 +154,6 @@
             {% endif %}
         </div>
     </div>
-</div>
+    </div>
+</section>
 {% endblock %}
