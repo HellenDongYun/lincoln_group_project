@@ -283,4 +283,40 @@ class ParticipantService:
             chart_data["durations"].append(row["total_seconds"]) 
 
         return chart_data
+    
+    def get_leaderboard_data(self, metric='events', time_window_days=None, current_user_id=None, group_id=None):
+        """Get leaderboard data for the specified metric and time window"""
+        if metric == 'events':
+            rankings = self.participant_repository.get_leaderboard_by_event_completions(time_window_days, group_id)
+        elif metric == 'points':
+            rankings = self.participant_repository.get_leaderboard_by_points(time_window_days, group_id)
+        elif metric == 'volunteer':
+            rankings = self.participant_repository.get_leaderboard_by_volunteer_hours(time_window_days, group_id)
+        else:
+            rankings = []
+        
+        # Add rank position to each entry
+        for rank, entry in enumerate(rankings, start=1):
+            entry['rank'] = rank
+            if current_user_id and entry['user_id'] == current_user_id:
+                entry['is_current_user'] = True
+            else:
+                entry['is_current_user'] = False
+        
+        # Find current user's position if not in top 100
+        current_user_position = None
+        if current_user_id:
+            found = any(entry['user_id'] == current_user_id for entry in rankings)
+            if not found:
+                current_user_position = self.participant_repository.get_user_leaderboard_position(
+                    current_user_id, metric, time_window_days, group_id
+                )
+        
+        return {
+            'rankings': rankings,
+            'current_user_position': current_user_position,
+            'metric': metric,
+            'time_window_days': time_window_days,
+            'group_id': group_id
+        }
 

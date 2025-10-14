@@ -808,6 +808,128 @@ class ParticipantRepository(Repository):
             cursor.execute(query, params)
             return cursor.fetchall()
     
+    def get_leaderboard_by_event_completions(self, time_window_days=None, group_id=None):
+        """Get leaderboard ranked by number of completed events"""
+        with get_cursor() as cursor:
+            query = """
+                SELECT 
+                    u.id AS user_id,
+                    CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                    u.town,
+                    COUNT(DISTINCT er.event_id) AS events_completed,
+                    MIN(er.total_seconds) AS best_time_seconds,
+                    AVG(er.total_seconds) AS avg_time_seconds
+                FROM Users u
+                INNER JOIN Event_Results er ON u.id = er.user_id
+                INNER JOIN Events e ON er.event_id = e.id
+                WHERE u.global_role = 'participant'
+            """
+            params = []
+
+            if group_id is not None:
+                query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm WHERE gm.user_id = u.id AND gm.group_id = %s AND gm.member_status = 'active')"
+                params.append(group_id)
+            
+            if time_window_days:
+                query += " AND e.datetime >= DATE_SUB(NOW(), INTERVAL %s DAY)"
+                params.append(time_window_days)
+            
+            query += """
+                GROUP BY u.id, u.first_name, u.last_name, u.town
+                ORDER BY events_completed DESC, avg_time_seconds ASC
+                LIMIT 100
+            """
+            
+            cursor.execute(query, params)
+            return cursor.fetchall()
+    
+    def get_leaderboard_by_points(self, time_window_days=None, group_id=None):
+        """Get leaderboard ranked by achievement points earned"""
+        with get_cursor() as cursor:
+            query = """
+                SELECT 
+                    u.id AS user_id,
+                    CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                    u.town,
+                    COALESCE(SUM(a.points_reward), 0) AS total_points,
+                    COUNT(DISTINCT ua.achievement_id) AS achievements_earned,
+                    COUNT(DISTINCT er.event_id) AS events_completed
+                FROM Users u
+                LEFT JOIN User_Achievements ua ON u.id = ua.user_id
+                LEFT JOIN Achievements a ON ua.achievement_id = a.id
+                LEFT JOIN Event_Results er ON u.id = er.user_id
+                WHERE u.global_role = 'participant'
+            """
+            params = []
+
+            if group_id is not None:
+                query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm WHERE gm.user_id = u.id AND gm.group_id = %s AND gm.member_status = 'active')"
+                params.append(group_id)
+            
+            if time_window_days:
+                query += " AND (ua.earned_at IS NULL OR ua.earned_at >= DATE_SUB(NOW(), INTERVAL %s DAY))"
+                params.append(time_window_days)
+            
+            query += """
+                GROUP BY u.id, u.first_name, u.last_name, u.town
+                HAVING total_points > 0
+                ORDER BY total_points DESC, achievements_earned DESC
+                LIMIT 100
+            """
+            
+            cursor.execute(query, params)
+            return cursor.fetchall()
+    
+    def get_leaderboard_by_volunteer_hours(self, time_window_days=None, group_id=None):
+        """Get leaderboard ranked by volunteer task participation"""
+        with get_cursor() as cursor:
+            query = """
+                SELECT 
+                    u.id AS user_id,
+                    CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                    u.town,
+                    COUNT(DISTINCT CONCAT(eta.event_id, '_', eta.task_id)) AS volunteer_tasks_count,
+                    COUNT(DISTINCT eta.event_id) AS events_volunteered
+                FROM Users u
+                INNER JOIN Event_Task_Assignments eta ON u.id = eta.user_id
+                INNER JOIN Events e ON eta.event_id = e.id
+                WHERE u.global_role = 'participant'
+            """
+            params = []
+
+            if group_id is not None:
+                query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm WHERE gm.user_id = u.id AND gm.group_id = %s AND gm.member_status = 'active')"
+                params.append(group_id)
+            
+            if time_window_days:
+                query += " AND e.datetime >= DATE_SUB(NOW(), INTERVAL %s DAY)"
+                params.append(time_window_days)
+            
+            query += """
+                GROUP BY u.id, u.first_name, u.last_name, u.town
+                ORDER BY volunteer_tasks_count DESC, events_volunteered DESC
+                LIMIT 100
+            """
+            
+            cursor.execute(query, params)
+            return cursor.fetchall()
+    
+    def get_user_leaderboard_position(self, user_id, metric='events', time_window_days=None, group_id=None):
+        """Get a specific user's position in the leaderboard"""
+        if metric == 'events':
+            all_rankings = self.get_leaderboard_by_event_completions(time_window_days, group_id)
+        elif metric == 'points':
+            all_rankings = self.get_leaderboard_by_points(time_window_days, group_id)
+        elif metric == 'volunteer':
+            all_rankings = self.get_leaderboard_by_volunteer_hours(time_window_days, group_id)
+        else:
+            return None
+        
+        for rank, entry in enumerate(all_rankings, start=1):
+            if entry['user_id'] == user_id:
+                return {'rank': rank, 'data': entry}
+        
+        return None
 
     
             

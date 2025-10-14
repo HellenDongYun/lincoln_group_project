@@ -7,16 +7,31 @@ class UserRepository(Repository):
     def create_user(self, user: tuple) -> bool:
         try:
             first_name, last_name, town, email, password_hash, *rest = user
-            global_role = rest[0] if rest else 'participant'
+            # rest may contain [global_role, gender, age]
+            global_role = 'participant'
+            gender = None
+            age = None
+            if len(rest) > 0:
+                global_role = rest[0] or 'participant'
+            if len(rest) > 1:
+                gender = rest[1]
+            if len(rest) > 2:
+                age = rest[2]
 
             with get_cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO Users (first_name, last_name, town, email, password_hash, global_role)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """,
-                    (first_name, last_name, town, email, password_hash, global_role)
-                )
+                # Build dynamic insert to include gender and age when provided
+                columns = ["first_name", "last_name", "town", "email", "password_hash", "global_role"]
+                values = [first_name, last_name, town, email, password_hash, global_role]
+                if gender is not None:
+                    columns.append("gender")
+                    values.append(gender)
+                if age is not None:
+                    columns.append("age")
+                    values.append(age)
+
+                placeholders = ", ".join(["%s"] * len(values))
+                sql = f"INSERT INTO Users ({', '.join(columns)}) VALUES ({placeholders})"
+                cursor.execute(sql, tuple(values))
             return True
         except Exception as exception:
             print(f"Create user failed: {exception}")
@@ -44,7 +59,7 @@ class UserRepository(Repository):
             values = []
             
             for field, value in update_data.items():
-                if field in ['first_name', 'last_name', 'town', 'email', 'password_hash', 'global_role']:
+                if field in ['first_name', 'last_name', 'town', 'email', 'password_hash', 'global_role', 'gender', 'age']:
                     set_clauses.append(f"{field} = %s")
                     values.append(value)
             

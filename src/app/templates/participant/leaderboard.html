@@ -1,91 +1,223 @@
 {% extends "base.html" %}
-{% block title %}Register for a Volunteer Event{% endblock %}
+{% block title %}ActiveLoop - Leaderboard{% endblock %}
 
 {% block content %}
-<section class="py-5 bg-dark text-white position-relative overflow-hidden">
-  <div class="position-absolute top-0 start-0 w-100 h-100" 
-       style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.85), rgba(0, 123, 255, 0.65)); opacity: 0.95; z-index: 1;"></div>
-  <div class="container position-relative" style="z-index: 2;">
-    <div class="row justify-content-center">
-      <div class="col-lg-8 text-center">
-        <p class="text-uppercase small mb-2 fw-semibold text-success">Make an impact</p>
-        <h1 class="display-5 fw-bold mb-3">Join a Volunteer Event</h1>
-        <p class="lead text-white-50 mb-0">Sign up for an event and contribute your time to help the community. Your efforts will be recognized and rewarded with achievements.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="py-5 bg-light">
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-lg-8">
-        <div class="card shadow-sm border-0">
-          <div class="card-body p-4 p-lg-5">
-            <h2 class="h4 fw-bold mb-4">Registration Form</h2>
-            <form method="post" class="row g-4">
-              
-              <!-- Event Selection -->
-              <div class="col-12">
-                <label for="event_id" class="form-label fw-semibold">Select Event<span class="text-danger ms-1">*</span></label>
-                <select id="event_id" name="event_id" class="form-select" required>
-                  {% for event in events %}
-                  <option value="{{ event.id }}"
-                          {% if event.remaining_slots == 0 or event.id in user_registered_event_ids %}disabled{% endif %}>
-                    {{ event.name }} — {{ event.town }} on {{ event.datetime.strftime('%Y-%m-%d') }}
-                    {% if event.id in user_registered_event_ids %}(Already Registered)
-                    {% elif event.remaining_slots == 0 %}(Full)
-                    {% else %}({{ event.remaining_slots }} spots left){% endif %}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <!-- Volunteer Role -->
-              <div class="col-md-6">
-                <label for="role" class="form-label fw-semibold">Volunteer Role</label>
-                <select id="role" name="role" class="form-select">
-                  {% for task in tasks %}
-                  <option value="{{ task.id }}"
-                          {% if task.current_volunteers >= task.max_volunteers %}disabled{% endif %}>
-                    {{ task.name }}
-                    {% if task.current_volunteers >= task.max_volunteers %}(Full){% endif %}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <!-- Availability -->
-              <div class="col-md-6">
-                <label for="availability" class="form-label fw-semibold">Availability</label>
-                <input type="text" id="availability" name="availability" class="form-control" placeholder="e.g. 08:00 - 12:00" />
-              </div>
-
-              <!-- Info Alert -->
-              <div class="col-12">
-                <div class="alert alert-info mb-4" role="alert">
-                  <i class="bi bi-info-circle me-2"></i>
-                  After submitting, the event coordinator will review your registration. You will be notified once approved.
+<div class="leaderboard-page">
+    <!-- Hero Section:  -->
+    <section class="hero-section-dark results-hero" style="--hero-image: url('{{ url_for('static', filename='images/cycling.jpg') }}');">
+        <div class="container">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-7 hero-content">
+                    <span class="badge-soft">Community Rankings</span>
+                    <h1 class="display-5 fw-bold mb-3">Leaderboard</h1>
+                    <p class="lead mb-4">
+                        Track your progress, celebrate achievements, and see how you rank among ActiveLoop participants.
+                    </p>
+                    <div class="d-flex gap-3 hero-actions">
+                        <a href="{{ url_for('app.home') }}" class="btn btn-outline-light fw-semibold">
+                            Back to Dashboard
+                        </a>
+                    </div>
                 </div>
-              </div>
-
-              <!-- Buttons -->
-              <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-                <a href="{{ url_for('events.index') }}" class="btn btn-outline-secondary w-100 w-md-auto">Back to events</a>
-                <button type="submit" class="btn btn-success btn-lg fw-semibold w-100 w-md-auto">Register</button>
-              </div>
-
-            </form>
-          </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
-{% endblock %}
+    </section>
 
-{% block footer %}
-<footer class="text-center text-muted py-4 small">
-  <i class="bi bi-heart-fill text-success me-2"></i>Making a difference, one volunteer at a time
-</footer>
+<!-- Filter Section -->
+<section class="py-4 bg-light border-bottom">
+    <div class="container">
+    <form method="GET" action="{{ url_for('participant.leaderboard', encoded_participant_id=encoded_participant_id) }}" class="row g-3 align-items-end">
+            <!-- Metric Filter -->
+            <div class="col-md-4">
+                <label for="metric" class="form-label fw-semibold">
+                    <i class="fas fa-chart-bar me-1"></i>Rank By
+                </label>
+                <select name="metric" id="metric" class="form-select" onchange="this.form.submit()">
+                    <option value="events" {% if current_metric == 'events' %}selected{% endif %}>
+                        Event Completions
+                    </option>
+                    <option value="points" {% if current_metric == 'points' %}selected{% endif %}>
+                        Achievement Points
+                    </option>
+                    <option value="volunteer" {% if current_metric == 'volunteer' %}selected{% endif %}>
+                        Volunteer Contributions
+                    </option>
+                </select>
+            </div>
+
+            <!-- Time Filter -->
+            <div class="col-md-4">
+                <label for="time" class="form-label fw-semibold">
+                    <i class="far fa-calendar me-1"></i>Time Period
+                </label>
+                <select name="time" id="time" class="form-select" onchange="this.form.submit()">
+                    <option value="1month" {% if current_time_filter == '1month' %}selected{% endif %}>
+                        Last 1 Month
+                    </option>
+                    <option value="3months" {% if current_time_filter == '3months' %}selected{% endif %}>
+                        Last 3 Months
+                    </option>
+                    <option value="6months" {% if current_time_filter == '6months' %}selected{% endif %}>
+                        Last 6 Months
+                    </option>
+                    <option value="all" {% if current_time_filter == 'all' %}selected{% endif %}>
+                        All Time
+                    </option>
+                </select>
+            </div>
+
+            <!-- Group Filter -->
+            <div class="col-md-4">
+                <label for="group" class="form-label fw-semibold">
+                    <i class="fas fa-users me-1"></i>Group
+                </label>
+                <select name="group" id="group" class="form-select" onchange="this.form.submit()">
+                    <option value="all" {% if current_group == 'all' %}selected{% endif %}>All My Groups</option>
+                    {% for g in groups %}
+                    <option value="{{ g.id }}" {% if current_group|int(default=-1) == g.id %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Info Badge -->
+            <div class="col-md-4">
+                <div class="alert alert-info mb-0 py-2 px-3 glass-card">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <small>
+                        {% if leaderboard.rankings|length > 0 %}
+                            Showing top {{ leaderboard.rankings|length }} participants
+                        {% else %}
+                            No data for selected filters
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Leaderboard Content -->
+<section class="py-5">
+    <div class="container">
+        {% if leaderboard.rankings %}
+
+            <!-- Full Rankings Table -->
+            <div class="card card-elevated">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-list-ol me-2 text-primary"></i>Complete Rankings
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-modern table-hover mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="text-center" width="80">Rank</th>
+                                    <th scope="col">Participant</th>
+                                    <th scope="col">Location</th>
+                                    {% if current_metric == 'events' %}
+                                        <th scope="col" class="text-center">Events</th>
+                                        <th scope="col" class="text-center">Best Time</th>
+                                        <th scope="col" class="text-center">Avg Time</th>
+                                    {% elif current_metric == 'points' %}
+                                        <th scope="col" class="text-center">Points</th>
+                                        <th scope="col" class="text-center">Achievements</th>
+                                        <th scope="col" class="text-center">Events</th>
+                                    {% elif current_metric == 'volunteer' %}
+                                        <th scope="col" class="text-center">Tasks</th>
+                                        <th scope="col" class="text-center">Events</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in leaderboard.rankings %}
+                                <tr {% if entry.is_current_user %}class="table-row-highlight"{% endif %}>
+                                    <td class="text-center fw-bold">
+                                        {% if entry.rank == 1 %}
+                                            <i class="fas fa-crown text-warning"></i>
+                                        {% elif entry.rank == 2 %}
+                                            <i class="fas fa-medal" style="color: #c0c0c0;"></i>
+                                        {% elif entry.rank == 3 %}
+                                            <i class="fas fa-medal" style="color: #cd7f32;"></i>
+                                        {% else %}
+                                            {{ entry.rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold">{{ entry.full_name }}</span>
+                                        {% if entry.is_current_user %}
+                                            <span class="status-pill status-pill-info ms-2">You</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><i class="fas fa-map-marker-alt me-1 text-muted"></i>{{ entry.town or 'N/A' }}</td>
+                                    {% if current_metric == 'events' %}
+                                        <td class="text-center fw-bold">{{ entry.events_completed }}</td>
+                                        <td class="text-center">
+                                            {% if entry.best_time_seconds %}
+                                                {{ (entry.best_time_seconds // 3600)|int }}h {{ ((entry.best_time_seconds % 3600) // 60)|int }}m
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if entry.avg_time_seconds %}
+                                                {{ (entry.avg_time_seconds // 3600)|int }}h {{ ((entry.avg_time_seconds % 3600) // 60)|int }}m
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                    {% elif current_metric == 'points' %}
+                                        <td class="text-center fw-bold text-success">{{ entry.total_points }}</td>
+                                        <td class="text-center">{{ entry.achievements_earned }}</td>
+                                        <td class="text-center">{{ entry.events_completed }}</td>
+                                    {% elif current_metric == 'volunteer' %}
+                                        <td class="text-center fw-bold text-info">{{ entry.volunteer_tasks_count }}</td>
+                                        <td class="text-center">{{ entry.events_volunteered }}</td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current User Position (if not in top 100) -->
+            {% if leaderboard.current_user_position %}
+            <div class="alert alert-info mt-4 d-flex align-items-center">
+                <i class="fas fa-info-circle fa-2x me-3"></i>
+                <div>
+                    <strong>Your Position:</strong> Rank #{{ leaderboard.current_user_position.rank }}
+                    {% if current_metric == 'events' %}
+                        with {{ leaderboard.current_user_position.data.events_completed }} event(s) completed
+                    {% elif current_metric == 'points' %}
+                        with {{ leaderboard.current_user_position.data.total_points }} points earned
+                    {% elif current_metric == 'volunteer' %}
+                        with {{ leaderboard.current_user_position.data.volunteer_tasks_count }} volunteer task(s)
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+        {% else %}
+            <!-- Empty State -->
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-4x text-muted mb-4"></i>
+                <h4 class="text-muted mb-3">No Leaderboard Data Available</h4>
+                <p class="text-muted mb-4">
+                    {% if current_time_filter != 'all' %}
+                        No participants have activity in the selected time period.
+                    {% else %}
+                        Complete events or earn achievements to appear on the leaderboard!
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('app.get_events') }}" class="btn btn-primary">
+                    <i class="fas fa-calendar-plus me-2"></i>Browse Events
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    </div>
+</section>
 {% endblock %}
