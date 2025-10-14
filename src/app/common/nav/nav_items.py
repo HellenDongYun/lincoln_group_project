@@ -86,8 +86,8 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 }
             )
             nav_items.append({
-                "label": "Support Queue",
-                "url": url_for('support.support_queue')
+                "label": "Leaderboard",
+                "url": url_for('participant.leaderboard', encoded_participant_id=encoded_participant_id)
             })
         nav_items.append({
             "label": "My Applications",

@@ -82,6 +82,27 @@
                                 {% endif %}
                             </div>
 
+                            <div class="col-md-4">
+                                <label for="gender" class="form-label text-uppercase small fw-semibold text-muted">Gender</label>
+                                <select id="gender" name="gender" class="form-select form-select-lg shadow-sm">
+                                    <option value="" {% if not form_group.get('gender') or not form_group.get('gender').value %}selected{% endif %}>Prefer not to say</option>
+                                    <option value="male" {% if form_group.get('gender') and form_group.get('gender').value=='male' %}selected{% endif %}>Male</option>
+                                    <option value="female" {% if form_group.get('gender') and form_group.get('gender').value=='female' %}selected{% endif %}>Female</option>
+                                    <option value="other" {% if form_group.get('gender') and form_group.get('gender').value=='other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="age_group" class="form-label text-uppercase small fw-semibold text-muted">Age group</label>
+                                <select id="age_group" name="age_group" class="form-select form-select-lg shadow-sm">
+                                    <option value="" {% if not form_group.get('age_group') or not form_group.get('age_group').value %}selected{% endif %}>Prefer not to say</option>
+                                    <option value="Under 18" {% if form_group.get('age_group') and form_group.get('age_group').value=='Under 18' %}selected{% endif %}>Under 18</option>
+                                    <option value="18-29" {% if form_group.get('age_group') and form_group.get('age_group').value=='18-29' %}selected{% endif %}>18-29</option>
+                                    <option value="30-44" {% if form_group.get('age_group') and form_group.get('age_group').value=='30-44' %}selected{% endif %}>30-44</option>
+                                    <option value="45+" {% if form_group.get('age_group') and form_group.get('age_group').value=='45+' %}selected{% endif %}>45+</option>
+                                </select>
+                            </div>
+
                             <div class="col-12">
                                 <div class="border-top mt-4 pt-4"></div>
                                 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">

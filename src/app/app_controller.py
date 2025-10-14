@@ -23,6 +23,21 @@ home_service = HomeService()
 
 app_blueprint = Blueprint('app', __name__)
 
+# map UI age_group string to a representative age integer.
+# Returns None when age_group is unspecified ("Prefer not to say").
+def map_age_group_to_age(age_group: str | None) -> int | None:
+    if not age_group:
+        return None
+    if age_group == 'Under 18':
+        return 16
+    if age_group == '18-29':
+        return 25
+    if age_group == '30-44':
+        return 37
+    if age_group == '45+':
+        return 50
+    return None
+
 @app_blueprint.route("")
 def home():
     # Get next 5 upcoming events for home page
@@ -124,6 +139,8 @@ def register():
         "first_name": FormControl(''),
         "last_name": FormControl(''),
         "town": FormControl(''),
+        "gender": FormControl(''),
+        "age_group": FormControl(''),
         "email": FormControl(''),
         "password": FormControl(''),
         "password_confirmation": FormControl(''),
@@ -134,12 +151,16 @@ def register():
         last_name_input = request.form.get('last_name', '').strip()
         town_input = request.form.get('town', '').strip()
         email_input = request.form.get('email', '').strip()
+        gender_input = request.form.get('gender', '').strip() or None
+        age_group_input = request.form.get('age_group', '').strip() or None
         password_input = request.form.get('password', '').strip()
         password_confirmation_input = request.form.get('password_confirmation', '').strip()
 
         form_group.get("first_name").value = first_name_input
         form_group.get("last_name").value = last_name_input
         form_group.get("town").value = town_input
+        form_group.get("gender").value = gender_input or ''
+        form_group.get("age_group").value = age_group_input or ''
         form_group.get("email").value = email_input
         form_group.get("password").value = password_input
         form_group.get("password_confirmation").value = password_confirmation_input
@@ -173,8 +194,11 @@ def register():
 
         # Create User
         password_hash = generate_password_hash(password_input)
+        # Map age_group to representative age (stored in Users.age; DB computes age_group)
+        age_value = map_age_group_to_age(age_group_input)
+
         success = user_service.create_user(
-            (first_name_input, last_name_input, town_input, normalised_email, password_hash)
+            (first_name_input, last_name_input, town_input, normalised_email, password_hash, 'participant', gender_input, age_value)
         )
 
         if not success:
@@ -205,6 +229,8 @@ def settings():
         "first_name": FormControl(user.get('first_name', '')),
         "last_name": FormControl(user.get('last_name', '')),
         "town": FormControl(user.get('town', '')),
+        "gender": FormControl(user.get('gender', '') or ''),
+        "age_group": FormControl(user.get('age_group', '') or ''),
         "current_password": FormControl(''),
         "new_password": FormControl(''),
         "confirm_password": FormControl('')
@@ -214,6 +240,8 @@ def settings():
         first_name_input = request.form.get('first_name', '').strip()
         last_name_input = request.form.get('last_name', '').strip()
         town_input = request.form.get('town', '').strip()
+        gender_input = request.form.get('gender', '').strip() or None
+        age_group_input = request.form.get('age_group', '').strip() or None
         current_password_input = request.form.get('current_password', '').strip()
         new_password_input = request.form.get('new_password', '').strip()
         confirm_password_input = request.form.get('confirm_password', '').strip()
@@ -221,6 +249,8 @@ def settings():
         form_group.get("first_name").value = first_name_input
         form_group.get("last_name").value = last_name_input
         form_group.get("town").value = town_input
+        form_group.get("gender").value = gender_input or ''
+        form_group.get("age_group").value = age_group_input or ''
         form_group.get("current_password").value = current_password_input
         form_group.get("new_password").value = new_password_input
         form_group.get("confirm_password").value = confirm_password_input
@@ -267,6 +297,13 @@ def settings():
             'last_name': last_name_input,
             'town': town_input
         }
+
+        # Map age_group to representative age (or clear if unspecified)
+        update_data['age'] = map_age_group_to_age(age_group_input)
+
+        # Update gender if provided
+        if gender_input in ['male', 'female', 'other', None]:
+            update_data['gender'] = gender_input
         
         # Add password hash if password is being changed
         if new_password_input:

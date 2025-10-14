@@ -1,7 +1,7 @@
 from datetime import datetime
 import math
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
-
+from src.app.group.group_service import GroupService
 from src.app.auth.route_guard import require_login
 from src.app.common.nav.encode import decode_id, encode_id
 from src.app.participant.participant_service import ParticipantService
@@ -11,6 +11,14 @@ from src.app.auth.auth_service import AuthService
 participant_blueprint = Blueprint("participant", __name__)
 participant_service = ParticipantService()
 auth_service = AuthService()
+
+
+LEADERBOARD_TIME_WINDOWS = {
+    "1month": 30,
+    "3months": 90,
+    "6months": 180,
+    "all": None,
+}
 
 
 @participant_blueprint.route("/<encoded_participant_id>", methods=["GET"])
@@ -410,4 +418,71 @@ def cancel_role_placeholder():
 @participant_blueprint.route("/withdraw_application", methods=["POST"])
 def withdraw_application_placeholder():
     return jsonify({"error": "Volunteer withdrawal is not available."}), 501
+
+
+@participant_blueprint.route("/<encoded_participant_id>/leaderboard", methods=["GET"])
+@require_login
+def leaderboard(encoded_participant_id):
+    """Display leaderboard with rankings by various metrics"""
+    participant_id = decode_id(encoded_participant_id)
+    
+    current_user_id = auth_service.get_user_id()
+    if participant_id != current_user_id:
+        flash("You can only view leaderboards from your own account.", "danger")
+        if current_user_id:
+            redirect_id = encode_id(current_user_id)
+            return redirect(url_for("participant.leaderboard", encoded_participant_id=redirect_id))
+        return redirect(url_for("app.home"))
+    
+    # Get filter parameters
+    metric = request.args.get('metric', 'events')  # events, points, volunteer
+    time_filter = request.args.get('time', 'all')  # 1month, 3months, 6months, all
+    group_id_param = request.args.get('group', 'all')  # 'all' or numeric id
+    
+    # Validate metric
+    if metric not in ['events', 'points', 'volunteer']:
+        metric = 'events'
+    
+    # Map time filter to days
+    time_window_days = LEADERBOARD_TIME_WINDOWS.get(time_filter)
+    
+    # Resolve group filter
+    selected_group_id = None
+    user_groups = []
+    try:
+        user_groups = GroupService.get_user_groups(participant_id) or []
+    except Exception:
+        user_groups = []
+
+    if group_id_param and group_id_param != 'all':
+        try:
+            selected_group_id = int(group_id_param)
+            # Validate user membership for safety; allow managers/members
+            is_member = any(g.get('id') == selected_group_id for g in user_groups)
+            if not is_member:
+                flash('You do not belong to the selected group.', 'warning')
+                selected_group_id = None
+                group_id_param = 'all'
+        except ValueError:
+            selected_group_id = None
+            group_id_param = 'all'
+
+    # Get leaderboard data
+    leaderboard_data = participant_service.get_leaderboard_data(
+        metric=metric,
+        time_window_days=time_window_days,
+        current_user_id=participant_id,
+        group_id=selected_group_id
+    )
+    
+    return render_template(
+        "participant/leaderboard.html",
+        encoded_participant_id=encoded_participant_id,
+        leaderboard=leaderboard_data,
+        current_metric=metric,
+        current_time_filter=time_filter,
+        time_windows=LEADERBOARD_TIME_WINDOWS,
+        groups=user_groups,
+        current_group=group_id_param
+    )
 
