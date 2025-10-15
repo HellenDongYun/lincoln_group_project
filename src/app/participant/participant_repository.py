@@ -345,8 +345,134 @@ class ParticipantRepository(Repository):
 
         challenges = self.fetchall(sql, (participant_id,))
         for challenge in challenges:
-            challenge["earned"] = challenge.get("earned_at") is not None
+            # Earned if User_Achievements has a record OR progress meets/exceeds target
+            target_value = challenge.get("target_value") or 0
+            timeframe_days = challenge.get("timeframe_days")
+            target_metric = challenge.get("target_metric")
+
+            progress_count = self._compute_challenge_progress(
+                participant_id, target_metric, timeframe_days
+            )
+
+            # Default earned state from DB
+            earned_db = challenge.get("earned_at") is not None
+            earned_progress = (
+                progress_count is not None and target_value and int(progress_count) >= int(target_value)
+            )
+
+            challenge["earned"] = bool(earned_db or earned_progress)
+            challenge["progress_count"] = progress_count
+            challenge["remaining"] = (
+                0 if earned_progress else (max(0, int(target_value) - int(progress_count)) if (progress_count is not None and target_value) else None)
+            )
         return challenges
+
+    def _compute_challenge_progress(self, participant_id, target_metric: str, timeframe_days: int | None):
+        """Return current progress count for a given challenge metric.
+        Applies timeframe_days when provided (uses event datetime or result start_time).
+        Returns None if metric is unsupported.
+        """
+        if not target_metric:
+            return None
+
+        # Helper to build timeframe predicate
+        timeframe_clause_er = ""
+        timeframe_clause_e = ""
+        timeframe_param = []
+        if timeframe_days:
+            timeframe_clause_er = " AND er.start_time >= DATE_SUB(NOW(), INTERVAL %s DAY)"
+            timeframe_clause_e = " AND e.datetime >= DATE_SUB(NOW(), INTERVAL %s DAY)"
+            timeframe_param = [timeframe_days]
+
+        with get_cursor() as cursor:
+            # Events attended (all-time or within timeframe)
+            if target_metric == "events_attended":
+                sql = (
+                    "SELECT COUNT(DISTINCT er.event_id) AS cnt "
+                    "FROM Event_Results er WHERE er.user_id = %s" + timeframe_clause_er
+                )
+                cursor.execute(sql, [participant_id] + timeframe_param)
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Events attended within recent window (uses timeframe_days)
+            if target_metric == "events_attended_monthly":
+                # Use timeframe_days if provided (e.g., 30), otherwise default 30
+                days = timeframe_days if timeframe_days else 30
+                sql = (
+                    "SELECT COUNT(DISTINCT er.event_id) AS cnt "
+                    "FROM Event_Results er WHERE er.user_id = %s AND er.start_time >= DATE_SUB(NOW(), INTERVAL %s DAY)"
+                )
+                cursor.execute(sql, (participant_id, days))
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Volunteer tasks (count of assignments)
+            if target_metric == "volunteer_tasks":
+                sql = (
+                    "SELECT COUNT(DISTINCT CONCAT(eta.event_id, '_', eta.task_id)) AS cnt "
+                    "FROM Event_Task_Assignments eta JOIN Events e ON eta.event_id = e.id "
+                    "WHERE eta.user_id = %s" + timeframe_clause_e
+                )
+                cursor.execute(sql, [participant_id] + timeframe_param)
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Distinct volunteer task types
+            if target_metric == "volunteer_tasks_distinct":
+                sql = (
+                    "SELECT COUNT(DISTINCT eta.task_id) AS cnt "
+                    "FROM Event_Task_Assignments eta JOIN Events e ON eta.event_id = e.id "
+                    "WHERE eta.user_id = %s" + timeframe_clause_e
+                )
+                cursor.execute(sql, [participant_id] + timeframe_param)
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Distinct event types attended
+            if target_metric == "event_types_distinct":
+                sql = (
+                    "SELECT COUNT(DISTINCT e.event_type) AS cnt "
+                    "FROM Event_Results er JOIN Events e ON er.event_id = e.id "
+                    "WHERE er.user_id = %s" + timeframe_clause_e
+                )
+                cursor.execute(sql, [participant_id] + timeframe_param)
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Distinct locations attended
+            if target_metric == "locations_distinct":
+                sql = (
+                    "SELECT COUNT(DISTINCT e.town) AS cnt "
+                    "FROM Event_Results er JOIN Events e ON er.event_id = e.id "
+                    "WHERE er.user_id = %s" + timeframe_clause_e
+                )
+                cursor.execute(sql, [participant_id] + timeframe_param)
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Groups joined (active memberships)
+            if target_metric == "groups_joined":
+                sql = (
+                    "SELECT COUNT(DISTINCT gm.group_id) AS cnt "
+                    "FROM Group_Memberships gm WHERE gm.user_id = %s AND gm.member_status = 'active'"
+                )
+                cursor.execute(sql, (participant_id,))
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            # Volunteer hours - not explicitly stored; approximate by tasks count for now
+            if target_metric == "volunteer_hours":
+                sql = (
+                    "SELECT COUNT(DISTINCT CONCAT(eta.event_id, '_', eta.task_id)) AS cnt "
+                    "FROM Event_Task_Assignments eta JOIN Events e ON eta.event_id = e.id "
+                    "WHERE eta.user_id = %s" + timeframe_clause_e
+                )
+                cursor.execute(sql, [participant_id] + timeframe_param)
+                row = cursor.fetchone()
+                return row.get("cnt") if row else 0
+
+            return None
 
     def format_duration_seconds(self,seconds):
         return str(timedelta(seconds=seconds)) 
