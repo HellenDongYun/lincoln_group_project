@@ -187,11 +187,28 @@ class AdminRepository(Repository):
             return cursor.rowcount > 0
     
     @staticmethod
-    def update_user_status(user_id, status):
+    def update_user_status(user_id, status, reason: str = None, changed_by: int = None):
         with get_cursor() as cursor:
+            # Update status
             query = "UPDATE Users SET status = %s WHERE id = %s"
             cursor.execute(query, (status, user_id))
-            return cursor.rowcount > 0
+            updated = cursor.rowcount > 0
+
+            # Optional audit insert if table exists
+            if updated:
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO User_Status_Audit (user_id, new_status, reason, changed_by)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (user_id, status, reason, changed_by)
+                    )
+                except Exception as e:
+                    # If the audit table doesn't exist, skip silently
+                    if 'User_Status_Audit' not in str(e):
+                        raise e
+            return updated
     
     @staticmethod
     def get_user_by_id(user_id):

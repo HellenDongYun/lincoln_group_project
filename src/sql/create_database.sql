@@ -197,7 +197,20 @@ ALTER TABLE Group_Applications
 ADD COLUMN application_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 
--- Support Requests for Helpdesk System
+-- Audit trail for user status changes (deactivations/reactivations)
+CREATE TABLE User_Status_Audit (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  new_status ENUM('active','inactive') NOT NULL,
+  reason TEXT NULL,
+  changed_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (changed_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+
+-- Support Requests for Helpdesk System------ujyh7
 CREATE TABLE Support_Requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
