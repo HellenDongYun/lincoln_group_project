@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+<<<<<<< Updated upstream
 {% block title %}ActiveLoop - Leaderboard{% endblock %}
 
 {% block content %}
@@ -220,3 +221,95 @@
     </div>
 </section>
 {% endblock %}
+=======
+{% block title %}Register for a Volunteer Event{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-dark text-white position-relative overflow-hidden">
+  <div class="position-absolute top-0 start-0 w-100 h-100" 
+       style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.85), rgba(0, 123, 255, 0.65)); opacity: 0.95; z-index: 1;"></div>
+  <div class="container position-relative" style="z-index: 2;">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <p class="text-uppercase small mb-2 fw-semibold text-success">Make an impact</p>
+        <h1 class="display-5 fw-bold mb-3">Join a Volunteer Event</h1>
+        <p class="lead text-white-50 mb-0">Sign up for an event and contribute your time to help the community. Your efforts will be recognized and rewarded with achievements.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4 p-lg-5">
+            <h2 class="h4 fw-bold mb-4">Registration Form</h2>
+            <form method="post" class="row g-4">
+              
+              <!-- Event Selection -->
+              <div class="col-12">
+                <label for="event_id" class="form-label fw-semibold">Select Event<span class="text-danger ms-1">*</span></label>
+                <select id="event_id" name="event_id" class="form-select" required>
+                  {% for event in events %}
+                  <option value="{{ event.id }}"
+                          {% if event.remaining_slots == 0 or event.id in user_registered_event_ids %}disabled{% endif %}>
+                    {{ event.name }} — {{ event.town }} on {{ event.datetime.strftime('%Y-%m-%d') }}
+                    {% if event.id in user_registered_event_ids %}(Already Registered)
+                    {% elif event.remaining_slots == 0 %}(Full)
+                    {% else %}({{ event.remaining_slots }} spots left){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Volunteer Role -->
+              <div class="col-md-6">
+                <label for="role" class="form-label fw-semibold">Volunteer Role</label>
+                <select id="role" name="role" class="form-select">
+                  {% for task in tasks %}
+                  <option value="{{ task.id }}"
+                          {% if task.current_volunteers >= task.max_volunteers %}disabled{% endif %}>
+                    {{ task.name }}
+                    {% if task.current_volunteers >= task.max_volunteers %}(Full){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Availability -->
+              <div class="col-md-6">
+                <label for="availability" class="form-label fw-semibold">Availability</label>
+                <input type="text" id="availability" name="availability" class="form-control" placeholder="e.g. 08:00 - 12:00" />
+              </div>
+
+              <!-- Info Alert -->
+              <div class="col-12">
+                <div class="alert alert-info mb-4" role="alert">
+                  <i class="bi bi-info-circle me-2"></i>
+                  After submitting, the event coordinator will review your registration. You will be notified once approved.
+                </div>
+              </div>
+
+              <!-- Buttons -->
+              <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                <a href="{{ url_for('events.index') }}" class="btn btn-outline-secondary w-100 w-md-auto">Back to events</a>
+                <button type="submit" class="btn btn-success btn-lg fw-semibold w-100 w-md-auto">Register</button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block footer %}
+<footer class="text-center text-muted py-4 small">
+  <i class="bi bi-heart-fill text-success me-2"></i>Making a difference, one volunteer at a time
+</footer>
+{% endblock %}
+>>>>>>> Stashed changes

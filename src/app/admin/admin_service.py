@@ -4,7 +4,7 @@ from src.app.admin.admin import Admin
 from src.app.admin.admin_repository import AdminRepository
 from src.app.group.group_repository import GroupRepository
 from src.app.user.user import GroupVisibility, GroupStatus
-
+from datetime import datetime
 
 class AdminService:
 
@@ -273,3 +273,19 @@ class AdminService:
                 'manager': manager_info,
                 'manager_warning': manager_warning
             }
+        
+    @staticmethod
+    def get_user_achievements(user_id: int):
+        return AdminRepository.get_user_achievements(user_id)
+
+    @staticmethod
+    def get_user_total_points(user_id: int) -> int:
+        return AdminRepository.get_user_total_points(user_id)
+
+    @staticmethod
+    def adjust_achievement(user_id: int, action: str, achievement_id: int = None, new_points: int = None, reason: str = None):
+        return AdminRepository.adjust_achievement(user_id, action, achievement_id, new_points, reason)
+
+    @staticmethod
+    def get_all_users_with_achievements(page: int = 1, per_page: int = 10, search: str = None):
+        return AdminRepository.get_all_users_with_achievements(page, per_page, search)

@@ -244,6 +244,7 @@ INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (10, 12, '2025-08-10 08:30:00', '2025-08-10 09:06:55'), (10, 13, '2025-08-10 08:30:00', '2025-08-10 09:18:40');
 
 
+<<<<<<< Updated upstream
 -- ------------------------------
 -- Support Requests & Conversations
 -- ------------------------------
@@ -264,3 +265,9 @@ INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_rep
 (4, 16, 'We see mail logs showing a bounce. Confirming with provider now.', TRUE, '2025-09-01 09:15:00'),
 (5, 6, 'Duplicate row only appears after refreshing the page.', FALSE, '2025-08-20 09:35:00'),
 (5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00');
+=======
+INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
+VALUES
+(2, 1, 50, 25, 1, 'Super Admin corrected wrong badge points'),  
+(3, 2, 0, 75, 1, 'Super Admin added missing achievement points');
+>>>>>>> Stashed changes

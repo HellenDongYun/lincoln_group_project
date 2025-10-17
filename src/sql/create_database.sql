@@ -225,3 +225,19 @@ CREATE TABLE Support_Request_Comments (
   FOREIGN KEY (request_id) REFERENCES Support_Requests(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE TABLE Achievement_Adjustments (
+    adjustment_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    achievement_id INT NULL,
+    old_points INT,
+    new_points INT,
+    adjusted_by INT NOT NULL,
+    adjusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reason TEXT,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,  
+    FOREIGN KEY (achievement_id) REFERENCES Achievements(id) ON DELETE SET NULL,  
+    FOREIGN KEY (adjusted_by) REFERENCES Users(id) ON DELETE RESTRICT  -
+);
+
+
