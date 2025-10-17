@@ -149,9 +149,9 @@ class AdminService:
         return AdminRepository.update_user_role(user_id, new_role)
     
     @staticmethod
-    def update_user_status(user_id, new_status):
-        """Update a user's status"""
-        return AdminRepository.update_user_status(user_id, new_status)
+    def update_user_status(user_id, new_status, reason: str = None, changed_by: int = None):
+        """Update a user's status and log an audit record if supported"""
+        return AdminRepository.update_user_status(user_id, new_status, reason=reason, changed_by=changed_by)
     
     @staticmethod
     def get_user_by_id(user_id):

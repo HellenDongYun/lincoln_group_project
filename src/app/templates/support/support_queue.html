@@ -10,6 +10,13 @@
                 <h1 class="display-5 text-white">Support Queue</h1>
                 <p class="lead text-white-50">Manage and respond to user support requests.</p>
             </div>
+            {% if is_admin_or_tech %}
+            <div>
+                <a href="{{ url_for('admin.manage_user_roles') }}" class="btn btn-outline-light">
+                    <i class="bi bi-people me-2"></i>Manage User Roles
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

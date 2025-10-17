@@ -36,7 +36,7 @@ INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, tow
 ('vincent.anderson@gmail.com', '$2b$12$tB2NJ2ffcQsoGOpcPMQAm.W/ZZ9Jst1yGfD6QlWAzVpEh6Dj8f5Im', 'Vincent', 'Anderson', 'male', 33, 'Dunedin', 'participant', 'active'),
 ('vladimir.scott@runclub.org', '$2b$12$9SiyYX4tvwjX9sbFAb1Y7.mwFiyrG1eRlx/Ms7CrdKgdjnsfqyKbm', 'Vladimir', 'Scott', 'other', 28, 'Rotorua', 'participant', 'active'),
 ('valentina.green@gmail.com', '$2b$12$KyC5ouMLtuaSyqyOt5cnAuoveLpRAf/xul6cDJoUwDvGwDMcduzKm', 'Valentina', 'Green', 'female', 30, 'Palmerston North', 'participant', 'active'),
-('support.tech@platform.org', '$2b$12$6nK5TrF/e0ItqIj4gfvr8u3bRc0EnNBCDPrCb3RZ0N3WeMM66PnJ2', 'Morgan', 'Reeves', 'other', 35, 'Christchurch', 'support_technician', 'active');
+('support.tech@platform.org', '$2a$12$WTDdKSew1rXMuLtWi6vClOgmzI0U4l2Z5U4kl0tTfplKG.1Cm/.xG', 'Morgan', 'Reeves', 'other', 35, 'Christchurch', 'support_technician', 'active');
 
 
 -- ------------------------------
