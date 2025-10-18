@@ -19,9 +19,105 @@
 
 <div class="container py-5">
     <div class="row">
-        <!-- Main Content -->
         <div class="col-lg-8">
-            <!-- Request Details Card -->
+            {% if is_staff %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tools text-primary me-2"></i>Staff Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if support_request.status == 'new' and not support_request.assigned_to %}
+                    <form method="POST" action="{{ url_for('support.take_request', request_id=support_request.id) }}" class="mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-hand-thumbs-up me-2"></i>Take Request
+                        </button>
+                        <small class="text-muted d-block mt-1">Assign this request to yourself and start working on it</small>
+                    </form>
+                    {% endif %}
+                    {% if support_request.assigned_to == current_user_id and support_request.status != 'resolved' %}
+                    <form method="POST" action="{{ url_for('support.drop_request', request_id=support_request.id) }}" class="mb-3">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-return-left me-2"></i>Drop Request
+                        </button>
+                        <small class="text-muted d-block mt-1">Return this request to the queue</small>
+                    </form>
+                    {% endif %}
+                    <div class="mb-3">
+                        <form method="POST" action="{{ url_for('support.assign_request', request_id=support_request.id) }}">
+                            <label class="form-label fw-bold">Assign to Staff Member:</label>
+                            <div class="input-group">
+                                <select name="assigned_to" class="form-select" required>
+                                    <option value="">-- Select Staff Member --</option>
+                                    {% for staff in staff_list %}
+                                    <option value="{{ staff.id }}" {% if support_request.assigned_to == staff.id %}selected{% endif %}>
+                                        {{ staff.first_name }} {{ staff.last_name }}
+                                        {% if staff.global_role == 'super_admin' %}(Admin){% else %}(Support Tech){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-outline-primary">Assign</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="mb-0">
+                        <form method="POST" action="{{ url_for('support.update_status', request_id=support_request.id) }}" id="statusForm">
+                            <label class="form-label fw-bold">Update Status:</label>
+                            <select name="status" class="form-select mb-2" id="statusSelect" required>
+                                <option value="">-- Select New Status --</option>
+                                {% if support_request.status != 'new' %}
+                                <option value="open">Open</option>
+                                {% endif %}
+                                <option value="stalled">Stalled</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                            <div id="resolutionCommentDiv" style="display:none;">
+                                <label class="form-label">Resolution Comment <span class="text-danger">*</span></label>
+                                <textarea name="comment" class="form-control mb-2" rows="3"
+                                          placeholder="Explain how the issue was resolved..."></textarea>
+                                <small class="text-muted">Required when marking as resolved</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-success mt-2">
+                                <i class="bi bi-check-circle me-2"></i>Update Status
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            document.getElementById('statusSelect').addEventListener('change', function() {
+                const div = document.getElementById('resolutionCommentDiv');
+                const textarea = div.querySelector('textarea');
+
+                if (this.value === 'resolved') {
+                    div.style.display = 'block';
+                    textarea.required = true;
+                } else {
+                    div.style.display = 'none';
+                    textarea.required = false;
+                }
+            });
+            </script>
+            {% endif %}
+
+            {% if support_request.status == 'resolved' %}
+            <div class="alert alert-success mb-4">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <strong>This request has been resolved.</strong>
+                {% if support_request.user_id == current_user_id or is_staff %}
+                <form method="POST" action="{{ url_for('support.reopen_request', request_id=support_request.id) }}"
+                      class="d-inline float-end">
+                    <button type="submit" class="btn btn-sm btn-warning">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen Request
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
@@ -116,9 +212,6 @@
                         </p>
                     {% endif %}
                 </div>
-
-                <!-- Add Comment Form -->
-                {% if support_request.status != 'resolved' %}
                 <div class="card-footer bg-light">
                     <form method="POST" action="{{ url_for('support.add_comment', request_id=support_request.id) }}">
                         <div class="mb-3">
@@ -135,12 +228,6 @@
                         </button>
                     </form>
                 </div>
-                {% else %}
-                <div class="card-footer bg-light text-center">
-                    <i class="bi bi-check-circle text-success me-2"></i>
-                    <span class="text-muted">This request has been resolved. Comments are disabled.</span>
-                </div>
-                {% endif %}
             </div>
         </div>
 

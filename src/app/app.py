@@ -42,9 +42,21 @@ app.register_blueprint(support_blueprint, url_prefix='/support')
 def get_nav_items():
     user_id = auth_service.get_user_id()
     user_role = auth_service.get_global_role()
+
+    # Get unread notification count for notification bell (AC9)
+    unread_notification_count = 0
+    if user_id:
+        try:
+            from src.app.support.support_service import SupportService
+            unread_notification_count = SupportService.get_unread_count(user_id)
+        except:
+            pass
+
     return {
         "left_nav_items": left_nav_items(user_id, user_role),
-        "right_nav_items": right_nav_items(user_id, user_role)
+        "right_nav_items": right_nav_items(user_id, user_role),
+        "unread_notification_count": unread_notification_count,
+        "current_user_id": user_id
     }
 
 

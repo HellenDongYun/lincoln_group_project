@@ -65,8 +65,24 @@
               {% endfor %}
             </ul>
 
+            {% if session.user_id %}
+            <ul class="navbar-nav ms-auto me-3">
+              <li class="nav-item">
+                <a class="nav-link position-relative" href="{{ url_for('support.notifications') }}">
+                  <i class="bi bi-bell fs-5"></i>
+                  {% if unread_notification_count > 0 %}
+                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                    {{ unread_notification_count }}
+                    <span class="visually-hidden">unread notifications</span>
+                  </span>
+                  {% endif %}
+                </a>
+              </li>
+            </ul>
+            {% endif %}
+
             {% if right_nav_items %}
-            <ul class="navbar-nav ms-auto">
+            <ul class="navbar-nav">
               {% for item in right_nav_items %}
               <li class="nav-item">{{ nav_link(item.url, item.label) }}</li>
               {% endfor %}

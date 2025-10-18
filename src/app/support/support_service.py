@@ -61,9 +61,9 @@ class SupportService:
 
     @staticmethod
     def add_comment_to_request(request_id: int, user_id: int, comment: str,
-                               is_staff_reply: bool = False) -> bool:
-        #Add a comment to a support request and update status if needed
-        
+                               is_staff_reply: bool = False) -> int:
+        #Add a comment to a support request and update status if needed (AC7: Updated to allow comments on resolved)
+
         if not comment or not comment.strip():
             raise ValueError("Comment cannot be empty")
 
@@ -73,19 +73,19 @@ class SupportService:
         if not request:
             raise ValueError("Support request not found")
 
-        if request['status'] == 'resolved':
-            raise ValueError("Cannot add comments to resolved requests")
+        # AC7: Removed check that prevented comments on resolved requests
+        # Comments are now allowed on all statuses
 
         # Add the comment
         comment_id = SupportRepository.add_comment(
             request_id, user_id, comment.strip(), is_staff_reply
         )
 
-        # If this is a new request and someone is commenting, update to open
+        # If this is a new request and staff is commenting, update to open
         if request['status'] == 'new' and is_staff_reply:
             SupportRepository.update_request_status(request_id, 'open')
 
-        return comment_id > 0
+        return comment_id  # Return comment_id for use in AC6 (resolving with comment)
 
     @staticmethod
     def update_status(request_id: int, new_status: str) -> bool:
@@ -136,3 +136,227 @@ class SupportService:
 
         # Users can only access their own requests
         return request['user_id'] == user_id
+    
+    @staticmethod
+    def take_request(request_id: int, user_id: int) -> bool:
+        #Take ownership of a request (AC1)
+
+        # Get the request
+        request = SupportRepository.get_support_request_by_id(request_id)
+        if not request:
+            raise ValueError("Support request not found")
+
+        # Validate it's new and unassigned
+        if request['status'] != 'new':
+            raise ValueError("Can only take requests with 'new' status")
+
+        if request['assigned_to'] is not None:
+            raise ValueError("Request is already assigned")
+
+        # Take the request (assigns and changes status to open)
+        success = SupportRepository.take_request(request_id, user_id)
+
+        if success:
+            # Log the status change
+            SupportRepository.log_status_change(
+                request_id, user_id, 'new', 'open', None
+            )
+
+            # Get staff name for notification
+            from src.app.user.user_repository import UserRepository
+            user_repo = UserRepository()
+            staff = user_repo.get_user_by_id(user_id)
+            staff_name = f"{staff['first_name']} {staff['last_name']}" if staff else "Support Staff"
+
+            # Notify request creator
+            SupportRepository.create_notification(
+                request['user_id'],
+                'request_assigned',
+                request_id,
+                f"Your support request #{request_id} has been taken by {staff_name}"
+            )
+
+        return success
+
+    @staticmethod
+    def drop_request(request_id: int, user_id: int) -> bool:
+        #Drop ownership of a request (AC3)
+
+        # Get the request
+        request = SupportRepository.get_support_request_by_id(request_id)
+        if not request:
+            raise ValueError("Support request not found")
+
+        # Validate user is the current owner
+        if request['assigned_to'] != user_id:
+            raise ValueError("You can only drop requests assigned to you")
+
+        # Cannot drop resolved requests
+        if request['status'] == 'resolved':
+            raise ValueError("Cannot drop resolved requests")
+
+        # Drop the request
+        success = SupportRepository.drop_request(request_id)
+
+        if success:
+            # Notify request creator
+            SupportRepository.create_notification(
+                request['user_id'],
+                'request_dropped',
+                request_id,
+                f"Support request #{request_id} has been unassigned and returned to the queue"
+            )
+
+        return success
+
+    @staticmethod
+    def assign_to_staff(request_id: int, assigned_to: int, assigned_by: int) -> bool:
+        #Assign request to a staff member (AC2)
+
+        # Validate assigned_to is support staff
+        from src.app.user.user_repository import UserRepository
+        user_repo = UserRepository()
+        user = user_repo.get_user_by_id(assigned_to)
+        if not user or user['global_role'] not in ('super_admin', 'support_technician'):
+            raise ValueError("Can only assign to support staff")
+
+        # Get the request to check previous assignment
+        request = SupportRepository.get_support_request_by_id(request_id)
+        if not request:
+            raise ValueError("Support request not found")
+
+        previous_assignee = request['assigned_to']
+
+        # Assign the request
+        success = SupportRepository.assign_request(request_id, assigned_to)
+
+        if success:
+            # Get staff name
+            staff_name = f"{user['first_name']} {user['last_name']}"
+
+            # Notify newly assigned staff
+            SupportRepository.create_notification(
+                assigned_to,
+                'request_assigned',
+                request_id,
+                f"You have been assigned support request #{request_id}: {request['subject']}"
+            )
+
+            # If previously assigned to someone else, notify them
+            if previous_assignee and previous_assignee != assigned_to:
+                SupportRepository.create_notification(
+                    previous_assignee,
+                    'request_status_changed',
+                    request_id,
+                    f"Request #{request_id} has been reassigned to {staff_name}"
+                )
+
+        return success
+
+    @staticmethod
+    def update_status_with_comment(request_id: int, new_status: str, changed_by: int,
+                                   comment_id: Optional[int] = None) -> bool:
+        #Update request status with validation (AC5, AC6)
+
+        # Validate status
+        valid_statuses = ['new', 'open', 'stalled', 'resolved']
+        if new_status not in valid_statuses:
+            raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+
+        # Get current request
+        request = SupportRepository.get_support_request_by_id(request_id)
+        if not request:
+            raise ValueError("Support request not found")
+
+        # AC5: Cannot revert from 'open' to 'new'
+        if request['status'] == 'open' and new_status == 'new':
+            raise ValueError("Cannot revert status from 'open' to 'new'")
+
+        # AC6: Cannot change to 'resolved' without comment
+        if new_status == 'resolved' and not comment_id:
+            raise ValueError("A comment is required when marking a request as resolved")
+
+        # Update status with log
+        success = SupportRepository.update_status_with_log(
+            request_id, new_status, changed_by, comment_id
+        )
+
+        if success:
+            # AC9: Notify request creator of status change
+            SupportRepository.create_notification(
+                request['user_id'],
+                'request_status_changed',
+                request_id,
+                f"Your support request #{request_id} status changed to {new_status.title()}"
+            )
+
+            # Also notify assigned staff if different from changer
+            if request['assigned_to'] and request['assigned_to'] != changed_by:
+                SupportRepository.create_notification(
+                    request['assigned_to'],
+                    'request_status_changed',
+                    request_id,
+                    f"Support request #{request_id} status changed to {new_status.title()}"
+                )
+
+        return success
+
+    @staticmethod
+    def reopen_request(request_id: int, user_id: int) -> bool:
+        #Reopen a resolved request (AC8)
+
+        # Get the request
+        request = SupportRepository.get_support_request_by_id(request_id)
+        if not request:
+            raise ValueError("Support request not found")
+
+        # Validate status is resolved
+        if request['status'] != 'resolved':
+            raise ValueError("Can only reopen resolved requests")
+
+        # Validate user is request creator or support staff
+        from src.app.user.user_repository import UserRepository
+        user_repo = UserRepository()
+        user = user_repo.get_user_by_id(user_id)
+        is_staff = user and user['global_role'] in ('super_admin', 'support_technician')
+
+        if request['user_id'] != user_id and not is_staff:
+            raise ValueError("Only request creator or support staff can reopen requests")
+
+        # Reopen the request
+        success = SupportRepository.reopen_request(request_id, user_id)
+
+        if success:
+            # Get user name for notification
+            user_name = f"{user['first_name']} {user['last_name']}" if user else "User"
+
+            # Notify assigned staff (if any)
+            if request['assigned_to']:
+                SupportRepository.create_notification(
+                    request['assigned_to'],
+                    'request_status_changed',
+                    request_id,
+                    f"Request #{request_id} has been reopened by {user_name}"
+                )
+
+        return success
+
+    @staticmethod
+    def get_staff_list() -> List[Dict]:
+        #Get list of support staff for assignment dropdown
+        return SupportRepository.get_support_staff_list()
+
+    @staticmethod
+    def get_notifications(user_id: int, unread_only: bool = False) -> List[Dict]:
+        #Get notifications for a user
+        return SupportRepository.get_user_notifications(user_id, unread_only)
+
+    @staticmethod
+    def mark_notification_read(notification_id: int, user_id: int) -> bool:
+        #Mark a notification as read
+        return SupportRepository.mark_notification_read(notification_id, user_id)
+
+    @staticmethod
+    def get_unread_count(user_id: int) -> int:
+        #Get count of unread notifications
+        return SupportRepository.get_unread_notification_count(user_id)

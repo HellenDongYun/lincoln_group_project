@@ -105,7 +105,16 @@ def view_request(request_id):
         flash("Support request not found.", "danger")
         return redirect(url_for('support.my_requests'))
 
-    return render_template('support/view_request.html', support_request=support_request, is_staff=is_staff)
+    # Get staff list for assignment dropdown (if staff user)
+    staff_list = []
+    if is_staff:
+        staff_list = SupportService.get_staff_list()
+
+    return render_template('support/view_request.html',
+                          support_request=support_request,
+                          is_staff=is_staff,
+                          staff_list=staff_list,
+                          current_user_id=user_id)
 
 
 @support_blueprint.route('/request/<int:request_id>/comment', methods=['POST'])
@@ -225,3 +234,147 @@ def support_queue():
                          },
                          is_group_manager=is_group_manager,
                          is_admin_or_tech=is_admin_or_tech)
+
+@support_blueprint.route('/request/<int:request_id>/take', methods=['POST'])
+@require_support_staff
+def take_request(request_id):
+    #Take ownership of a request
+    user_id = auth_service.get_user_id()
+
+    try:
+        success = SupportService.take_request(request_id, user_id)
+        if success:
+            flash("You have taken ownership of this request.", "success")
+        else:
+            flash("Unable to take this request.", "danger")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('support.view_request', request_id=request_id))
+
+
+@support_blueprint.route('/request/<int:request_id>/drop', methods=['POST'])
+@require_support_staff
+def drop_request(request_id):
+    #Drop ownership of a request
+    user_id = auth_service.get_user_id()
+
+    try:
+        success = SupportService.drop_request(request_id, user_id)
+        if success:
+            flash("Request has been returned to the queue.", "info")
+        else:
+            flash("Unable to drop this request.", "danger")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('support.support_queue'))
+
+
+@support_blueprint.route('/request/<int:request_id>/assign', methods=['POST'])
+@require_support_staff
+def assign_request(request_id):
+    #Assign request to a staff member
+    assigned_to = request.form.get('assigned_to')
+    assigned_by = auth_service.get_user_id()
+
+    if not assigned_to:
+        flash("Please select a staff member.", "warning")
+        return redirect(url_for('support.view_request', request_id=request_id))
+
+    try:
+        success = SupportService.assign_to_staff(request_id, int(assigned_to), assigned_by)
+        if success:
+            flash("Request has been assigned successfully.", "success")
+        else:
+            flash("Unable to assign request.", "danger")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('support.view_request', request_id=request_id))
+
+
+@support_blueprint.route('/request/<int:request_id>/update-status', methods=['POST'])
+@require_support_staff
+def update_status(request_id):
+    #Update request status with validation
+    new_status = request.form.get('status', '').strip()
+    comment_text = request.form.get('comment', '').strip()
+    user_id = auth_service.get_user_id()
+
+    #Resolving requires comment
+    if new_status == 'resolved' and not comment_text:
+        flash("A comment is required when marking a request as resolved.", "danger")
+        return redirect(url_for('support.view_request', request_id=request_id))
+
+    try:
+        # If comment provided, add it first and get comment_id
+        comment_id = None
+        if comment_text:
+            comment_id = SupportService.add_comment_to_request(
+                request_id, user_id, comment_text, is_staff_reply=True
+            )
+
+        # Update status with optional comment reference
+        success = SupportService.update_status_with_comment(request_id, new_status, user_id, comment_id)
+
+        if success:
+            flash(f"Request status updated to {new_status}.", "success")
+        else:
+            flash("Unable to update status.", "danger")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('support.view_request', request_id=request_id))
+
+
+@support_blueprint.route('/request/<int:request_id>/reopen', methods=['POST'])
+@require_login
+def reopen_request(request_id):
+    #Reopen a resolved request
+    user_id = auth_service.get_user_id()
+
+    try:
+        success = SupportService.reopen_request(request_id, user_id)
+        if success:
+            flash("Request has been reopened.", "info")
+        else:
+            flash("Unable to reopen request.", "danger")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('support.view_request', request_id=request_id))
+
+
+@support_blueprint.route('/notifications')
+@require_login
+def notifications():
+    #View all notifications
+    user_id = auth_service.get_user_id()
+    all_notifications = SupportService.get_notifications(user_id, unread_only=False)
+
+    return render_template('support/notifications.html', notifications=all_notifications)
+
+
+@support_blueprint.route('/notifications/<int:notification_id>/mark-read', methods=['POST'])
+@require_login
+def mark_notification_read(notification_id):
+    #Mark a notification as read
+    user_id = auth_service.get_user_id()
+
+    try:
+        SupportService.mark_notification_read(notification_id, user_id)
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(request.referrer or url_for('support.notifications'))
