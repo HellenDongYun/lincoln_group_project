@@ -10,7 +10,7 @@
                 <h1 class="display-5 text-white">Support Queue</h1>
                 <p class="lead text-white-50">Manage and respond to user support requests.</p>
             </div>
-            {% if is_admin_or_tech %}
+            {% if is_super_admin %}
             <div>
                 <a href="{{ url_for('admin.manage_user_roles') }}" class="btn btn-outline-light">
                     <i class="bi bi-people me-2"></i>Manage User Roles
@@ -149,13 +149,13 @@
                         <tr>
                             <th scope="col" width="6%">ID</th>
                             <th scope="col" width="10%">Type</th>
-                            <th scope="col" width="20%">Subject</th>
+                            <th scope="col" width="17%">Subject</th>
                             <th scope="col" width="12%">User</th>
                             <th scope="col" width="8%">Status</th>
                             <th scope="col" width="8%">Priority</th>
                             <th scope="col" width="12%">Assigned To</th>
                             <th scope="col" width="10%">Created</th>
-                            <th scope="col" width="14%">Actions</th>
+                            <th scope="col" width="17%">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -185,8 +185,9 @@
                                     {% elif req.status == 'open' %}bg-primary
                                     {% elif req.status == 'stalled' %}bg-warning text-dark
                                     {% elif req.status == 'resolved' %}bg-success
+                                    {% elif req.status == 'cancelled' %}bg-secondary
                                     {% else %}bg-secondary{% endif %}">
-                                    {{ req.status|title }}
+                                    {% if req.status == 'cancelled' %}Closed by User{% else %}{{ req.status|title }}{% endif %}
                                 </span>
                             </td>
                             <td>
@@ -211,17 +212,50 @@
                                 </small>
                             </td>
                             <td>
-                                {% if req.status == 'new' and not req.assigned_to %}
-                                <form method="POST" action="{{ url_for('support.take_request', request_id=req.id) }}" class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-primary me-1">
-                                        <i class="bi bi-hand-thumbs-up me-1"></i>Take
-                                    </button>
-                                </form>
+                                {% if req.status != 'cancelled' %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% if req.assigned_to != current_user_id %}
+                                    <form method="POST" action="{{ url_for('support.take_request', request_id=req.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-hand-thumbs-up me-1"></i>Take
+                                        </button>
+                                    </form>
+                                    {% endif %}
+
+                                    {% if req.assigned_to == current_user_id and req.status != 'resolved' %}
+                                    <form method="POST" action="{{ url_for('support.drop_request', request_id=req.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            <i class="bi bi-arrow-return-left me-1"></i>Drop
+                                        </button>
+                                    </form>
+                                    {% endif %}
+
+                                    <form method="POST" action="{{ url_for('support.assign_request', request_id=req.id) }}" class="d-inline">
+                                        <div class="input-group input-group-sm" style="width: 140px;">
+                                            <select name="assigned_to" class="form-select form-select-sm" required>
+                                                <option value="">Assign...</option>
+                                                {% for staff in staff_list %}
+                                                <option value="{{ staff.id }}" {% if req.assigned_to == staff.id %}selected{% endif %}>
+                                                    {{ staff.first_name[0] }}. {{ staff.last_name }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Assign" style="padding: 0 8px;">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    <a href="{{ url_for('support.view_request', request_id=req.id) }}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </a>
+                                </div>
+                                {% else %}
+                                <span class="badge bg-light text-muted">
+                                    <i class="bi bi-x-circle me-1"></i>Closed - No Actions
+                                </span>
                                 {% endif %}
-                                <a href="{{ url_for('support.view_request', request_id=req.id) }}"
-                                   class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-eye me-1"></i>View
-                                </a>
                             </td>
                         </tr>
                         {% endfor %}

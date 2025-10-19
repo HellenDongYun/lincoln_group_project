@@ -105,16 +105,50 @@
 
             {% if support_request.status == 'resolved' %}
             <div class="alert alert-success mb-4">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <strong>This request has been resolved.</strong>
-                {% if support_request.user_id == current_user_id or is_staff %}
-                <form method="POST" action="{{ url_for('support.reopen_request', request_id=support_request.id) }}"
-                      class="d-inline float-end">
-                    <button type="submit" class="btn btn-sm btn-warning">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen Request
-                    </button>
-                </form>
-                {% endif %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>This request has been resolved.</strong>
+                    </div>
+                    {% if support_request.user_id == current_user_id or is_staff %}
+                    <form method="POST" action="{{ url_for('support.reopen_request', request_id=support_request.id) }}"
+                          class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen Request
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if support_request.status == 'cancelled' %}
+            <div class="alert alert-secondary mb-4">
+                <i class="bi bi-x-circle-fill me-2"></i>
+                <strong>This request has been closed by the user.</strong> It has been removed from the active queue.
+            </div>
+            {% endif %}
+
+            {% if support_request.user_id == current_user_id and support_request.status in ('new', 'open') %}
+            <div class="alert alert-warning mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Submitted by mistake?</strong> You can close this request if it's no longer needed.
+                        {% if support_request.status == 'new' %}
+                        <small class="d-block text-muted mt-1">(Request is unassigned)</small>
+                        {% elif support_request.status == 'open' %}
+                        <small class="d-block text-muted mt-1">(Request is being worked on)</small>
+                        {% endif %}
+                    </div>
+                    <form method="POST" action="{{ url_for('support.close_request', request_id=support_request.id) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('Are you sure you want to close this support request? This will remove it from the active queue and notify any assigned staff. This action cannot be undone.');">
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>Close Request
+                        </button>
+                    </form>
+                </div>
             </div>
             {% endif %}
 
@@ -130,8 +164,9 @@
                                 {% elif support_request.status == 'open' %}bg-primary
                                 {% elif support_request.status == 'stalled' %}bg-warning text-dark
                                 {% elif support_request.status == 'resolved' %}bg-success
+                                {% elif support_request.status == 'cancelled' %}bg-secondary
                                 {% else %}bg-secondary{% endif %} me-2">
-                                {{ support_request.status|title }}
+                                {% if support_request.status == 'cancelled' %}Closed by User{% else %}{{ support_request.status|title }}{% endif %}
                             </span>
                             <span class="badge
                                 {% if support_request.priority == 'high' %}bg-danger
@@ -212,6 +247,14 @@
                         </p>
                     {% endif %}
                 </div>
+                {% if support_request.status == 'cancelled' %}
+                <div class="card-footer bg-light">
+                    <div class="alert alert-secondary mb-0">
+                        <i class="bi bi-x-circle me-2"></i>
+                        <strong>This request has been closed.</strong> Comments are not allowed on closed requests.
+                    </div>
+                </div>
+                {% elif is_staff or support_request.status != 'resolved' %}
                 <div class="card-footer bg-light">
                     <form method="POST" action="{{ url_for('support.add_comment', request_id=support_request.id) }}">
                         <div class="mb-3">
@@ -228,6 +271,14 @@
                         </button>
                     </form>
                 </div>
+                {% else %}
+                <div class="card-footer bg-light">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>This request is resolved.</strong> To add a comment, please reopen the request first using the button above.
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -356,9 +407,13 @@
                             <span class="badge bg-warning text-dark">Stalled</span>
                             <small class="d-block text-muted mt-1">Awaiting more information</small>
                         </li>
-                        <li class="mb-0">
+                        <li class="mb-2">
                             <span class="badge bg-success">Resolved</span>
                             <small class="d-block text-muted mt-1">Issue has been resolved</small>
+                        </li>
+                        <li class="mb-0">
+                            <span class="badge bg-secondary">Closed by User</span>
+                            <small class="d-block text-muted mt-1">User closed their own request</small>
                         </li>
                     </ul>
                 </div>

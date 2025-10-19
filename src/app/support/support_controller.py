@@ -2,6 +2,7 @@ import time
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 from src.app.support.support_service import SupportService
+from src.app.support.support_repository import SupportRepository
 from src.app.auth.route_guard import require_login, require_support_staff
 from src.app.auth.auth_service import auth_service
 from src.app.common.file_service import FileService
@@ -156,6 +157,7 @@ def support_queue():
     user_id = auth_service.get_user_id()
     is_group_manager = len(GroupService.get_user_managed_groups(user_id)) > 0
     is_admin_or_tech = auth_service.is_super_admin() or auth_service.is_support_technician()
+    is_super_admin = auth_service.is_super_admin()
 
     # Get filter parameters
     status_filter = request.args.get('status', '').strip() or None
@@ -222,6 +224,9 @@ def support_queue():
         'unassigned': len([r for r in all_requests if r.get('assigned_to') is None])
     }
 
+    # Get staff list for inline assignment dropdown
+    staff_list = SupportService.get_staff_list()
+
     return render_template('support/support_queue.html',
                          requests=all_requests,
                          stats=stats,
@@ -233,7 +238,10 @@ def support_queue():
                              'group_filter': group_filter or ''
                          },
                          is_group_manager=is_group_manager,
-                         is_admin_or_tech=is_admin_or_tech)
+                         is_admin_or_tech=is_admin_or_tech,
+                         is_super_admin=is_super_admin,
+                         staff_list=staff_list,
+                         current_user_id=user_id)
 
 @support_blueprint.route('/request/<int:request_id>/take', methods=['POST'])
 @require_support_staff
@@ -252,7 +260,7 @@ def take_request(request_id):
     except Exception as e:
         flash(f"An error occurred: {str(e)}", "danger")
 
-    return redirect(url_for('support.view_request', request_id=request_id))
+    return redirect(request.referrer or url_for('support.view_request', request_id=request_id))
 
 
 @support_blueprint.route('/request/<int:request_id>/drop', methods=['POST'])
@@ -284,7 +292,7 @@ def assign_request(request_id):
 
     if not assigned_to:
         flash("Please select a staff member.", "warning")
-        return redirect(url_for('support.view_request', request_id=request_id))
+        return redirect(request.referrer or url_for('support.view_request', request_id=request_id))
 
     try:
         success = SupportService.assign_to_staff(request_id, int(assigned_to), assigned_by)
@@ -297,7 +305,7 @@ def assign_request(request_id):
     except Exception as e:
         flash(f"An error occurred: {str(e)}", "danger")
 
-    return redirect(url_for('support.view_request', request_id=request_id))
+    return redirect(request.referrer or url_for('support.view_request', request_id=request_id))
 
 
 @support_blueprint.route('/request/<int:request_id>/update-status', methods=['POST'])
@@ -356,25 +364,78 @@ def reopen_request(request_id):
     return redirect(url_for('support.view_request', request_id=request_id))
 
 
+@support_blueprint.route('/request/<int:request_id>/close', methods=['POST'])
+@require_login
+def close_request(request_id):
+    #Close/cancel a user's own request
+    user_id = auth_service.get_user_id()
+
+    try:
+        success = SupportService.close_user_request(request_id, user_id)
+        if success:
+            flash("Your support request has been cancelled.", "success")
+        else:
+            flash("Unable to cancel this request.", "danger")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('support.my_requests'))
+
+
 @support_blueprint.route('/notifications')
 @require_login
 def notifications():
     #View all notifications
     user_id = auth_service.get_user_id()
     all_notifications = SupportService.get_notifications(user_id, unread_only=False)
+    unread_count = SupportService.get_unread_count(user_id)
 
-    return render_template('support/notifications.html', notifications=all_notifications)
+    return render_template('support/notifications.html',
+                         notifications=all_notifications,
+                         unread_count=unread_count)
 
 
-@support_blueprint.route('/notifications/<int:notification_id>/mark-read', methods=['POST'])
+@support_blueprint.route('/notifications/<int:notification_id>/mark-read', methods=['GET', 'POST'])
 @require_login
 def mark_notification_read(notification_id):
-    #Mark a notification as read
+    #Mark a notification as read and redirect to the associated request
     user_id = auth_service.get_user_id()
 
     try:
-        SupportService.mark_notification_read(notification_id, user_id)
+        # Get the notification to find the reference_id (request_id)
+        notifications = SupportService.get_notifications(user_id, unread_only=False)
+        notification = next((n for n in notifications if n['id'] == notification_id), None)
+
+        if notification:
+            # Mark as read
+            SupportService.mark_notification_read(notification_id, user_id)
+
+            # Redirect to the associated request
+            return redirect(url_for('support.view_request', request_id=notification['reference_id']))
+        else:
+            flash("Notification not found.", "warning")
+            return redirect(url_for('support.notifications'))
+
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('support.notifications'))
+
+
+@support_blueprint.route('/notifications/mark-all-read', methods=['POST'])
+@require_login
+def mark_all_notifications_read():
+    #Mark all notifications as read
+    user_id = auth_service.get_user_id()
+
+    try:
+        success = SupportRepository.mark_all_notifications_read(user_id)
+        if success:
+            flash("All notifications marked as read.", "success")
+        else:
+            flash("No unread notifications to mark.", "info")
     except Exception as e:
         flash(f"An error occurred: {str(e)}", "danger")
 
-    return redirect(request.referrer or url_for('support.notifications'))
+    return redirect(url_for('support.notifications'))

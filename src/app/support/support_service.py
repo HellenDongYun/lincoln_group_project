@@ -62,7 +62,7 @@ class SupportService:
     @staticmethod
     def add_comment_to_request(request_id: int, user_id: int, comment: str,
                                is_staff_reply: bool = False) -> int:
-        #Add a comment to a support request and update status if needed (AC7: Updated to allow comments on resolved)
+        #Add a comment to a support request and update status if needed
 
         if not comment or not comment.strip():
             raise ValueError("Comment cannot be empty")
@@ -73,8 +73,13 @@ class SupportService:
         if not request:
             raise ValueError("Support request not found")
 
-        # AC7: Removed check that prevented comments on resolved requests
-        # Comments are now allowed on all statuses
+        # Regular users cannot comment on resolved or cancelled requests (only staff can comment on resolved)
+        if request['status'] == 'resolved' and not is_staff_reply:
+            raise ValueError("Cannot add comments to resolved requests. Please reopen the request first.")
+
+        # Nobody can comment on cancelled requests
+        if request['status'] == 'cancelled':
+            raise ValueError("Cannot add comments to cancelled requests.")
 
         # Add the comment
         comment_id = SupportRepository.add_comment(
@@ -139,29 +144,37 @@ class SupportService:
     
     @staticmethod
     def take_request(request_id: int, user_id: int) -> bool:
-        #Take ownership of a request (AC1)
+        #Take ownership of a request - can take unassigned or reassign from others
 
         # Get the request
         request = SupportRepository.get_support_request_by_id(request_id)
         if not request:
             raise ValueError("Support request not found")
 
-        # Validate it's new and unassigned
-        if request['status'] != 'new':
-            raise ValueError("Can only take requests with 'new' status")
+        # Cannot take your own request
+        if request['assigned_to'] == user_id:
+            raise ValueError("This request is already assigned to you")
 
-        if request['assigned_to'] is not None:
-            raise ValueError("Request is already assigned")
+        # Cannot take resolved requests
+        if request['status'] == 'resolved':
+            raise ValueError("Cannot take resolved requests. Please reopen first.")
 
-        # Take the request (assigns and changes status to open)
-        success = SupportRepository.take_request(request_id, user_id)
+        previous_assignee = request['assigned_to']
+        old_status = request['status']
+
+        # Assign to user and update status to 'open' if currently 'new'
+        if request['status'] == 'new':
+            success = SupportRepository.take_request(request_id, user_id)
+            if success:
+                # Log the status change from new to open
+                SupportRepository.log_status_change(
+                    request_id, user_id, 'new', 'open', None
+                )
+        else:
+            # For non-new requests, just reassign without changing status
+            success = SupportRepository.assign_request(request_id, user_id)
 
         if success:
-            # Log the status change
-            SupportRepository.log_status_change(
-                request_id, user_id, 'new', 'open', None
-            )
-
             # Get staff name for notification
             from src.app.user.user_repository import UserRepository
             user_repo = UserRepository()
@@ -175,6 +188,15 @@ class SupportService:
                 request_id,
                 f"Your support request #{request_id} has been taken by {staff_name}"
             )
+
+            # If reassigning from another staff member, notify them
+            if previous_assignee and previous_assignee != user_id:
+                SupportRepository.create_notification(
+                    previous_assignee,
+                    'request_status_changed',
+                    request_id,
+                    f"Request #{request_id} has been taken by {staff_name}"
+                )
 
         return success
 
@@ -360,3 +382,51 @@ class SupportService:
     def get_unread_count(user_id: int) -> int:
         #Get count of unread notifications
         return SupportRepository.get_unread_notification_count(user_id)
+
+    @staticmethod
+    def close_user_request(request_id: int, user_id: int) -> bool:
+        #Allow users to close their own requests when in new or open status
+
+        # Get the request
+        request = SupportRepository.get_support_request_by_id(request_id)
+        if not request:
+            raise ValueError("Support request not found")
+
+        # Verify user is the request creator
+        if request['user_id'] != user_id:
+            raise ValueError("You can only close your own support requests")
+
+        # Can only close requests that are 'new' (unassigned) or 'open'
+        if request['status'] not in ('new', 'open'):
+            if request['status'] == 'cancelled':
+                raise ValueError("This request is already closed")
+            elif request['status'] == 'resolved':
+                raise ValueError("Cannot close a resolved request")
+            elif request['status'] == 'stalled':
+                raise ValueError("Cannot close a stalled request. Please wait for staff response or contact support.")
+            else:
+                raise ValueError(f"Cannot close request with status: {request['status']}")
+
+        old_status = request['status']
+
+        # Update status to cancelled (displayed as "Closed by User")
+        success = SupportRepository.update_status_with_log(
+            request_id, 'cancelled', user_id, None
+        )
+
+        if success:
+            # Notify assigned staff if any
+            if request['assigned_to']:
+                from src.app.user.user_repository import UserRepository
+                user_repo = UserRepository()
+                user = user_repo.get_user_by_id(user_id)
+                user_name = f"{user['first_name']} {user['last_name']}" if user else "User"
+
+                SupportRepository.create_notification(
+                    request['assigned_to'],
+                    'request_status_changed',
+                    request_id,
+                    f"Request #{request_id} has been closed by {user_name} (request creator)"
+                )
+
+        return success

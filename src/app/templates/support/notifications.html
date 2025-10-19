@@ -5,8 +5,20 @@
 {% block content %}
 <div class="hero-section-dark">
     <div class="container hero-content">
-        <h1 class="display-5 text-white">Notifications</h1>
-        <p class="lead text-white-50">Stay updated on your support requests</p>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 text-white">Notifications</h1>
+                <p class="lead text-white-50">Stay updated on your support requests</p>
+            </div>
+            {% set has_unread = notifications|selectattr('is_read', 'equalto', False)|list|length > 0 %}
+            {% if has_unread %}
+            <form method="POST" action="{{ url_for('support.mark_all_notifications_read') }}">
+                <button type="submit" class="btn btn-outline-light">
+                    <i class="bi bi-check-all me-2"></i>Mark All as Read
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -14,7 +26,7 @@
     {% if notifications %}
     <div class="list-group">
         {% for notification in notifications %}
-        <a href="{{ url_for('support.view_request', request_id=notification.reference_id) }}"
+        <a href="{{ url_for('support.mark_notification_read', notification_id=notification.id) }}"
            class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-primary{% endif %}">
             <div class="d-flex w-100 justify-content-between align-items-start">
                 <div class="flex-grow-1">
