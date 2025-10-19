@@ -264,3 +264,45 @@ INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_rep
 (4, 16, 'We see mail logs showing a bounce. Confirming with provider now.', TRUE, '2025-09-01 09:15:00'),
 (5, 6, 'Duplicate row only appears after refreshing the page.', FALSE, '2025-08-20 09:35:00'),
 (5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00');
+
+-- ------------------------------
+-- Support Request Status Changes (Audit Log)
+-- ------------------------------
+INSERT INTO Support_Request_Status_Changes (request_id, changed_by, old_status, new_status, comment_id, changed_at) VALUES
+-- Request 2: Morgan took the request (new → open)
+(2, 16, 'new', 'open', NULL, '2025-09-05 11:20:30'),
+-- Request 3: Morgan took the request (new → open)
+(3, 16, 'new', 'open', NULL, '2025-09-04 18:11:00'),
+-- Request 4: Morgan took the request (new → open)
+(4, 16, 'new', 'open', NULL, '2025-08-29 08:00:00'),
+-- Request 4: Morgan changed to stalled (open → stalled)
+(4, 16, 'open', 'stalled', NULL, '2025-09-03 13:10:00'),
+-- Request 5: Morgan took the request (new → open)
+(5, 16, 'new', 'open', NULL, '2025-08-20 09:36:00'),
+-- Request 5: Morgan resolved with comment (open → resolved) - references comment_id 6
+(5, 16, 'open', 'resolved', 6, '2025-08-22 16:15:00');
+
+-- ------------------------------
+-- Notifications
+-- ------------------------------
+INSERT INTO Notifications (user_id, type, reference_id, message, is_read, created_at) VALUES
+-- Notification to Bob (3) when request 2 was taken by Morgan
+(3, 'request_assigned', 2, 'Your support request #2 has been taken by Morgan Reeves', TRUE, '2025-09-05 11:20:30'),
+-- Notification to Bob (3) when request 2 status changed to open
+(3, 'request_status_changed', 2, 'Your support request #2 status changed to Open', TRUE, '2025-09-05 11:20:30'),
+-- Notification to Carol (4) when request 3 was taken
+(4, 'request_assigned', 3, 'Your support request #3 has been taken by Morgan Reeves', TRUE, '2025-09-04 18:11:00'),
+-- Notification to Carol (4) when request 3 status changed to open
+(4, 'request_status_changed', 3, 'Your support request #3 status changed to Open', TRUE, '2025-09-04 18:11:00'),
+-- Notification to Dave (5) when request 4 was taken
+(5, 'request_assigned', 4, 'Your support request #4 has been taken by Morgan Reeves', TRUE, '2025-08-29 08:00:00'),
+-- Notification to Dave (5) when request 4 changed to stalled
+(5, 'request_status_changed', 4, 'Your support request #4 status changed to Stalled', FALSE, '2025-09-03 13:10:00'),
+-- Notification to Emma (6) when request 5 was taken
+(6, 'request_assigned', 5, 'Your support request #5 has been taken by Morgan Reeves', TRUE, '2025-08-20 09:36:00'),
+-- Notification to Emma (6) when request 5 was resolved
+(6, 'request_status_changed', 5, 'Your support request #5 status changed to Resolved', FALSE, '2025-08-22 16:15:00'),
+-- Notification to Morgan (16) for new comment on request 2
+(16, 'request_comment', 2, 'Bob Jones added a comment to request #2', TRUE, '2025-09-05 11:22:00'),
+-- Notification to Morgan (16) for new comment on request 3
+(16, 'request_comment', 3, 'Carol Smith added a comment to request #3', TRUE, '2025-09-04 18:12:00');

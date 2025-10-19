@@ -218,7 +218,7 @@ CREATE TABLE Support_Requests (
   subject VARCHAR(200) NOT NULL,
   description TEXT NOT NULL,
   screenshot_path VARCHAR(500) NULL,
-  status ENUM('new','open','stalled','resolved') NOT NULL DEFAULT 'new',
+  status ENUM('new','open','stalled','resolved','cancelled') NOT NULL DEFAULT 'new',
   priority ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
   assigned_to INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -236,5 +236,31 @@ CREATE TABLE Support_Request_Comments (
   is_staff_reply BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (request_id) REFERENCES Support_Requests(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Status Change Audit Log for Support Requests
+CREATE TABLE Support_Request_Status_Changes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  request_id INT NOT NULL,
+  changed_by INT NOT NULL,
+  old_status ENUM('new','open','stalled','resolved','cancelled') NOT NULL,
+  new_status ENUM('new','open','stalled','resolved','cancelled') NOT NULL,
+  comment_id INT NULL,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (request_id) REFERENCES Support_Requests(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (changed_by) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (comment_id) REFERENCES Support_Request_Comments(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Notifications for support request updates
+CREATE TABLE Notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  type ENUM('request_assigned','request_status_changed','request_comment','request_dropped') NOT NULL,
+  reference_id INT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
