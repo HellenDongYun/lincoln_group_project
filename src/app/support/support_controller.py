@@ -47,17 +47,28 @@ def new_request():
             if 'screenshot' in request.files:
                 file = request.files['screenshot']
                 if file and file.filename:
-                    if allowed_file(file.filename):
-                        # Use FileService to save the file
-                        try:
-                            filename = secure_filename(file.filename)
-                            timestamp = str(int(time.time()))
-                            unique_filename = f"support_{user_id}_{timestamp}_{filename}"
-                            screenshot_path = FileService.save_file(file, unique_filename, 'support_screenshots')
-                        except Exception as e:
-                            flash(f"Error uploading screenshot: {str(e)}", "warning")
-                    else:
-                        flash("Invalid file type. Allowed types: png, jpg, jpeg, gif, pdf", "warning")
+                    # Check file size first
+                    file.seek(0, 2)  # Seek to end of file
+                    file_size = file.tell()
+                    file.seek(0)  # Reset to beginning
+
+                    if file_size > MAX_FILE_SIZE:
+                        flash(f"File size exceeds the maximum limit of 5MB. Please select a smaller file.", "danger")
+                        return render_template('support/new_request.html', form_data=request.form)
+
+                    if not allowed_file(file.filename):
+                        flash("Invalid file type. Only PNG, JPG, JPEG, GIF, and PDF files are allowed.", "danger")
+                        return render_template('support/new_request.html', form_data=request.form)
+
+                    # Use FileService to save the file
+                    try:
+                        filename = secure_filename(file.filename)
+                        timestamp = str(int(time.time()))
+                        unique_filename = f"support_{user_id}_{timestamp}_{filename}"
+                        screenshot_path = FileService.save_file(file, unique_filename, 'support_screenshots')
+                    except Exception as e:
+                        flash(f"Error uploading screenshot: {str(e)}", "danger")
+                        return render_template('support/new_request.html', form_data=request.form)
 
             # Create the support request
             request_id = SupportService.create_support_request(

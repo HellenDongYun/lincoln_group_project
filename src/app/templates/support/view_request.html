@@ -135,14 +135,8 @@
                     <div>
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
                         <strong>Submitted by mistake?</strong> You can close this request if it's no longer needed.
-                        {% if support_request.status == 'new' %}
-                        <small class="d-block text-muted mt-1">(Request is unassigned)</small>
-                        {% elif support_request.status == 'open' %}
-                        <small class="d-block text-muted mt-1">(Request is being worked on)</small>
-                        {% endif %}
                     </div>
                     <form method="POST" action="{{ url_for('support.close_request', request_id=support_request.id) }}"
-                          class="d-inline"
                           onsubmit="return confirm('Are you sure you want to close this support request? This will remove it from the active queue and notify any assigned staff. This action cannot be undone.');">
                         <button type="submit" class="btn btn-sm btn-danger">
                             <i class="bi bi-x-circle me-1"></i>Close Request
