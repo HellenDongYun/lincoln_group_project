@@ -90,7 +90,7 @@ class SupportService:
         if request['status'] == 'new' and is_staff_reply:
             SupportRepository.update_request_status(request_id, 'open')
 
-        return comment_id  # Return comment_id for use in AC6 (resolving with comment)
+        return comment_id  # Return comment_id
 
     @staticmethod
     def update_status(request_id: int, new_status: str) -> bool:
@@ -202,7 +202,7 @@ class SupportService:
 
     @staticmethod
     def drop_request(request_id: int, user_id: int) -> bool:
-        #Drop ownership of a request (AC3)
+        #Drop ownership of a request
 
         # Get the request
         request = SupportRepository.get_support_request_by_id(request_id)
@@ -233,7 +233,7 @@ class SupportService:
 
     @staticmethod
     def assign_to_staff(request_id: int, assigned_to: int, assigned_by: int) -> bool:
-        #Assign request to a staff member (AC2)
+        #Assign request to a staff member
 
         # Validate assigned_to is support staff
         from src.app.user.user_repository import UserRepository
@@ -278,7 +278,7 @@ class SupportService:
     @staticmethod
     def update_status_with_comment(request_id: int, new_status: str, changed_by: int,
                                    comment_id: Optional[int] = None) -> bool:
-        #Update request status with validation (AC5, AC6)
+        #Update request status with validation
 
         # Validate status
         valid_statuses = ['new', 'open', 'stalled', 'resolved']
@@ -290,11 +290,11 @@ class SupportService:
         if not request:
             raise ValueError("Support request not found")
 
-        # AC5: Cannot revert from 'open' to 'new'
+        # Cannot revert from 'open' to 'new'
         if request['status'] == 'open' and new_status == 'new':
             raise ValueError("Cannot revert status from 'open' to 'new'")
 
-        # AC6: Cannot change to 'resolved' without comment
+        # Cannot change to 'resolved' without comment
         if new_status == 'resolved' and not comment_id:
             raise ValueError("A comment is required when marking a request as resolved")
 
@@ -304,7 +304,7 @@ class SupportService:
         )
 
         if success:
-            # AC9: Notify request creator of status change
+            # Notify request creator of status change
             SupportRepository.create_notification(
                 request['user_id'],
                 'request_status_changed',
@@ -325,7 +325,7 @@ class SupportService:
 
     @staticmethod
     def reopen_request(request_id: int, user_id: int) -> bool:
-        #Reopen a resolved request (AC8)
+        #Reopen a resolved request
 
         # Get the request
         request = SupportRepository.get_support_request_by_id(request_id)

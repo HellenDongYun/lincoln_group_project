@@ -115,15 +115,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-
-    // File size validation
-    document.getElementById('screenshot').addEventListener('change', function() {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (this.files[0] && this.files[0].size > maxSize) {
-            alert('File size must not exceed 5MB');
-            this.value = '';
-        }
-    });
 });
 </script>
 {% endblock %}
