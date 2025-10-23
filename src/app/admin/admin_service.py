@@ -4,6 +4,7 @@ from src.app.admin.admin import Admin
 from src.app.admin.admin_repository import AdminRepository
 from src.app.group.group_repository import GroupRepository
 from src.app.user.user import GroupVisibility, GroupStatus
+from src.app.support.support_repository import SupportRepository
 
 
 class AdminService:
@@ -157,6 +158,24 @@ class AdminService:
     def get_user_by_id(user_id):
         """Get user details by ID"""
         return AdminRepository.get_user_by_id(user_id)
+
+    @staticmethod
+    def get_user_profile_overview(user_id: int):
+        """Aggregate user profile details with histories for admin/support view"""
+        user = AdminRepository.get_user_by_id(user_id)
+        if not user:
+            return None
+
+        participation_history = SupportRepository.get_user_participation_history(user_id)
+        volunteer_history = SupportRepository.get_user_volunteer_history(user_id)
+        support_requests = SupportRepository.get_user_support_requests(user_id)
+
+        return {
+            'user': user,
+            'participation_history': participation_history,
+            'volunteer_history': volunteer_history,
+            'support_requests': support_requests,
+        }
     
     @staticmethod
     def get_users_for_role_management(page=1, per_page=10, search_name=None, search_role=None):

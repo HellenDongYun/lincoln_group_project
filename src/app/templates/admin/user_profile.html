@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}ActiveLoop - User Profile{% endblock %}
+
+{% block content %}
+<div class="hero-section-dark">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="display-6 text-white">User Profile</h1>
+        <p class="text-white-50 mb-0">View participation, volunteering, and support history</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.manage_user_roles') }}" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-2"></i>Back to Users
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container py-4">
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start flex-wrap">
+            <div>
+              <h3 class="mb-1">{{ user.full_name }}</h3>
+              <div class="text-muted">{{ user.email }}</div>
+              <div class="mt-2">
+                <span class="badge {% if user.role == 'super_admin' %}bg-dark text-warning{% elif user.role == 'support_technician' %}bg-info text-dark{% else %}bg-success{% endif %}">
+                  {{ user.role.replace('_',' ')|title }}
+                </span>
+                <span class="badge ms-2 {% if user.status == 'active' %}bg-success{% else %}bg-danger{% endif %}">
+                  {{ user.status.title() }}
+                </span>
+              </div>
+            </div>
+            <div class="text-end">
+              <div><strong>Town:</strong> {{ user.town or 'N/A' }}</div>
+              <div><strong>Gender:</strong> {{ user.gender or 'N/A' }}</div>
+              <div><strong>Age Group:</strong> {{ user.age_group or 'Prefer not to say' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0">Participation History</h5>
+        </div>
+        <div class="card-body">
+          {% if participation_history %}
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in participation_history %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ p.event_name }}</div>
+                  </td>
+                  <td>{{ p.event_datetime.strftime(DateFormat.NZ_NUMERIC.value) }}</td>
+                  <td>
+                    <span class="badge {% if p.status == 'registered' %}bg-success{% else %}bg-secondary{% endif %}">{{ p.status.title() }}</span>
+                  </td>
+                  <td>
+                    {% if p.total_seconds is not none %}
+                      {{ p.total_seconds }}s
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-muted">No participation records found.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0">Volunteer Activity</h5>
+        </div>
+        <div class="card-body">
+          {% if volunteer_history %}
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Task</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in volunteer_history %}
+                <tr>
+                  <td><div class="fw-semibold">{{ v.event_name }}</div></td>
+                  <td>{{ v.event_datetime.strftime(DateFormat.NZ_NUMERIC.value) }}</td>
+                  <td>{{ v.task_name }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-muted">No volunteer assignments found.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0">Support Requests</h5>
+        </div>
+        <div class="card-body">
+          {% if support_requests %}
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Subject</th>
+                  <th>Issue</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Created</th>
+                  <th>Assigned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in support_requests %}
+                <tr>
+                  <td>#{{ r.id }}</td>
+                  <td>{{ r.subject }}</td>
+                  <td><span class="badge bg-light text-dark">{{ r.issue_type|title }}</span></td>
+                  <td>
+                    <span class="badge {% if r.status == 'resolved' %}bg-success{% elif r.status == 'open' %}bg-primary{% elif r.status == 'stalled' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ r.status|title }}</span>
+                  </td>
+                  <td>
+                    <span class="badge {% if r.priority == 'high' %}bg-danger{% elif r.priority == 'medium' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ r.priority|title }}</span>
+                  </td>
+                  <td>{{ r.created_at.strftime(DateFormat.NZ_NUMERIC.value) }}</td>
+                  <td>
+                    {% if r.assigned_first_name %}
+                      {{ r.assigned_first_name }} {{ r.assigned_last_name }}
+                    {% else %}
+                      <span class="text-muted">Unassigned</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-muted">No support requests found.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

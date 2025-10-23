@@ -79,7 +79,7 @@
                                     <th scope="col" width="12%">Current Role</th>
                                     <th scope="col" width="10%">Status</th>
                                     <th scope="col" width="12%">Change Role</th>
-                                    <th scope="col" width="9%">Actions</th>
+                                    <th scope="col" width="14%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -89,10 +89,10 @@
                                         {{ (page - 1) * per_page + loop.index }}
                                     </td>
                                     <td>
-
-                                                <div class="fw-semibold">{{ user.full_name }}</div>
-                                            </div>
-                                        </div>
+                                        <a class="fw-semibold text-decoration-none"
+                                           href="{{ url_for('admin.view_user_profile', user_id=user.id) }}">
+                                            {{ user.full_name }}
+                                        </a>
                                     </td>
                                     <td>
                                         <span class="text-muted">{{ user.email }}</span>
@@ -150,7 +150,7 @@
                                             <span class="text-muted small">No access</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="d-flex gap-2">
                                         <button class="btn btn-sm 
                                             {% if user.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %} 
                                             status-toggle-btn" 
