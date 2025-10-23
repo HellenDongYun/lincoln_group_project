@@ -461,6 +461,24 @@ def view_event_results():
         return render_template("admin/view_event_results.html",results=results,DateFormat=DateFormat)  
     
 
+@admin_blueprint.route('/users/<int:user_id>/profile')
+@require_super_admin_or_support_technician
+def view_user_profile(user_id: int):
+    """Detailed user profile view for SA/ST with history"""
+    overview = AdminService.get_user_profile_overview(user_id)
+    if not overview:
+        flash("User not found.", "danger")
+        return redirect(url_for('admin.manage_user_roles'))
+
+    return render_template(
+        'admin/user_profile.html',
+        user=overview['user'],
+        participation_history=overview['participation_history'],
+        volunteer_history=overview['volunteer_history'],
+        support_requests=overview['support_requests'],
+        DateFormat=DateFormat
+    )
+
 
 @admin_blueprint.route('/users/roles')
 @require_super_admin_or_support_technician

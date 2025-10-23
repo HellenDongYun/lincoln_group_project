@@ -214,7 +214,7 @@ class AdminRepository(Repository):
     def get_user_by_id(user_id):
         with get_cursor() as cursor:
             cursor.execute(
-                "SELECT id, first_name, last_name, email, global_role AS role, town, status, "
+                "SELECT id, first_name, last_name, email, gender, age, age_group, global_role AS role, town, status, "
                 "CONCAT(TRIM(first_name), ' ', TRIM(last_name)) AS full_name FROM Users WHERE id = %s",
                 (user_id,),
             )
