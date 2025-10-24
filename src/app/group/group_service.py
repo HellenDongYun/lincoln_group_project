@@ -872,7 +872,7 @@ class GroupService:
             return GroupRepository.get_join_request_by_id(cursor, request_id)
 
     @staticmethod
-    def process_join_request(request_id, action, manager_id):
+    def process_join_request(request_id, action, manager_id, rejection_reason=None):
         """Approve or reject join request"""
         with get_cursor() as cursor:
             # Get request details
@@ -889,10 +889,36 @@ class GroupService:
                 GroupRepository.update_join_request_status(cursor, request_id, 'approved', manager_id)
                 # Add user to group as member
                 GroupRepository.add_group_member(cursor, request['group_id'], request['user_id'], 'member')
+
+                # Send notification to the participant
+                notification_message = f"Your request to join '{request['group_name']}' has been approved. Welcome to the group!"
+                GroupRepository.create_notification(
+                    cursor,
+                    request['user_id'],
+                    'group_join_approved',
+                    request['group_id'],
+                    notification_message
+                )
+
                 return True
             elif action == 'reject':
-                # Update request status
-                GroupRepository.update_join_request_status(cursor, request_id, 'rejected', manager_id)
+                # Validate rejection reason
+                if not rejection_reason or not rejection_reason.strip():
+                    raise ValueError("A reason is required when rejecting a join request")
+
+                # Update request status with rejection reason
+                GroupRepository.update_join_request_status(cursor, request_id, 'rejected', manager_id, rejection_reason)
+
+                # Send notification to the participant
+                notification_message = f"Your request to join '{request['group_name']}' has been rejected. Reason: {rejection_reason}"
+                GroupRepository.create_notification(
+                    cursor,
+                    request['user_id'],
+                    'group_join_rejected',
+                    request['group_id'],
+                    notification_message
+                )
+
                 return True
             else:
                 raise ValueError("Invalid action. Must be 'approve' or 'reject'")

@@ -1100,7 +1100,7 @@ def approve_join_request(request_id):
 
     try:
         GroupService.process_join_request(request_id, 'approve', manager_id)
-        flash('Join request approved successfully', 'success')
+        flash('Join request approved successfully and participant has been notified', 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception as e:
@@ -1122,10 +1122,11 @@ def approve_join_request(request_id):
 def reject_join_request(request_id):
     """Reject a join request"""
     manager_id = auth_service.get_user_id()
+    rejection_reason = request.form.get('rejection_reason', '').strip()
 
     try:
-        GroupService.process_join_request(request_id, 'reject', manager_id)
-        flash('Join request rejected', 'success')
+        GroupService.process_join_request(request_id, 'reject', manager_id, rejection_reason)
+        flash('Join request rejected and participant has been notified', 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception as e:
