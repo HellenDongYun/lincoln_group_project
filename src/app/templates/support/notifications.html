@@ -61,8 +61,8 @@
                     </p>
                 </div>
                 <small class="text-muted text-nowrap ms-3">
-                    {{ notification.created_at.strftime('%d %b %Y') }}<br>
-                    {{ notification.created_at.strftime('%I:%M %p') }}
+                    {{ notification.created_at|format_nz_datetime('%d %b %Y') }}<br>
+                    {{ notification.created_at|format_nz_datetime('%I:%M %p') }}
                 </small>
             </div>
         </a>

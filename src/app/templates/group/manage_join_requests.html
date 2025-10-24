@@ -30,7 +30,7 @@
                                     <div class="mb-3">
                                         <small class="text-muted">
                                             <i class="fas fa-clock"></i>
-                                            Requested: {{ req.created_at.strftime('%Y-%m-%d at %H:%M') }}
+                                            Requested: {{ req.created_at|format_nz_datetime('%d %b %Y at %I:%M %p') }}
                                         </small>
                                     </div>
 

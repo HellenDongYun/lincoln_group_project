@@ -207,8 +207,8 @@
                             </td>
                             <td>
                                 <small class="text-muted">
-                                    {{ req.created_at.strftime('%d %b %Y') }}<br>
-                                    {{ req.created_at.strftime('%I:%M %p') }}
+                                    {{ req.created_at|format_nz_datetime('%d %b %Y') }}<br>
+                                    {{ req.created_at|format_nz_datetime('%I:%M %p') }}
                                 </small>
                             </td>
                             <td>

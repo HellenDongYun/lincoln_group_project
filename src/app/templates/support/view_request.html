@@ -237,7 +237,7 @@
                                             {% endif %}
                                         </h6>
                                         <small class="text-muted">
-                                            {{ comment.created_at.strftime('%d %b %Y at %I:%M %p') }}
+                                            {{ comment.created_at|format_nz_datetime('%d %b %Y at %I:%M %p') }}
                                         </small>
                                     </div>
                                 </div>
@@ -306,16 +306,16 @@
 
                     <div class="mb-3">
                         <small class="text-muted d-block">Created</small>
-                        <strong>{{ support_request.created_at.strftime('%d %B %Y') }}</strong>
+                        <strong>{{ support_request.created_at|format_nz_datetime('%d %B %Y') }}</strong>
                         <br>
-                        <small class="text-muted">{{ support_request.created_at.strftime('%I:%M %p') }}</small>
+                        <small class="text-muted">{{ support_request.created_at|format_nz_datetime('%I:%M %p') }}</small>
                     </div>
 
                     <div class="mb-3">
                         <small class="text-muted d-block">Last Updated</small>
-                        <strong>{{ support_request.updated_at.strftime('%d %B %Y') }}</strong>
+                        <strong>{{ support_request.updated_at|format_nz_datetime('%d %B %Y') }}</strong>
                         <br>
-                        <small class="text-muted">{{ support_request.updated_at.strftime('%I:%M %p') }}</small>
+                        <small class="text-muted">{{ support_request.updated_at|format_nz_datetime('%I:%M %p') }}</small>
                     </div>
 
                     {% if support_request.assigned_first_name %}
@@ -346,7 +346,7 @@
                         <li class="mb-2 {% if not loop.last %}pb-2 border-bottom{% endif %}">
                             <strong>{{ event.event_name }}</strong>
                             <br>
-                            <small class="text-muted">{{ event.event_datetime.strftime('%d %b %Y') }}</small>
+                            <small class="text-muted">{{ event.event_datetime|format_nz_datetime('%d %b %Y') }}</small>
                             <br>
                             <span class="badge {% if event.status == 'registered' %}bg-success{% else %}bg-secondary{% endif %}">
                                 {{ event.status|title }}
@@ -378,7 +378,7 @@
                         <li class="mb-2 {% if not loop.last %}pb-2 border-bottom{% endif %}">
                             <strong>{{ task.event_name }}</strong>
                             <br>
-                            <small class="text-muted">{{ task.event_datetime.strftime('%d %b %Y') }}</small>
+                            <small class="text-muted">{{ task.event_datetime|format_nz_datetime('%d %b %Y') }}</small>
                             <br>
                             <span class="badge bg-warning text-dark">{{ task.task_name }}</span>
                         </li>
