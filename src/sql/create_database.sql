@@ -151,6 +151,7 @@ CREATE TABLE Group_Join_Requests (
   message TEXT,
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   reviewed_by INT NULL,
+  rejection_reason TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   reviewed_at TIMESTAMP NULL,
   FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -257,7 +258,7 @@ CREATE TABLE Support_Request_Status_Changes (
 CREATE TABLE Notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  type ENUM('request_assigned','request_status_changed','request_comment','request_dropped') NOT NULL,
+  type ENUM('request_assigned','request_status_changed','request_comment','request_dropped','group_join_approved','group_join_rejected') NOT NULL,
   reference_id INT NOT NULL,
   message TEXT NOT NULL,
   is_read BOOLEAN NOT NULL DEFAULT FALSE,

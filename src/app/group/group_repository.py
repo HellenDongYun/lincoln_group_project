@@ -767,7 +767,7 @@ class GroupRepository(Repository):
         return cursor.fetchall()
 
     @staticmethod
-    def update_join_request_status(cursor, request_id, status, reviewed_by):
+    def update_join_request_status(cursor, request_id, status, reviewed_by, rejection_reason=None):
         """Approve or reject a join request"""
         # First get the request details to know user_id and group_id
         cursor.execute("""
@@ -791,9 +791,9 @@ class GroupRepository(Repository):
         # Now update the current request status
         cursor.execute("""
             UPDATE Group_Join_Requests
-            SET status = %s, reviewed_by = %s, reviewed_at = NOW()
+            SET status = %s, reviewed_by = %s, reviewed_at = NOW(), rejection_reason = %s
             WHERE id = %s
-        """, (status, reviewed_by, request_id))
+        """, (status, reviewed_by, rejection_reason, request_id))
         return cursor.rowcount
 
     @staticmethod
@@ -817,3 +817,12 @@ class GroupRepository(Repository):
             WHERE gjr.id = %s
         """, (request_id,))
         return cursor.fetchone()
+
+    @staticmethod
+    def create_notification(cursor, user_id, notification_type, reference_id, message):
+        """Create a notification for a user"""
+        cursor.execute("""
+            INSERT INTO Notifications (user_id, type, reference_id, message)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, notification_type, reference_id, message))
+        return cursor.lastrowid
