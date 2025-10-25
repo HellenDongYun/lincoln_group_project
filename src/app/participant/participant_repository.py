@@ -693,8 +693,12 @@ class ParticipantRepository(Repository):
                 params.append(gender)
 
             if age_group:
-                query += " AND u.age_group = %s"
-                params.append(age_group)
+                if age_group.lower() == 'unknown':
+                    query += " AND (u.age_group = %s OR u.age_group IS NULL)"
+                    params.append('Unknown')
+                else:
+                    query += " AND u.age_group = %s"
+                    params.append(age_group)
 
             query += " ORDER BY er.total_seconds ASC"
 
@@ -934,7 +938,7 @@ class ParticipantRepository(Repository):
             cursor.execute(query, params)
             return cursor.fetchall()
     
-    def get_leaderboard_by_event_completions(self, time_window_days=None, group_id=None):
+    def get_leaderboard_by_event_completions(self, time_window_days=None, group_id=None, gender=None, age_group=None):
         """Get leaderboard ranked by number of completed events"""
         with get_cursor() as cursor:
             query = """
@@ -956,6 +960,21 @@ class ParticipantRepository(Repository):
                 query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm WHERE gm.user_id = u.id AND gm.group_id = %s AND gm.member_status = 'active')"
                 params.append(group_id)
             
+            if gender:
+                if gender == 'unspecified':
+                    query += " AND (u.gender IS NULL OR u.gender = '')"
+                else:
+                    query += " AND LOWER(u.gender) = %s"
+                    params.append(gender.lower())
+
+            if age_group:
+                if age_group.lower() == 'unknown':
+                    query += " AND (u.age_group = %s OR u.age_group IS NULL)"
+                    params.append('Unknown')
+                else:
+                    query += " AND u.age_group = %s"
+                    params.append(age_group)
+
             if time_window_days:
                 query += " AND e.datetime >= DATE_SUB(NOW(), INTERVAL %s DAY)"
                 params.append(time_window_days)
@@ -969,7 +988,7 @@ class ParticipantRepository(Repository):
             cursor.execute(query, params)
             return cursor.fetchall()
     
-    def get_leaderboard_by_points(self, time_window_days=None, group_id=None):
+    def get_leaderboard_by_points(self, time_window_days=None, group_id=None, gender=None, age_group=None):
         """Get leaderboard ranked by achievement points earned"""
         with get_cursor() as cursor:
             query = """
@@ -992,6 +1011,21 @@ class ParticipantRepository(Repository):
                 query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm WHERE gm.user_id = u.id AND gm.group_id = %s AND gm.member_status = 'active')"
                 params.append(group_id)
             
+            if gender:
+                if gender == 'unspecified':
+                    query += " AND (u.gender IS NULL OR u.gender = '')"
+                else:
+                    query += " AND LOWER(u.gender) = %s"
+                    params.append(gender.lower())
+
+            if age_group:
+                if age_group.lower() == 'unknown':
+                    query += " AND (u.age_group = %s OR u.age_group IS NULL)"
+                    params.append('Unknown')
+                else:
+                    query += " AND u.age_group = %s"
+                    params.append(age_group)
+
             if time_window_days:
                 query += " AND (ua.earned_at IS NULL OR ua.earned_at >= DATE_SUB(NOW(), INTERVAL %s DAY))"
                 params.append(time_window_days)
@@ -1006,7 +1040,7 @@ class ParticipantRepository(Repository):
             cursor.execute(query, params)
             return cursor.fetchall()
     
-    def get_leaderboard_by_volunteer_hours(self, time_window_days=None, group_id=None):
+    def get_leaderboard_by_volunteer_hours(self, time_window_days=None, group_id=None, gender=None, age_group=None):
         """Get leaderboard ranked by volunteer task participation"""
         with get_cursor() as cursor:
             query = """
@@ -1027,6 +1061,17 @@ class ParticipantRepository(Repository):
                 query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm WHERE gm.user_id = u.id AND gm.group_id = %s AND gm.member_status = 'active')"
                 params.append(group_id)
             
+            if gender:
+                if gender == 'unspecified':
+                    query += " AND (u.gender IS NULL OR u.gender = '')"
+                else:
+                    query += " AND LOWER(u.gender) = %s"
+                    params.append(gender.lower())
+
+            if age_group:
+                query += " AND u.age_group = %s"
+                params.append(age_group)
+
             if time_window_days:
                 query += " AND e.datetime >= DATE_SUB(NOW(), INTERVAL %s DAY)"
                 params.append(time_window_days)
@@ -1040,14 +1085,14 @@ class ParticipantRepository(Repository):
             cursor.execute(query, params)
             return cursor.fetchall()
     
-    def get_user_leaderboard_position(self, user_id, metric='events', time_window_days=None, group_id=None):
+    def get_user_leaderboard_position(self, user_id, metric='events', time_window_days=None, group_id=None, gender=None, age_group=None):
         """Get a specific user's position in the leaderboard"""
         if metric == 'events':
-            all_rankings = self.get_leaderboard_by_event_completions(time_window_days, group_id)
+            all_rankings = self.get_leaderboard_by_event_completions(time_window_days, group_id, gender, age_group)
         elif metric == 'points':
-            all_rankings = self.get_leaderboard_by_points(time_window_days, group_id)
+            all_rankings = self.get_leaderboard_by_points(time_window_days, group_id, gender, age_group)
         elif metric == 'volunteer':
-            all_rankings = self.get_leaderboard_by_volunteer_hours(time_window_days, group_id)
+            all_rankings = self.get_leaderboard_by_volunteer_hours(time_window_days, group_id, gender, age_group)
         else:
             return None
         

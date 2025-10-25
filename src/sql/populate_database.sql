@@ -149,16 +149,41 @@ INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES
 
 
 -- ------------------------------
+-- Group Challenges & Assignments
+-- ------------------------------
+INSERT INTO Group_Challenges (group_id, name, description, target_metric, target_value, timeframe_days, achievement_id, reward_badge_label, reward_trophy_label, verification_required, status, created_by, created_at, published_at) VALUES
+(1, 'Darfield Spring Sprint', 'Complete three club events during the September push.', 'events_attended', 3, 30, 3, 'Darfield Pace Setter', NULL, FALSE, 'published', 2, '2025-08-28 08:00:00', '2025-09-01 08:00:00'),
+(2, 'Harbour Elevation Challenge', 'Climb 1,500 metres cumulative elevation with the club this month.', 'elevation_gain_meters', 1500, 30, NULL, 'Harbour Climber Badge', NULL, TRUE, 'published', 3, '2025-08-25 09:30:00', '2025-09-05 07:00:00'),
+(3, 'Trail Photo Hunt', 'Capture five unique landmarks during club-led trail adventures.', 'photos_submitted', 5, 45, NULL, 'Trail Storyteller Badge', 'Trail Explorer Trophy', TRUE, 'draft', 12, '2025-09-10 10:00:00', NULL);
+
+INSERT INTO Group_Challenge_Assignments (challenge_id, user_id, status, progress, completed_at, verified_by, verified_at, badge_awarded_at, trophy_awarded_at) VALUES
+(1, 2, 'completed', 3, '2025-09-18 08:30:00', 2, '2025-09-18 09:00:00', '2025-09-18 09:05:00', NULL),
+(1, 3, 'completed', 3, '2025-09-19 07:55:00', 2, '2025-09-19 08:20:00', '2025-09-19 08:30:00', NULL),
+(1, 4, 'active', 2, NULL, NULL, NULL, NULL, NULL),
+(2, 3, 'completed', 1500, '2025-09-24 18:45:00', 3, '2025-09-24 19:10:00', '2025-09-24 19:15:00', NULL),
+(2, 2, 'active', 950, NULL, NULL, NULL, NULL, NULL),
+(2, 5, 'active', 600, NULL, NULL, NULL, NULL, NULL),
+(3, 12, 'active', 1, NULL, NULL, NULL, NULL, NULL),
+(3, 4, 'active', 0, NULL, NULL, NULL, NULL, NULL),
+(3, 6, 'active', 0, NULL, NULL, NULL, NULL, NULL);
+
+INSERT INTO User_Reward_Items (user_id, challenge_id, item_type, label, awarded_at) VALUES
+(2, 1, 'badge', 'Darfield Pace Setter', '2025-09-18 09:05:00'),
+(3, 1, 'badge', 'Darfield Pace Setter', '2025-09-19 08:30:00'),
+(3, 2, 'badge', 'Harbour Climber Badge', '2025-09-24 19:15:00');
+
+
+-- ------------------------------
 -- Events
 -- ------------------------------
 INSERT INTO Events (group_id, datetime, town, name, event_type, description, max_participants, visibility, created_by) VALUES
-(1, '2025-09-15 07:30:00', 'Christchurch', 'Avon River Fun Run', '5km Run', 'A scenic 5km loop along the Avon River for all ages.', 50, 'public', 2), -- 1: UPCOMING (Sept 15)
-(2, '2025-09-15 08:00:00', 'Wellington', 'Harbour Walk Challenge', '10km Walk', 'Coastal 10km walk with harbour views.', 80, 'public', 3), -- 2: UPCOMING (Sept 15)
-(3, '2025-09-21 07:00:00', 'Auckland', 'City Park Trail Intro', 'Trail 5km', 'Introductory trail around city park tracks.', 60, 'public', 12), -- 3: UPCOMING (Sept 21)
-(1, '2025-09-28 07:30:00', 'Dunedin', 'Otago Peninsula Ride', 'Cycling 20km', 'Friendly 20km cycle around peninsula.', 120, 'public', 2), -- 4: UPCOMING
-(2, '2025-10-05 09:00:00', 'Hamilton', 'Lake Run Festival', '10km Run', 'Flat 10km circuit around Lake Rotoroa.', 150, 'public', 3), -- 5: UPCOMING
-(3, '2025-10-12 08:30:00', 'Napier', 'Hawke’s Bay Sunrise Walk', '5km Walk', 'Early morning coastal walk.', 90, 'public', 12), -- 6: UPCOMING
-(4, '2025-10-19 07:45:00', 'Rotorua', 'Redwoods Forest Ride', 'Trail Ride 15km', 'Ride through Whakarewarewa Forest.', 70, 'private', 10), -- 7: UPCOMING
+(1, '2025-11-15 07:30:00', 'Christchurch', 'Avon River Fun Run', '5km Run', 'A scenic 5km loop along the Avon River for all ages.', 50, 'public', 2), -- 1: UPCOMING (Sept 15)
+(2, '2025-11-15 08:00:00', 'Wellington', 'Harbour Walk Challenge', '10km Walk', 'Coastal 10km walk with harbour views.', 80, 'public', 3), -- 2: UPCOMING (Sept 15)
+(3, '2025-11-21 07:00:00', 'Auckland', 'City Park Trail Intro', 'Trail 5km', 'Introductory trail around city park tracks.', 60, 'public', 12), -- 3: UPCOMING (Sept 21)
+(1, '2025-12-28 07:30:00', 'Dunedin', 'Otago Peninsula Ride', 'Cycling 20km', 'Friendly 20km cycle around peninsula.', 120, 'public', 2), -- 4: UPCOMING
+(2, '2025-11-05 09:00:00', 'Hamilton', 'Lake Run Festival', '10km Run', 'Flat 10km circuit around Lake Rotoroa.', 150, 'public', 3), -- 5: UPCOMING
+(3, '2025-11-12 08:30:00', 'Napier', 'Hawke’s Bay Sunrise Walk', '5km Walk', 'Early morning coastal walk.', 90, 'public', 12), -- 6: UPCOMING
+(4, '2025-11-19 07:45:00', 'Rotorua', 'Redwoods Forest Ride', 'Trail Ride 15km', 'Ride through Whakarewarewa Forest.', 70, 'private', 10), -- 7: UPCOMING
 (2, '2025-06-15 08:00:00', 'Wellington', 'Capital City Marathon', '10km Run', 'Annual Wellington 10km run.', 200, 'public', 3), -- 8: PAST
 (3, '2025-07-20 07:30:00', 'Auckland', 'Auckland Harbour Bridge Fun Run', '5km Run', 'Iconic bridge run.', 250, 'public', 12), -- 9: PAST
 (1, '2025-08-10 08:30:00', 'Christchurch', 'Garden City Cycling Challenge', 'Cycling 15km', 'Scenic 15km cycle event.', 180, 'public', 2); -- 10: PAST
