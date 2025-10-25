@@ -313,6 +313,212 @@ class GroupRepository(Repository):
         return cursor.fetchall()
 
     @staticmethod
+    def get_group_challenges(cursor, group_id, include_archived=True):
+        """Fetch challenges configured for a group"""
+        query = """
+            SELECT
+                gc.id,
+                gc.group_id,
+                gc.name,
+                gc.description,
+                gc.target_metric,
+                gc.target_value,
+                gc.timeframe_days,
+                gc.achievement_id,
+                gc.reward_badge_label,
+                gc.reward_trophy_label,
+                gc.verification_required,
+                gc.status,
+                gc.created_by,
+                gc.created_at,
+                gc.updated_at,
+                gc.published_at,
+                a.name AS achievement_name,
+                u.first_name AS creator_first_name,
+                u.last_name AS creator_last_name
+            FROM Group_Challenges gc
+            LEFT JOIN Achievements a ON gc.achievement_id = a.id
+            LEFT JOIN Users u ON gc.created_by = u.id
+            WHERE gc.group_id = %s
+        """
+
+        params = [group_id]
+        if not include_archived:
+            query += " AND gc.status != 'archived'"
+
+        query += " ORDER BY gc.created_at DESC"
+
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_group_challenge(cursor, group_id, challenge_id):
+        """Fetch a single challenge ensuring it belongs to the group"""
+        cursor.execute("""
+            SELECT
+                gc.id,
+                gc.group_id,
+                gc.name,
+                gc.description,
+                gc.target_metric,
+                gc.target_value,
+                gc.timeframe_days,
+                gc.achievement_id,
+                gc.reward_badge_label,
+                gc.reward_trophy_label,
+                gc.verification_required,
+                gc.status,
+                gc.created_by,
+                gc.created_at,
+                gc.updated_at,
+                gc.published_at
+            FROM Group_Challenges gc
+            WHERE gc.group_id = %s AND gc.id = %s
+        """, (group_id, challenge_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def list_reward_label_options(cursor):
+        """Return distinct badge and trophy labels used across group challenges and rewards"""
+        badge_labels = set()
+        trophy_labels = set()
+
+        cursor.execute("""
+            SELECT DISTINCT reward_badge_label
+            FROM Group_Challenges
+            WHERE reward_badge_label IS NOT NULL AND reward_badge_label <> ''
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('reward_badge_label') if isinstance(row, dict) else row[0]
+            if label:
+                badge_labels.add(str(label))
+
+        cursor.execute("""
+            SELECT DISTINCT reward_trophy_label
+            FROM Group_Challenges
+            WHERE reward_trophy_label IS NOT NULL AND reward_trophy_label <> ''
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('reward_trophy_label') if isinstance(row, dict) else row[0]
+            if label:
+                trophy_labels.add(str(label))
+
+        cursor.execute("""
+            SELECT DISTINCT label
+            FROM User_Reward_Items
+            WHERE item_type = 'badge'
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('label') if isinstance(row, dict) else row[0]
+            if label:
+                badge_labels.add(str(label))
+
+        cursor.execute("""
+            SELECT DISTINCT label
+            FROM User_Reward_Items
+            WHERE item_type = 'trophy'
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('label') if isinstance(row, dict) else row[0]
+            if label:
+                trophy_labels.add(str(label))
+
+        return {
+            'badges': sorted(badge_labels),
+            'trophies': sorted(trophy_labels)
+        }
+
+    @staticmethod
+    def create_group_challenge(cursor, group_id, created_by, payload, published_at=None):
+        """Create a new challenge for the group"""
+        cursor.execute("""
+            INSERT INTO Group_Challenges (
+                group_id,
+                name,
+                description,
+                target_metric,
+                target_value,
+                timeframe_days,
+                achievement_id,
+                reward_badge_label,
+                reward_trophy_label,
+                verification_required,
+                status,
+                created_by,
+                published_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            group_id,
+            payload['name'],
+            payload['description'],
+            payload['target_metric'],
+            payload['target_value'],
+            payload['timeframe_days'],
+            payload['achievement_id'],
+            payload['reward_badge_label'],
+            payload['reward_trophy_label'],
+            1 if payload['verification_required'] else 0,
+            payload['status'],
+            created_by,
+            published_at
+        ))
+        return cursor.lastrowid
+
+    @staticmethod
+    def update_group_challenge(cursor, group_id, challenge_id, payload, published_at):
+        """Update an existing challenge belonging to the group"""
+        cursor.execute("""
+            UPDATE Group_Challenges
+            SET name = %s,
+                description = %s,
+                target_metric = %s,
+                target_value = %s,
+                timeframe_days = %s,
+                achievement_id = %s,
+                reward_badge_label = %s,
+                reward_trophy_label = %s,
+                verification_required = %s,
+                status = %s,
+                published_at = %s
+            WHERE group_id = %s AND id = %s
+        """, (
+            payload['name'],
+            payload['description'],
+            payload['target_metric'],
+            payload['target_value'],
+            payload['timeframe_days'],
+            payload['achievement_id'],
+            payload['reward_badge_label'],
+            payload['reward_trophy_label'],
+            1 if payload['verification_required'] else 0,
+            payload['status'],
+            published_at,
+            group_id,
+            challenge_id
+        ))
+        return cursor.rowcount
+
+    @staticmethod
+    def delete_group_challenge(cursor, group_id, challenge_id):
+        """Delete a challenge and related assignments"""
+        cursor.execute("""
+            DELETE FROM Group_Challenges
+            WHERE group_id = %s AND id = %s
+        """, (group_id, challenge_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def list_achievements(cursor):
+        """Return achievements for reward associations"""
+        cursor.execute("""
+            SELECT id, name, points_reward
+            FROM Achievements
+            ORDER BY name ASC
+        """)
+        return cursor.fetchall()
+
+    @staticmethod
     def get_group_event(cursor, group_id, event_id):
         """Fetch a single event and ensure it belongs to the group"""
         cursor.execute("""

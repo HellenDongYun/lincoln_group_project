@@ -33,7 +33,7 @@
                     <a href="{{ url_for('participant.rewards', encoded_participant_id=participant_id) }}" class="btn btn-warning px-4">
                         <i class="fas fa-award me-2"></i>Rewards centre
                     </a>
-                    <a href="{{ url_for('app.get_events') }}" class="btn btn-outline-light px-4">
+                    <a href="{{ url_for('groups.participant_search') }}" class="btn btn-outline-light px-4">
                         <i class="fas fa-calendar-plus me-2"></i>Browse events
                     </a>
                 </div>
@@ -219,7 +219,7 @@
                                 <div class="empty-state-icon"><i class="fas fa-calendar-times"></i></div>
                                 <h5 class="mb-2">No upcoming events registered</h5>
                                 <p class="text-muted mb-3">Secure your next challenge below to start filling your calendar.</p>
-                                <a href="{{ url_for('app.get_events') }}" class="btn btn-primary btn-sm">
+                                <a href="{{ url_for('groups.participant_search') }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-calendar-plus me-1"></i>Find events
                                 </a>
                             </div>
@@ -274,7 +274,7 @@
                             </div>
                             {% if upcoming_events|length > 4 %}
                                 <div class="text-center mt-4">
-                                    <a href="{{ url_for('app.get_events') }}" class="btn btn-outline-primary">
+                                    <a href="{{ url_for('groups.participant_search') }}" class="btn btn-outline-primary">
                                         View all events
                                     </a>
                                 </div>
@@ -302,7 +302,7 @@
                                 <p class="text-muted mb-0">Review your finish times and celebrate podium placements.</p>
                             </div>
                             {% if my_results %}
-                                <a href="{{ url_for('app.get_events') }}" class="btn btn-outline-primary btn-sm">
+                                <a href="{{ url_for('groups.participant_search') }}" class="btn btn-outline-primary btn-sm">
                                     Find your next race
                                 </a>
                             {% endif %}
@@ -356,7 +356,7 @@
                                 <div class="empty-state-icon"><i class="fas fa-trophy"></i></div>
                                 <h5 class="mb-2">No race results yet</h5>
                                 <p class="text-muted mb-3">Once you cross your first finish line, your results will appear here.</p>
-                                <a href="{{ url_for('app.get_events') }}" class="btn btn-primary btn-sm">
+                                <a href="{{ url_for('groups.participant_search') }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-calendar-plus me-1"></i>Browse events
                                 </a>
                             </div>

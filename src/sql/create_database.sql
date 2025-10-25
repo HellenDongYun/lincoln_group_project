@@ -198,6 +198,64 @@ ALTER TABLE Group_Applications
 ADD COLUMN application_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 
+-- Group-specific challenges -------------------------------------------------
+
+CREATE TABLE Group_Challenges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  group_id INT NOT NULL,
+  name VARCHAR(150) NOT NULL,
+  description TEXT,
+  target_metric VARCHAR(100) NOT NULL,
+  target_value INT NOT NULL,
+  timeframe_days INT NULL,
+  achievement_id INT NULL,
+  reward_badge_label VARCHAR(150) NULL,
+  reward_trophy_label VARCHAR(150) NULL,
+  verification_required BOOLEAN NOT NULL DEFAULT FALSE,
+  status ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  published_at TIMESTAMP NULL,
+  UNIQUE KEY uniq_group_challenges_group_name (group_id, name),
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (achievement_id) REFERENCES Achievements(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Group_Challenge_Assignments (
+  challenge_id INT NOT NULL,
+  user_id INT NOT NULL,
+  status ENUM('active','completed','expired') NOT NULL DEFAULT 'active',
+  progress INT DEFAULT 0,
+  completed_at TIMESTAMP NULL,
+  verified_by INT NULL,
+  verified_at TIMESTAMP NULL,
+  badge_awarded_at TIMESTAMP NULL,
+  trophy_awarded_at TIMESTAMP NULL,
+  PRIMARY KEY (challenge_id, user_id),
+  FOREIGN KEY (challenge_id) REFERENCES Group_Challenges(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (verified_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE User_Reward_Items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  challenge_id INT NOT NULL,
+  item_type ENUM('badge','trophy') NOT NULL,
+  label VARCHAR(150) NOT NULL,
+  awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_reward (user_id, challenge_id, item_type),
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (challenge_id) REFERENCES Group_Challenges(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_group_challenges_group ON Group_Challenges(group_id);
+CREATE INDEX idx_group_challenges_status ON Group_Challenges(status);
+CREATE INDEX idx_group_challenge_assignments_user ON Group_Challenge_Assignments(user_id);
+
+
 -- Audit trail for user status changes (deactivations/reactivations)
 CREATE TABLE User_Status_Audit (
   id INT AUTO_INCREMENT PRIMARY KEY,
