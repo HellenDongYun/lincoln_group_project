@@ -1069,8 +1069,11 @@ class ParticipantRepository(Repository):
                     params.append(gender.lower())
 
             if age_group:
-                query += " AND u.age_group = %s"
-                params.append(age_group)
+                if age_group == 'unknown':
+                    query += " AND u.age_group IS NULL"
+                else:
+                    query += " AND u.age_group = %s"
+                    params.append(age_group)
 
             if time_window_days:
                 query += " AND e.datetime >= DATE_SUB(NOW(), INTERVAL %s DAY)"
