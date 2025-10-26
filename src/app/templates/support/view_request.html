@@ -20,7 +20,7 @@
 <div class="container py-5">
     <div class="row">
         <div class="col-lg-8">
-            {% if is_staff %}
+            {% if is_staff and support_request.status != 'cancelled' %}
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom">
                     <h5 class="mb-0">
