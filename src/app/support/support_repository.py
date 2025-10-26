@@ -85,7 +85,7 @@ class SupportRepository:
                 FROM Support_Request_Comments c
                 INNER JOIN Users u ON c.user_id = u.id
                 WHERE c.request_id = %s
-                ORDER BY c.created_at ASC
+                ORDER BY c.created_at DESC
             """, (request_id,))
             return cursor.fetchall()
 
