@@ -217,7 +217,7 @@ class ParticipantService:
                     "events": []
                 }
 
-            # add event info（include top3）
+            # add event info
             grouped[group_id]["events"].append({
                 "event_id": row["event_id"],
                 "event_name": row["event_name"],
@@ -234,7 +234,7 @@ class ParticipantService:
                 "user_total_time_str": self.format_seconds(row["user_total_seconds"]),
                 "user_rank": row["user_rank"],
 
-                # 🏆 top 3 info
+                # top 3 info
                 "first_user_name": row["first_user_name"],
                 "first_user_time": row["first_user_time"],
                 "first_user_time_str": self.format_seconds(row["first_user_time"]),
@@ -284,14 +284,14 @@ class ParticipantService:
 
         return chart_data
     
-    def get_leaderboard_data(self, metric='events', time_window_days=None, current_user_id=None, group_id=None):
+    def get_leaderboard_data(self, metric='events', time_window_days=None, current_user_id=None, group_id=None, gender=None, age_group=None):
         """Get leaderboard data for the specified metric and time window"""
         if metric == 'events':
-            rankings = self.participant_repository.get_leaderboard_by_event_completions(time_window_days, group_id)
+            rankings = self.participant_repository.get_leaderboard_by_event_completions(time_window_days, group_id, gender, age_group)
         elif metric == 'points':
-            rankings = self.participant_repository.get_leaderboard_by_points(time_window_days, group_id)
+            rankings = self.participant_repository.get_leaderboard_by_points(time_window_days, group_id, gender, age_group)
         elif metric == 'volunteer':
-            rankings = self.participant_repository.get_leaderboard_by_volunteer_hours(time_window_days, group_id)
+            rankings = self.participant_repository.get_leaderboard_by_volunteer_hours(time_window_days, group_id, gender, age_group)
         else:
             rankings = []
         
@@ -309,7 +309,7 @@ class ParticipantService:
             found = any(entry['user_id'] == current_user_id for entry in rankings)
             if not found:
                 current_user_position = self.participant_repository.get_user_leaderboard_position(
-                    current_user_id, metric, time_window_days, group_id
+                    current_user_id, metric, time_window_days, group_id, gender, age_group
                 )
         
         return {

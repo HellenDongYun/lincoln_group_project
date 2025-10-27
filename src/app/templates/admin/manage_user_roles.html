@@ -79,7 +79,7 @@
                                     <th scope="col" width="12%">Current Role</th>
                                     <th scope="col" width="10%">Status</th>
                                     <th scope="col" width="12%">Change Role</th>
-                                    <th scope="col" width="9%">Actions</th>
+                                    <th scope="col" width="14%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -89,10 +89,10 @@
                                         {{ (page - 1) * per_page + loop.index }}
                                     </td>
                                     <td>
-
-                                                <div class="fw-semibold">{{ user.full_name }}</div>
-                                            </div>
-                                        </div>
+                                        <a class="fw-semibold text-decoration-none"
+                                           href="{{ url_for('admin.view_user_profile', user_id=user.id) }}">
+                                            {{ user.full_name }}
+                                        </a>
                                     </td>
                                     <td>
                                         <span class="text-muted">{{ user.email }}</span>
@@ -119,6 +119,7 @@
                                         </span>
                                     </td>
                                     <td>
+                                        {% if is_super_admin %}
                                         <div class="dropdown">
                                             <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
                                                     type="button" 
@@ -145,8 +146,11 @@
                                                 {% endfor %}
                                             </ul>
                                         </div>
+                                        {% else %}
+                                            <span class="text-muted small">No access</span>
+                                        {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="d-flex gap-2">
                                         <button class="btn btn-sm 
                                             {% if user.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %} 
                                             status-toggle-btn" 
@@ -263,6 +267,10 @@
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>Note:</strong> <span id="modal-status-warning"></span>
                 </div>
+                <div class="mb-2">
+                    <label for="modal-status-reason" class="form-label">Reason (required for suspension)</label>
+                    <textarea class="form-control" id="modal-status-reason" rows="3" placeholder="Provide a brief reason for this status change..."></textarea>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -329,6 +337,17 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modal-status-action').textContent = action;
             document.getElementById('modal-status-user-name').textContent = userName;
             document.getElementById('modal-status-warning').textContent = warning;
+
+            // Reset and toggle reason field requirement
+            const reasonEl = document.getElementById('modal-status-reason');
+            reasonEl.value = '';
+            if (currentNewStatus === 'inactive') {
+                reasonEl.setAttribute('required', 'required');
+                reasonEl.placeholder = 'Provide the suspension reason (required)';
+            } else {
+                reasonEl.removeAttribute('required');
+                reasonEl.placeholder = 'Optional reason for activation';
+            }
             
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('statusChangeModal'));
@@ -346,7 +365,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle status change confirmation
     document.getElementById('confirm-status-change').addEventListener('click', function() {
         if (currentUserId && currentNewStatus) {
-            updateUserStatus(currentUserId, currentNewStatus);
+            const reason = document.getElementById('modal-status-reason').value.trim();
+            if (currentNewStatus === 'inactive' && !reason) {
+                showAlert('danger', 'Suspension reason is required.');
+                return;
+            }
+            updateUserStatus(currentUserId, currentNewStatus, reason);
         }
     });
     
@@ -396,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    function updateUserStatus(userId, newStatus) {
+    function updateUserStatus(userId, newStatus, reason) {
         // Show loading overlay
         document.getElementById('loading-overlay').style.display = 'block';
         
@@ -410,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `new_status=${newStatus}`
+            body: `new_status=${encodeURIComponent(newStatus)}&reason=${encodeURIComponent(reason || '')}`
         })
         .then(response => response.json())
         .then(data => {

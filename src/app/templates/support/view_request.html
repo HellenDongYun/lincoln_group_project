@@ -19,9 +19,144 @@
 
 <div class="container py-5">
     <div class="row">
-        <!-- Main Content -->
         <div class="col-lg-8">
-            <!-- Request Details Card -->
+            {% if is_staff and support_request.status != 'cancelled' %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tools text-primary me-2"></i>Staff Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if support_request.status == 'new' and not support_request.assigned_to %}
+                    <form method="POST" action="{{ url_for('support.take_request', request_id=support_request.id) }}" class="mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-hand-thumbs-up me-2"></i>Take Request
+                        </button>
+                        <small class="text-muted d-block mt-1">Assign this request to yourself and start working on it</small>
+                    </form>
+                    {% endif %}
+                    {% if support_request.assigned_to == current_user_id and support_request.status != 'resolved' %}
+                    <form method="POST" action="{{ url_for('support.drop_request', request_id=support_request.id) }}" class="mb-3">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-return-left me-2"></i>Drop Request
+                        </button>
+                        <small class="text-muted d-block mt-1">Return this request to the queue</small>
+                    </form>
+                    {% endif %}
+                    <div class="mb-3">
+                        <form method="POST" action="{{ url_for('support.assign_request', request_id=support_request.id) }}">
+                            <label class="form-label fw-bold">Assign to Staff Member:</label>
+                            <div class="input-group">
+                                <select name="assigned_to" class="form-select" required>
+                                    <option value="">-- Select Staff Member --</option>
+                                    {% for staff in staff_list %}
+                                    <option value="{{ staff.id }}" {% if support_request.assigned_to == staff.id %}selected{% endif %}>
+                                        {{ staff.first_name }} {{ staff.last_name }}
+                                        {% if staff.global_role == 'super_admin' %}(Admin){% else %}(Support Tech){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-outline-primary">Assign</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="mb-0">
+                        <form method="POST" action="{{ url_for('support.update_status', request_id=support_request.id) }}" id="statusForm">
+                            <label class="form-label fw-bold">Update Status:</label>
+                            <select name="status" class="form-select mb-2" id="statusSelect" required>
+                                <option value="">-- Select New Status --</option>
+                                {% if support_request.status != 'new' %}
+                                <option value="open">Open</option>
+                                {% endif %}
+                                <option value="stalled">Stalled</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                            <div id="resolutionCommentDiv" style="display:none;">
+                                <label class="form-label">Resolution Comment <span class="text-danger">*</span></label>
+                                <textarea name="comment" class="form-control mb-2" rows="3"
+                                          placeholder="Explain how the issue was resolved..."></textarea>
+                                <small class="text-muted">Required when marking as resolved</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-success mt-2">
+                                <i class="bi bi-check-circle me-2"></i>Update Status
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            document.getElementById('statusSelect').addEventListener('change', function() {
+                const div = document.getElementById('resolutionCommentDiv');
+                const textarea = div.querySelector('textarea');
+
+                if (this.value === 'resolved') {
+                    div.style.display = 'block';
+                    textarea.required = true;
+                } else {
+                    div.style.display = 'none';
+                    textarea.required = false;
+                }
+            });
+            </script>
+            {% endif %}
+
+            {% if support_request.status == 'resolved' %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-square me-2"></i>This request has been resolved.
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-end">
+                            <form method="POST" action="{{ url_for('support.reopen_request', request_id=support_request.id) }}"
+                                class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen Request
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if support_request.status == 'cancelled' %}
+            <div class="alert alert-secondary mb-4">
+                <i class="bi bi-x-circle-fill me-2"></i>
+                <strong>This request has been closed by the user.</strong> It has been removed from the active queue.
+            </div>
+            {% endif %}
+
+            {% if support_request.user_id == current_user_id and support_request.status in ('new', 'open') %}           
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Submitted by mistake?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            You can close this request if it's no longer needed.
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <form method="POST" action="{{ url_for('support.close_request', request_id=support_request.id) }}"
+                                    onsubmit="return confirm('Are you sure you want to close this support request? This will remove it from the active queue and notify any assigned staff. This action cannot be undone.');">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-x-circle me-1"></i>Close Request
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
@@ -34,8 +169,9 @@
                                 {% elif support_request.status == 'open' %}bg-primary
                                 {% elif support_request.status == 'stalled' %}bg-warning text-dark
                                 {% elif support_request.status == 'resolved' %}bg-success
+                                {% elif support_request.status == 'cancelled' %}bg-secondary
                                 {% else %}bg-secondary{% endif %} me-2">
-                                {{ support_request.status|title }}
+                                {% if support_request.status == 'cancelled' %}Closed by User{% else %}{{ support_request.status|title }}{% endif %}
                             </span>
                             <span class="badge
                                 {% if support_request.priority == 'high' %}bg-danger
@@ -101,7 +237,7 @@
                                             {% endif %}
                                         </h6>
                                         <small class="text-muted">
-                                            {{ comment.created_at.strftime('%d %b %Y at %I:%M %p') }}
+                                            {{ comment.created_at|format_nz_datetime('%d %b %Y at %I:%M %p') }}
                                         </small>
                                     </div>
                                 </div>
@@ -116,9 +252,14 @@
                         </p>
                     {% endif %}
                 </div>
-
-                <!-- Add Comment Form -->
-                {% if support_request.status != 'resolved' %}
+                {% if support_request.status == 'cancelled' %}
+                <div class="card-footer bg-light">
+                    <div class="alert alert-secondary mb-0">
+                        <i class="bi bi-x-circle me-2"></i>
+                        <strong>This request has been closed.</strong> Comments are not allowed on closed requests.
+                    </div>
+                </div>
+                {% elif is_staff or support_request.status != 'resolved' %}
                 <div class="card-footer bg-light">
                     <form method="POST" action="{{ url_for('support.add_comment', request_id=support_request.id) }}">
                         <div class="mb-3">
@@ -136,9 +277,11 @@
                     </form>
                 </div>
                 {% else %}
-                <div class="card-footer bg-light text-center">
-                    <i class="bi bi-check-circle text-success me-2"></i>
-                    <span class="text-muted">This request has been resolved. Comments are disabled.</span>
+                <div class="card-footer bg-light">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>This request is resolved.</strong> To add a comment, please reopen the request first using the button above.
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -163,16 +306,16 @@
 
                     <div class="mb-3">
                         <small class="text-muted d-block">Created</small>
-                        <strong>{{ support_request.created_at.strftime('%d %B %Y') }}</strong>
+                        <strong>{{ support_request.created_at|format_nz_datetime('%d %B %Y') }}</strong>
                         <br>
-                        <small class="text-muted">{{ support_request.created_at.strftime('%I:%M %p') }}</small>
+                        <small class="text-muted">{{ support_request.created_at|format_nz_datetime('%I:%M %p') }}</small>
                     </div>
 
                     <div class="mb-3">
                         <small class="text-muted d-block">Last Updated</small>
-                        <strong>{{ support_request.updated_at.strftime('%d %B %Y') }}</strong>
+                        <strong>{{ support_request.updated_at|format_nz_datetime('%d %B %Y') }}</strong>
                         <br>
-                        <small class="text-muted">{{ support_request.updated_at.strftime('%I:%M %p') }}</small>
+                        <small class="text-muted">{{ support_request.updated_at|format_nz_datetime('%I:%M %p') }}</small>
                     </div>
 
                     {% if support_request.assigned_first_name %}
@@ -203,7 +346,7 @@
                         <li class="mb-2 {% if not loop.last %}pb-2 border-bottom{% endif %}">
                             <strong>{{ event.event_name }}</strong>
                             <br>
-                            <small class="text-muted">{{ event.event_datetime.strftime('%d %b %Y') }}</small>
+                            <small class="text-muted">{{ event.event_datetime|format_nz_datetime('%d %b %Y') }}</small>
                             <br>
                             <span class="badge {% if event.status == 'registered' %}bg-success{% else %}bg-secondary{% endif %}">
                                 {{ event.status|title }}
@@ -235,7 +378,7 @@
                         <li class="mb-2 {% if not loop.last %}pb-2 border-bottom{% endif %}">
                             <strong>{{ task.event_name }}</strong>
                             <br>
-                            <small class="text-muted">{{ task.event_datetime.strftime('%d %b %Y') }}</small>
+                            <small class="text-muted">{{ task.event_datetime|format_nz_datetime('%d %b %Y') }}</small>
                             <br>
                             <span class="badge bg-warning text-dark">{{ task.task_name }}</span>
                         </li>
@@ -269,9 +412,13 @@
                             <span class="badge bg-warning text-dark">Stalled</span>
                             <small class="d-block text-muted mt-1">Awaiting more information</small>
                         </li>
-                        <li class="mb-0">
+                        <li class="mb-2">
                             <span class="badge bg-success">Resolved</span>
                             <small class="d-block text-muted mt-1">Issue has been resolved</small>
+                        </li>
+                        <li class="mb-0">
+                            <span class="badge bg-secondary">Closed by User</span>
+                            <small class="d-block text-muted mt-1">User closed their own request</small>
                         </li>
                     </ul>
                 </div>

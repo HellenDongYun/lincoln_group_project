@@ -29,9 +29,9 @@
     <div class="container">
     <form method="GET" action="{{ url_for('participant.leaderboard', encoded_participant_id=encoded_participant_id) }}" class="row g-3 align-items-end">
             <!-- Metric Filter -->
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                 <label for="metric" class="form-label fw-semibold">
-                    <i class="fas fa-chart-bar me-1"></i>Rank By
+                    </i>Rank By
                 </label>
                 <select name="metric" id="metric" class="form-select" onchange="this.form.submit()">
                     <option value="events" {% if current_metric == 'events' %}selected{% endif %}>
@@ -47,9 +47,9 @@
             </div>
 
             <!-- Time Filter -->
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                 <label for="time" class="form-label fw-semibold">
-                    <i class="far fa-calendar me-1"></i>Time Period
+                    </i>Time Period
                 </label>
                 <select name="time" id="time" class="form-select" onchange="this.form.submit()">
                     <option value="1month" {% if current_time_filter == '1month' %}selected{% endif %}>
@@ -68,9 +68,9 @@
             </div>
 
             <!-- Group Filter -->
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                 <label for="group" class="form-label fw-semibold">
-                    <i class="fas fa-users me-1"></i>Group
+                    </i>Group
                 </label>
                 <select name="group" id="group" class="form-select" onchange="this.form.submit()">
                     <option value="all" {% if current_group == 'all' %}selected{% endif %}>All My Groups</option>
@@ -80,8 +80,32 @@
                 </select>
             </div>
 
+            <!-- Gender Filter -->
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <label for="gender" class="form-label fw-semibold">
+                    </i>Gender
+                </label>
+                <select name="gender" id="gender" class="form-select" onchange="this.form.submit()">
+                    {% for option in gender_options %}
+                    <option value="{{ option.value }}" {% if current_gender == option.value %}selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Age Group Filter -->
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <label for="age_group" class="form-label fw-semibold">
+                    </i>Age Group
+                </label>
+                <select name="age_group" id="age_group" class="form-select" onchange="this.form.submit()">
+                    {% for option in age_group_options %}
+                    <option value="{{ option.value }}" {% if current_age_group == option.value %}selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <!-- Info Badge -->
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                 <div class="alert alert-info mb-0 py-2 px-3 glass-card">
                     <i class="fas fa-info-circle me-1"></i>
                     <small>
@@ -213,7 +237,7 @@
                         Complete events or earn achievements to appear on the leaderboard!
                     {% endif %}
                 </p>
-                <a href="{{ url_for('app.get_events') }}" class="btn btn-primary">
+                <a href="{{ url_for('groups.participant_search') }}" class="btn btn-primary">
                     <i class="fas fa-calendar-plus me-2"></i>Browse Events
                 </a>
             </div>

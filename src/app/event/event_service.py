@@ -16,3 +16,7 @@ class EventService:
     def get_unique_locations(self) -> list[str]:
         """Get all unique event locations for filter dropdown"""
         return self.repository.get_unique_locations()
+
+    def get_event_by_id(self, event_id: int) -> Event | None:
+        row = self.repository.get_event_by_id(event_id)
+        return Event(**row) if row else None

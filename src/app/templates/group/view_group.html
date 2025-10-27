@@ -142,7 +142,14 @@
                 <h3 class="h5 fw-bold mb-1">{{ event.name }}</h3>
                 <p class="text-muted small mb-0">{{ event.town }}</p>
               </div>
-              <span class="badge bg-primary-subtle text-primary text-capitalize">{{ event.visibility }}</span>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary text-capitalize">{{ event.visibility }}</span>
+                {% if can_manage %}
+                <a href="{{ url_for('groups.edit_group_event', group_id=group.id, event_id=event.id) }}" class="btn btn-outline-secondary btn-sm" title="Edit event">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% endif %}
+              </div>
             </div>
             <p class="text-muted mb-4"><i class="bi bi-clock text-warning me-1"></i>{{ event.datetime_str or event.datetime }}</p>
             <p class="text-muted small mb-0">
@@ -176,6 +183,7 @@
                   <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2">
                     <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>You're registered</span>
                     <form method="post" action="{{ url_for('participant.cancel_registration', encoded_participant_id=current_user_encoded_id, event_id=event.id) }}">
+                      <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
                       <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold">
                         <i class="bi bi-x-circle me-1"></i>Cancel
                       </button>
@@ -189,6 +197,7 @@
                   <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-exclamation-circle me-1"></i>Event full</span>
                 {% elif event.can_register %}
                   <form method="post" action="{{ url_for('participant.register_for_event', encoded_participant_id=current_user_encoded_id, event_id=event.id) }}">
+                    <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
                     <button type="submit" class="btn btn-warning text-black btn-sm fw-semibold"><i class="bi bi-plus-circle me-1"></i>Register for event</button>
                   </form>
                 {% else %}
@@ -260,9 +269,6 @@
             </div>
             {% endif %}
           </div>
-          {% if can_manage %}
-          <a href="{{ url_for('groups.edit_group_event', group_id=group.id, event_id=event.id) }}" class="stretched-link" aria-label="Edit {{ event.name }}"></a>
-          {% endif %}
         </div>
       </div>
       {% endfor %}

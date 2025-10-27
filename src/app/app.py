@@ -15,6 +15,7 @@ from src.app.support.support_controller import support_blueprint
 from src.app.common.db import db
 from src.app.common.nav.nav_items import left_nav_items, right_nav_items
 from src.app.common.nav.nav_link import nav_link
+from src.app.common.timezone_utils import to_nz_time, format_nz_datetime
 
 app = Flask(__name__)
 app.secret_key = 'H9#*lr1Q_T,-2<6gR7:!'
@@ -24,6 +25,10 @@ db.init_db(app, dbuser, dbpass, dbhost, dbname, dbport)
 
 # Register Jinja functions
 app.jinja_env.globals.update(nav_link=nav_link)
+
+# Register Jinja filters for timezone conversion
+app.jinja_env.filters['to_nz_time'] = to_nz_time
+app.jinja_env.filters['format_nz_datetime'] = format_nz_datetime
 
 
 
@@ -42,9 +47,21 @@ app.register_blueprint(support_blueprint, url_prefix='/support')
 def get_nav_items():
     user_id = auth_service.get_user_id()
     user_role = auth_service.get_global_role()
+
+    # Get unread notification count for notification bell (AC9)
+    unread_notification_count = 0
+    if user_id:
+        try:
+            from src.app.support.support_service import SupportService
+            unread_notification_count = SupportService.get_unread_count(user_id)
+        except:
+            pass
+
     return {
         "left_nav_items": left_nav_items(user_id, user_role),
-        "right_nav_items": right_nav_items(user_id, user_role)
+        "right_nav_items": right_nav_items(user_id, user_role),
+        "unread_notification_count": unread_notification_count,
+        "current_user_id": user_id
     }
 
 

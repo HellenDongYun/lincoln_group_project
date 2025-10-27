@@ -4,7 +4,7 @@ from src.app.admin.admin_service import AdminService
 from src.app.common.date_format import DateFormat
 from src.app.common.db.cursor import get_cursor
 from src.app.app_controller import admin_service
-from src.app.auth.route_guard import require_super_admin
+from src.app.auth.route_guard import require_super_admin, require_super_admin_or_support_technician
 from src.app.auth.auth_service import auth_service
 from src.app.common.nav.encode import decode_id
 from src.app.user.user import GlobalRole
@@ -461,9 +461,27 @@ def view_event_results():
         return render_template("admin/view_event_results.html",results=results,DateFormat=DateFormat)  
     
 
+@admin_blueprint.route('/users/<int:user_id>/profile')
+@require_super_admin_or_support_technician
+def view_user_profile(user_id: int):
+    """Detailed user profile view for SA/ST with history"""
+    overview = AdminService.get_user_profile_overview(user_id)
+    if not overview:
+        flash("User not found.", "danger")
+        return redirect(url_for('admin.manage_user_roles'))
+
+    return render_template(
+        'admin/user_profile.html',
+        user=overview['user'],
+        participation_history=overview['participation_history'],
+        volunteer_history=overview['volunteer_history'],
+        support_requests=overview['support_requests'],
+        DateFormat=DateFormat
+    )
+
 
 @admin_blueprint.route('/users/roles')
-# @route_guard(Role.ADMIN)
+@require_super_admin_or_support_technician
 def manage_user_roles():
     """Page for managing user roles"""
     page = int(request.args.get('page', 1))
@@ -489,10 +507,10 @@ def manage_user_roles():
                          total_pages=user_data['total_pages'],
                          total_count=user_data['total_count'],
                          search_name=search_name or '',
-                         search_role=search_role or '')
+                         search_role=search_role or '',
+                         is_super_admin=auth_service.is_super_admin())
 
 @admin_blueprint.route('/users/<int:user_id>/role', methods=['POST'])
-# @route_guard(Role.ADMIN)
 @require_super_admin
 def update_user_role_ajax(user_id):
     """Update user role via AJAX"""
@@ -522,25 +540,37 @@ def update_user_role_ajax(user_id):
         return {'success': False, 'message': f'Error: {str(e)}'}, 500
 
 @admin_blueprint.route('/users/<int:user_id>/status', methods=['POST'])
-# @route_guard(Role.ADMIN)
-@require_super_admin
+@require_super_admin_or_support_technician
 def update_user_status_ajax(user_id):
     """Update user status via AJAX"""
     try:
         new_status = request.form.get('new_status')
+        reason = request.form.get('reason', '').strip()
         
         # Validate status
         valid_statuses = ['active', 'inactive']
         if new_status not in valid_statuses:
             return {'success': False, 'message': 'Invalid status specified'}, 400
+        # Require a reason when deactivating/suspending
+        if new_status == 'inactive' and not reason:
+            return {'success': False, 'message': 'Suspension reason is required'}, 400
         
         # Get user details first
         user = AdminService.get_user_by_id(user_id)
         if not user:
             return {'success': False, 'message': 'User not found'}, 404
         
-        # Update the status
-        success = AdminService.update_user_status(user_id, new_status)
+        # Restrict support technicians from modifying super admins or fellow support technicians
+        if auth_service.is_support_technician() and not auth_service.is_super_admin():
+            target_role = (user.get('role') or '').strip().lower()
+            if target_role in {'super_admin', 'support_technician'}:
+                message = 'Support technicians cannot change the status of super admins or fellow support technicians.'
+                flash(message, 'warning')
+                return {'success': False, 'message': message}, 403
+
+        # Update the status with audit
+        changed_by = auth_service.get_user_id()
+        success = AdminService.update_user_status(user_id, new_status, reason=reason, changed_by=changed_by)
         
         if success:
             status_action = "activated" if new_status == "active" else "deactivated"

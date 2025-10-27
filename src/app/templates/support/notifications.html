@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}ActiveLoop - Notifications{% endblock %}
+
+{% block content %}
+<div class="hero-section-dark">
+    <div class="container hero-content">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 text-white">Notifications</h1>
+                <p class="lead text-white-50">Stay updated on your support requests</p>
+            </div>
+            {% set has_unread = notifications|selectattr('is_read', 'equalto', False)|list|length > 0 %}
+            {% if has_unread %}
+            <form method="POST" action="{{ url_for('support.mark_all_notifications_read') }}">
+                <button type="submit" class="btn btn-outline-light">
+                    <i class="bi bi-check-all me-2"></i>Mark All as Read
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    {% if notifications %}
+    <div class="list-group">
+        {% for notification in notifications %}
+        <a href="{{ url_for('support.mark_notification_read', notification_id=notification.id) }}"
+           class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-primary{% endif %}">
+            <div class="d-flex w-100 justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">
+                        {% if notification.type == 'request_assigned' %}
+                            <i class="bi bi-person-check text-primary me-2"></i>
+                        {% elif notification.type == 'request_status_changed' %}
+                            <i class="bi bi-arrow-repeat text-info me-2"></i>
+                        {% elif notification.type == 'request_comment' %}
+                            <i class="bi bi-chat-left text-success me-2"></i>
+                        {% elif notification.type == 'request_dropped' %}
+                            <i class="bi bi-arrow-return-left text-warning me-2"></i>
+                        {% elif notification.type == 'group_join_approved' %}
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                        {% elif notification.type == 'group_join_rejected' %}
+                            <i class="bi bi-x-circle text-danger me-2"></i>
+                        {% endif %}
+                        {{ notification.message }}
+                        {% if not notification.is_read %}
+                            <span class="badge bg-danger ms-2">New</span>
+                        {% endif %}
+                    </h6>
+                    <p class="mb-1 small text-muted">
+                        {% if notification.type in ['group_join_approved', 'group_join_rejected'] %}
+                            Group notification
+                        {% else %}
+                            Request #{{ notification.reference_id }}
+                            {% if notification.request_subject %}
+                                - {{ notification.request_subject }}
+                            {% endif %}
+                        {% endif %}
+                    </p>
+                </div>
+                <small class="text-muted text-nowrap ms-3">
+                    {{ notification.created_at|format_nz_datetime('%d %b %Y') }}<br>
+                    {{ notification.created_at|format_nz_datetime('%I:%M %p') }}
+                </small>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+        <i class="bi bi-bell-slash display-1 text-muted mb-3"></i>
+        <h3 class="text-muted">No Notifications</h3>
+        <p class="text-muted mb-4">You're all caught up! You'll receive notifications here when:</p>
+        <ul class="list-unstyled text-muted">
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>A support request is assigned to you</li>
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your request status changes</li>
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Someone comments on your request</li>
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your request is unassigned</li>
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your group join request is approved or rejected</li>
+        </ul>
+        <a href="{{ url_for('support.my_requests') }}" class="btn btn-primary mt-3">
+            <i class="bi bi-ticket-detailed me-2"></i>View My Requests
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

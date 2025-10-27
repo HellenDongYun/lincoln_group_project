@@ -135,7 +135,7 @@
                 <small class="text-muted">
                   <span class="me-4">
                     <i class="bi bi-calendar-event me-1"></i>{{
-                    event.event_date.strftime("%d/%m/%Y") }}</span
+                    event.event_date|format_nz_datetime('%d/%m/%Y') }}</span
                   >
                   <span class="me-4"
                     ><i class="bi bi-geo-alt me-1"></i>{{ event.town }}</span

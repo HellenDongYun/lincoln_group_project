@@ -38,7 +38,7 @@ def require_super_admin(callback):
     return guard
 
 def require_participant(callback):
-    #Require user to be a participant (or super admin)
+    #Require user to be a participant or super admin
     @wraps(callback)
     def guard(*args, **kwargs):
         auth_service = AuthService()
@@ -56,7 +56,7 @@ def require_participant(callback):
 
 
 def require_group_manager(group_id_param='group_id'):
-    #Require user to be a manager of the specified group (or super admin)
+    #Require user to be a manager of the specified group or super admin
     def decorator(callback):
         @wraps(callback)
         def guard(*args, **kwargs):
@@ -85,7 +85,7 @@ def require_group_manager(group_id_param='group_id'):
     return decorator
 
 def require_volunteer_or_manager(callback):
-    # Require user to be a volunteer (have group memberships) or super admin
+    # Require user to be a volunteer with group memberships or super admin
     @wraps(callback)
     def guard(*args, **kwargs):
 
@@ -130,6 +130,25 @@ def require_support_staff(callback):
 
         managed_groups = GroupService.get_user_managed_groups(user_id) or []
         if managed_groups:
+            return callback(*args, **kwargs)
+
+        flash("You do not have permission to view this page.", "danger")
+        return redirect(url_for("app.home"))
+
+    return guard
+
+
+def require_super_admin_or_support_technician(callback):
+    """Require the current user to be either super admin or support technician."""
+    @wraps(callback)
+    def guard(*args, **kwargs):
+        auth_service = AuthService()
+
+        if not auth_service.is_logged_in():
+            flash("You must be logged in to view this page.", "warning")
+            return redirect(url_for("app.login"))
+
+        if auth_service.is_super_admin() or auth_service.is_support_technician():
             return callback(*args, **kwargs)
 
         flash("You do not have permission to view this page.", "danger")

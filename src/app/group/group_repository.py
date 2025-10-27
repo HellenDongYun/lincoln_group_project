@@ -313,6 +313,212 @@ class GroupRepository(Repository):
         return cursor.fetchall()
 
     @staticmethod
+    def get_group_challenges(cursor, group_id, include_archived=True):
+        """Fetch challenges configured for a group"""
+        query = """
+            SELECT
+                gc.id,
+                gc.group_id,
+                gc.name,
+                gc.description,
+                gc.target_metric,
+                gc.target_value,
+                gc.timeframe_days,
+                gc.achievement_id,
+                gc.reward_badge_label,
+                gc.reward_trophy_label,
+                gc.verification_required,
+                gc.status,
+                gc.created_by,
+                gc.created_at,
+                gc.updated_at,
+                gc.published_at,
+                a.name AS achievement_name,
+                u.first_name AS creator_first_name,
+                u.last_name AS creator_last_name
+            FROM Group_Challenges gc
+            LEFT JOIN Achievements a ON gc.achievement_id = a.id
+            LEFT JOIN Users u ON gc.created_by = u.id
+            WHERE gc.group_id = %s
+        """
+
+        params = [group_id]
+        if not include_archived:
+            query += " AND gc.status != 'archived'"
+
+        query += " ORDER BY gc.created_at DESC"
+
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_group_challenge(cursor, group_id, challenge_id):
+        """Fetch a single challenge ensuring it belongs to the group"""
+        cursor.execute("""
+            SELECT
+                gc.id,
+                gc.group_id,
+                gc.name,
+                gc.description,
+                gc.target_metric,
+                gc.target_value,
+                gc.timeframe_days,
+                gc.achievement_id,
+                gc.reward_badge_label,
+                gc.reward_trophy_label,
+                gc.verification_required,
+                gc.status,
+                gc.created_by,
+                gc.created_at,
+                gc.updated_at,
+                gc.published_at
+            FROM Group_Challenges gc
+            WHERE gc.group_id = %s AND gc.id = %s
+        """, (group_id, challenge_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def list_reward_label_options(cursor):
+        """Return distinct badge and trophy labels used across group challenges and rewards"""
+        badge_labels = set()
+        trophy_labels = set()
+
+        cursor.execute("""
+            SELECT DISTINCT reward_badge_label
+            FROM Group_Challenges
+            WHERE reward_badge_label IS NOT NULL AND reward_badge_label <> ''
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('reward_badge_label') if isinstance(row, dict) else row[0]
+            if label:
+                badge_labels.add(str(label))
+
+        cursor.execute("""
+            SELECT DISTINCT reward_trophy_label
+            FROM Group_Challenges
+            WHERE reward_trophy_label IS NOT NULL AND reward_trophy_label <> ''
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('reward_trophy_label') if isinstance(row, dict) else row[0]
+            if label:
+                trophy_labels.add(str(label))
+
+        cursor.execute("""
+            SELECT DISTINCT label
+            FROM User_Reward_Items
+            WHERE item_type = 'badge'
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('label') if isinstance(row, dict) else row[0]
+            if label:
+                badge_labels.add(str(label))
+
+        cursor.execute("""
+            SELECT DISTINCT label
+            FROM User_Reward_Items
+            WHERE item_type = 'trophy'
+        """)
+        for row in cursor.fetchall() or []:
+            label = row.get('label') if isinstance(row, dict) else row[0]
+            if label:
+                trophy_labels.add(str(label))
+
+        return {
+            'badges': sorted(badge_labels),
+            'trophies': sorted(trophy_labels)
+        }
+
+    @staticmethod
+    def create_group_challenge(cursor, group_id, created_by, payload, published_at=None):
+        """Create a new challenge for the group"""
+        cursor.execute("""
+            INSERT INTO Group_Challenges (
+                group_id,
+                name,
+                description,
+                target_metric,
+                target_value,
+                timeframe_days,
+                achievement_id,
+                reward_badge_label,
+                reward_trophy_label,
+                verification_required,
+                status,
+                created_by,
+                published_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            group_id,
+            payload['name'],
+            payload['description'],
+            payload['target_metric'],
+            payload['target_value'],
+            payload['timeframe_days'],
+            payload['achievement_id'],
+            payload['reward_badge_label'],
+            payload['reward_trophy_label'],
+            1 if payload['verification_required'] else 0,
+            payload['status'],
+            created_by,
+            published_at
+        ))
+        return cursor.lastrowid
+
+    @staticmethod
+    def update_group_challenge(cursor, group_id, challenge_id, payload, published_at):
+        """Update an existing challenge belonging to the group"""
+        cursor.execute("""
+            UPDATE Group_Challenges
+            SET name = %s,
+                description = %s,
+                target_metric = %s,
+                target_value = %s,
+                timeframe_days = %s,
+                achievement_id = %s,
+                reward_badge_label = %s,
+                reward_trophy_label = %s,
+                verification_required = %s,
+                status = %s,
+                published_at = %s
+            WHERE group_id = %s AND id = %s
+        """, (
+            payload['name'],
+            payload['description'],
+            payload['target_metric'],
+            payload['target_value'],
+            payload['timeframe_days'],
+            payload['achievement_id'],
+            payload['reward_badge_label'],
+            payload['reward_trophy_label'],
+            1 if payload['verification_required'] else 0,
+            payload['status'],
+            published_at,
+            group_id,
+            challenge_id
+        ))
+        return cursor.rowcount
+
+    @staticmethod
+    def delete_group_challenge(cursor, group_id, challenge_id):
+        """Delete a challenge and related assignments"""
+        cursor.execute("""
+            DELETE FROM Group_Challenges
+            WHERE group_id = %s AND id = %s
+        """, (group_id, challenge_id))
+        return cursor.rowcount
+
+    @staticmethod
+    def list_achievements(cursor):
+        """Return achievements for reward associations"""
+        cursor.execute("""
+            SELECT id, name, points_reward
+            FROM Achievements
+            ORDER BY name ASC
+        """)
+        return cursor.fetchall()
+
+    @staticmethod
     def get_group_event(cursor, group_id, event_id):
         """Fetch a single event and ensure it belongs to the group"""
         cursor.execute("""
@@ -767,7 +973,7 @@ class GroupRepository(Repository):
         return cursor.fetchall()
 
     @staticmethod
-    def update_join_request_status(cursor, request_id, status, reviewed_by):
+    def update_join_request_status(cursor, request_id, status, reviewed_by, rejection_reason=None):
         """Approve or reject a join request"""
         # First get the request details to know user_id and group_id
         cursor.execute("""
@@ -791,9 +997,9 @@ class GroupRepository(Repository):
         # Now update the current request status
         cursor.execute("""
             UPDATE Group_Join_Requests
-            SET status = %s, reviewed_by = %s, reviewed_at = NOW()
+            SET status = %s, reviewed_by = %s, reviewed_at = NOW(), rejection_reason = %s
             WHERE id = %s
-        """, (status, reviewed_by, request_id))
+        """, (status, reviewed_by, rejection_reason, request_id))
         return cursor.rowcount
 
     @staticmethod
@@ -817,3 +1023,60 @@ class GroupRepository(Repository):
             WHERE gjr.id = %s
         """, (request_id,))
         return cursor.fetchone()
+    
+    
+
+# === new add delete method ===
+    @staticmethod
+    def get_pending_request_by_user_group(cursor, user_id, group_id):
+        """Get pending join request for specific user and group"""
+        cursor.execute("""
+            SELECT gjr.id, gjr.user_id, gjr.group_id, gjr.message, gjr.created_at,
+                   u.first_name, u.last_name, u.email,
+                   g.name as group_name
+            FROM Group_Join_Requests gjr
+            JOIN Users u ON gjr.user_id = u.id
+            JOIN Community_Groups g ON gjr.group_id = g.id
+            WHERE gjr.user_id = %s AND gjr.group_id = %s AND gjr.status = 'pending'
+        """, (user_id, group_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def delete_join_request(cursor, request_id):
+        """Delete a join request by ID"""
+        cursor.execute("""
+            DELETE FROM Group_Join_Requests 
+            WHERE id = %s
+        """, (request_id,))
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def get_user_pending_requests(cursor, user_id):
+        """Get all pending join requests for a user"""
+        cursor.execute("""
+            SELECT gjr.id, gjr.group_id, gjr.message, gjr.created_at,
+                   g.name as group_name, g.description, g.town, g.visibility
+            FROM Group_Join_Requests gjr
+            JOIN Community_Groups g ON gjr.group_id = g.id
+            WHERE gjr.user_id = %s AND gjr.status = 'pending'
+            ORDER BY gjr.created_at DESC
+        """, (user_id,))
+        return cursor.fetchall()
+    
+    @staticmethod
+    def check_existing_join_request(cursor, user_id, group_id):
+        """Check if user already has pending request - 保持原有方法"""
+        cursor.execute("""
+            SELECT id FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s AND status = 'pending'
+        """, (user_id, group_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def create_notification(cursor, user_id, notification_type, reference_id, message):
+        """Create a notification for a user"""
+        cursor.execute("""
+            INSERT INTO Notifications (user_id, type, reference_id, message)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, notification_type, reference_id, message))
+        return cursor.lastrowid

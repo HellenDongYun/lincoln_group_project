@@ -1,7 +1,7 @@
 -- SQL script to create the activeloop database schema
-DROP DATABASE IF EXISTS activeloop;
-CREATE DATABASE activeloop;
-USE activeloop;
+DROP DATABASE IF EXISTS TeamAmberProject$activeloop;
+CREATE DATABASE TeamAmberProject$activeloop;
+USE TeamAmberProject$activeloop;
 
 -- Core Users & Roles
 -- Global roles simplified to: super_admin, participant
@@ -151,6 +151,7 @@ CREATE TABLE Group_Join_Requests (
   message TEXT,
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   reviewed_by INT NULL,
+  rejection_reason TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   reviewed_at TIMESTAMP NULL,
   FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -197,7 +198,78 @@ ALTER TABLE Group_Applications
 ADD COLUMN application_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 
--- Support Requests for Helpdesk System
+-- Group-specific challenges -------------------------------------------------
+
+CREATE TABLE Group_Challenges (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  group_id INT NOT NULL,
+  name VARCHAR(150) NOT NULL,
+  description TEXT,
+  target_metric VARCHAR(100) NOT NULL,
+  target_value INT NOT NULL,
+  timeframe_days INT NULL,
+  achievement_id INT NULL,
+  reward_badge_label VARCHAR(150) NULL,
+  reward_trophy_label VARCHAR(150) NULL,
+  verification_required BOOLEAN NOT NULL DEFAULT FALSE,
+  status ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  published_at TIMESTAMP NULL,
+  UNIQUE KEY uniq_group_challenges_group_name (group_id, name),
+  FOREIGN KEY (group_id) REFERENCES Community_Groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (achievement_id) REFERENCES Achievements(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Group_Challenge_Assignments (
+  challenge_id INT NOT NULL,
+  user_id INT NOT NULL,
+  status ENUM('active','completed','expired') NOT NULL DEFAULT 'active',
+  progress INT DEFAULT 0,
+  completed_at TIMESTAMP NULL,
+  verified_by INT NULL,
+  verified_at TIMESTAMP NULL,
+  badge_awarded_at TIMESTAMP NULL,
+  trophy_awarded_at TIMESTAMP NULL,
+  PRIMARY KEY (challenge_id, user_id),
+  FOREIGN KEY (challenge_id) REFERENCES Group_Challenges(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (verified_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE User_Reward_Items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  challenge_id INT NOT NULL,
+  item_type ENUM('badge','trophy') NOT NULL,
+  label VARCHAR(150) NOT NULL,
+  awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_reward (user_id, challenge_id, item_type),
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (challenge_id) REFERENCES Group_Challenges(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_group_challenges_group ON Group_Challenges(group_id);
+CREATE INDEX idx_group_challenges_status ON Group_Challenges(status);
+CREATE INDEX idx_group_challenge_assignments_user ON Group_Challenge_Assignments(user_id);
+
+
+-- Audit trail for user status changes (deactivations/reactivations)
+CREATE TABLE User_Status_Audit (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  new_status ENUM('active','inactive') NOT NULL,
+  reason TEXT NULL,
+  changed_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (changed_by) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+
+-- Support Requests for Helpdesk System------ujyh7
 CREATE TABLE Support_Requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
@@ -205,7 +277,7 @@ CREATE TABLE Support_Requests (
   subject VARCHAR(200) NOT NULL,
   description TEXT NOT NULL,
   screenshot_path VARCHAR(500) NULL,
-  status ENUM('new','open','stalled','resolved') NOT NULL DEFAULT 'new',
+  status ENUM('new','open','stalled','resolved','cancelled') NOT NULL DEFAULT 'new',
   priority ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
   assigned_to INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -241,3 +313,28 @@ CREATE TABLE Achievement_Adjustments (
 );
 
 
+-- Status Change Audit Log for Support Requests
+CREATE TABLE Support_Request_Status_Changes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  request_id INT NOT NULL,
+  changed_by INT NOT NULL,
+  old_status ENUM('new','open','stalled','resolved','cancelled') NOT NULL,
+  new_status ENUM('new','open','stalled','resolved','cancelled') NOT NULL,
+  comment_id INT NULL,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (request_id) REFERENCES Support_Requests(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (changed_by) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (comment_id) REFERENCES Support_Request_Comments(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Notifications for support request updates
+CREATE TABLE Notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  type ENUM('request_assigned','request_status_changed','request_comment','request_dropped','group_join_approved','group_join_rejected') NOT NULL,
+  reference_id INT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);

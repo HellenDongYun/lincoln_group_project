@@ -79,7 +79,7 @@
 
             <div class="d-flex justify-content-between align-items-center">
               <div class="text-muted small"> 
-                <i class="bi bi-calendar me-1"></i> Application Time: {{ app.application_time.strftime("%d/%m/%Y %H:%M") }}             
+                <i class="bi bi-calendar me-1"></i> Application Time: {{ app.application_time|format_nz_datetime('%d/%m/%Y %H:%M') }}             
               </div>
 
               <span

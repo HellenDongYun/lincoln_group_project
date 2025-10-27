@@ -1,4 +1,4 @@
-USE activeloop;
+USE TeamAmberProject$activeloop;
 
 -- ------------------------------
 -- Users (1 super admin + participants)
@@ -36,7 +36,7 @@ INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, tow
 ('vincent.anderson@gmail.com', '$2b$12$tB2NJ2ffcQsoGOpcPMQAm.W/ZZ9Jst1yGfD6QlWAzVpEh6Dj8f5Im', 'Vincent', 'Anderson', 'male', 33, 'Dunedin', 'participant', 'active'),
 ('vladimir.scott@runclub.org', '$2b$12$9SiyYX4tvwjX9sbFAb1Y7.mwFiyrG1eRlx/Ms7CrdKgdjnsfqyKbm', 'Vladimir', 'Scott', 'other', 28, 'Rotorua', 'participant', 'active'),
 ('valentina.green@gmail.com', '$2b$12$KyC5ouMLtuaSyqyOt5cnAuoveLpRAf/xul6cDJoUwDvGwDMcduzKm', 'Valentina', 'Green', 'female', 30, 'Palmerston North', 'participant', 'active'),
-('support.tech@platform.org', '$2b$12$6nK5TrF/e0ItqIj4gfvr8u3bRc0EnNBCDPrCb3RZ0N3WeMM66PnJ2', 'Morgan', 'Reeves', 'other', 35, 'Christchurch', 'support_technician', 'active');
+('support.tech@platform.org', '$2a$12$WTDdKSew1rXMuLtWi6vClOgmzI0U4l2Z5U4kl0tTfplKG.1Cm/.xG', 'Morgan', 'Reeves', 'other', 35, 'Christchurch', 'support_technician', 'active');
 
 
 -- ------------------------------
@@ -149,16 +149,41 @@ INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES
 
 
 -- ------------------------------
+-- Group Challenges & Assignments
+-- ------------------------------
+INSERT INTO Group_Challenges (group_id, name, description, target_metric, target_value, timeframe_days, achievement_id, reward_badge_label, reward_trophy_label, verification_required, status, created_by, created_at, published_at) VALUES
+(1, 'Darfield Spring Sprint', 'Complete three club events during the September push.', 'events_attended', 3, 30, 3, 'Darfield Pace Setter', NULL, FALSE, 'published', 2, '2025-08-28 08:00:00', '2025-09-01 08:00:00'),
+(2, 'Harbour Elevation Challenge', 'Climb 1,500 metres cumulative elevation with the club this month.', 'elevation_gain_meters', 1500, 30, NULL, 'Harbour Climber Badge', NULL, TRUE, 'published', 3, '2025-08-25 09:30:00', '2025-09-05 07:00:00'),
+(3, 'Trail Photo Hunt', 'Capture five unique landmarks during club-led trail adventures.', 'photos_submitted', 5, 45, NULL, 'Trail Storyteller Badge', 'Trail Explorer Trophy', TRUE, 'draft', 12, '2025-09-10 10:00:00', NULL);
+
+INSERT INTO Group_Challenge_Assignments (challenge_id, user_id, status, progress, completed_at, verified_by, verified_at, badge_awarded_at, trophy_awarded_at) VALUES
+(1, 2, 'completed', 3, '2025-09-18 08:30:00', 2, '2025-09-18 09:00:00', '2025-09-18 09:05:00', NULL),
+(1, 3, 'completed', 3, '2025-09-19 07:55:00', 2, '2025-09-19 08:20:00', '2025-09-19 08:30:00', NULL),
+(1, 4, 'active', 2, NULL, NULL, NULL, NULL, NULL),
+(2, 3, 'completed', 1500, '2025-09-24 18:45:00', 3, '2025-09-24 19:10:00', '2025-09-24 19:15:00', NULL),
+(2, 2, 'active', 950, NULL, NULL, NULL, NULL, NULL),
+(2, 5, 'active', 600, NULL, NULL, NULL, NULL, NULL),
+(3, 12, 'active', 1, NULL, NULL, NULL, NULL, NULL),
+(3, 4, 'active', 0, NULL, NULL, NULL, NULL, NULL),
+(3, 6, 'active', 0, NULL, NULL, NULL, NULL, NULL);
+
+INSERT INTO User_Reward_Items (user_id, challenge_id, item_type, label, awarded_at) VALUES
+(2, 1, 'badge', 'Darfield Pace Setter', '2025-09-18 09:05:00'),
+(3, 1, 'badge', 'Darfield Pace Setter', '2025-09-19 08:30:00'),
+(3, 2, 'badge', 'Harbour Climber Badge', '2025-09-24 19:15:00');
+
+
+-- ------------------------------
 -- Events
 -- ------------------------------
 INSERT INTO Events (group_id, datetime, town, name, event_type, description, max_participants, visibility, created_by) VALUES
-(1, '2025-09-15 07:30:00', 'Christchurch', 'Avon River Fun Run', '5km Run', 'A scenic 5km loop along the Avon River for all ages.', 50, 'public', 2), -- 1: UPCOMING (Sept 15)
-(2, '2025-09-15 08:00:00', 'Wellington', 'Harbour Walk Challenge', '10km Walk', 'Coastal 10km walk with harbour views.', 80, 'public', 3), -- 2: UPCOMING (Sept 15)
-(3, '2025-09-21 07:00:00', 'Auckland', 'City Park Trail Intro', 'Trail 5km', 'Introductory trail around city park tracks.', 60, 'public', 12), -- 3: UPCOMING (Sept 21)
-(1, '2025-09-28 07:30:00', 'Dunedin', 'Otago Peninsula Ride', 'Cycling 20km', 'Friendly 20km cycle around peninsula.', 120, 'public', 2), -- 4: UPCOMING
-(2, '2025-10-05 09:00:00', 'Hamilton', 'Lake Run Festival', '10km Run', 'Flat 10km circuit around Lake Rotoroa.', 150, 'public', 3), -- 5: UPCOMING
-(3, '2025-10-12 08:30:00', 'Napier', 'Hawke’s Bay Sunrise Walk', '5km Walk', 'Early morning coastal walk.', 90, 'public', 12), -- 6: UPCOMING
-(4, '2025-10-19 07:45:00', 'Rotorua', 'Redwoods Forest Ride', 'Trail Ride 15km', 'Ride through Whakarewarewa Forest.', 70, 'private', 10), -- 7: UPCOMING
+(1, '2025-11-15 07:30:00', 'Christchurch', 'Avon River Fun Run', '5km Run', 'A scenic 5km loop along the Avon River for all ages.', 50, 'public', 2), -- 1: UPCOMING (Sept 15)
+(2, '2025-11-15 08:00:00', 'Wellington', 'Harbour Walk Challenge', '10km Walk', 'Coastal 10km walk with harbour views.', 80, 'public', 3), -- 2: UPCOMING (Sept 15)
+(3, '2025-11-21 07:00:00', 'Auckland', 'City Park Trail Intro', 'Trail 5km', 'Introductory trail around city park tracks.', 60, 'public', 12), -- 3: UPCOMING (Sept 21)
+(1, '2025-12-28 07:30:00', 'Dunedin', 'Otago Peninsula Ride', 'Cycling 20km', 'Friendly 20km cycle around peninsula.', 120, 'public', 2), -- 4: UPCOMING
+(2, '2025-11-05 09:00:00', 'Hamilton', 'Lake Run Festival', '10km Run', 'Flat 10km circuit around Lake Rotoroa.', 150, 'public', 3), -- 5: UPCOMING
+(3, '2025-11-12 08:30:00', 'Napier', 'Hawke’s Bay Sunrise Walk', '5km Walk', 'Early morning coastal walk.', 90, 'public', 12), -- 6: UPCOMING
+(4, '2025-11-19 07:45:00', 'Rotorua', 'Redwoods Forest Ride', 'Trail Ride 15km', 'Ride through Whakarewarewa Forest.', 70, 'private', 10), -- 7: UPCOMING
 (2, '2025-06-15 08:00:00', 'Wellington', 'Capital City Marathon', '10km Run', 'Annual Wellington 10km run.', 200, 'public', 3), -- 8: PAST
 (3, '2025-07-20 07:30:00', 'Auckland', 'Auckland Harbour Bridge Fun Run', '5km Run', 'Iconic bridge run.', 250, 'public', 12), -- 9: PAST
 (1, '2025-08-10 08:30:00', 'Christchurch', 'Garden City Cycling Challenge', 'Cycling 15km', 'Scenic 15km cycle event.', 180, 'public', 2); -- 10: PAST
@@ -180,15 +205,15 @@ INSERT INTO Event_Task_Vacancies (event_id, task_id, spots) VALUES
 -- Event Task Assignments (Volunteers)
 -- ------------------------------
 INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
--- Assignments for UPCOMING Event 1 (Avon River Fun Run)
+-- Assignments for UPCOMING Event 1 Avon River Fun Run
 (1, 1, 2), -- Alice (2) Event Coordinator
 (1, 3, 5), -- Dave (5) Course Marshal
 
--- Assignments for UPCOMING Event 2 (Harbour Walk Challenge)
+-- Assignments for UPCOMING Event 2 Harbour Walk Challenge
 (2, 2, 7),-- Frank (7) Registration Assistant
-(2, 3, 2), -- Alice (2) Course Marshal (Member of Group 2)
+(2, 3, 2), -- Alice (2) Course Marshal -Member of Group 2
 
--- Assignments for UPCOMING Event 3 (City Park Trail Intro)
+-- Assignments for UPCOMING Event 3 City Park Trail Intro
 (3, 1, 12), -- Violet (12) Event Coordinator
 (3, 9, 6), -- Emma (6) Photographer
 
@@ -244,7 +269,6 @@ INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (10, 12, '2025-08-10 08:30:00', '2025-08-10 09:06:55'), (10, 13, '2025-08-10 08:30:00', '2025-08-10 09:18:40');
 
 
-<<<<<<< Updated upstream
 -- ------------------------------
 -- Support Requests & Conversations
 -- ------------------------------
@@ -265,9 +289,51 @@ INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_rep
 (4, 16, 'We see mail logs showing a bounce. Confirming with provider now.', TRUE, '2025-09-01 09:15:00'),
 (5, 6, 'Duplicate row only appears after refreshing the page.', FALSE, '2025-08-20 09:35:00'),
 (5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00');
-=======
+
 INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
 VALUES
 (2, 1, 50, 25, 1, 'Super Admin corrected wrong badge points'),  
 (3, 2, 0, 75, 1, 'Super Admin added missing achievement points');
->>>>>>> Stashed changes
+
+-- ------------------------------
+-- Support Request Status Changes (Audit Log)
+-- ------------------------------
+INSERT INTO Support_Request_Status_Changes (request_id, changed_by, old_status, new_status, comment_id, changed_at) VALUES
+-- Request 2: Morgan took the request (new → open)
+(2, 16, 'new', 'open', NULL, '2025-09-05 11:20:30'),
+-- Request 3: Morgan took the request (new → open)
+(3, 16, 'new', 'open', NULL, '2025-09-04 18:11:00'),
+-- Request 4: Morgan took the request (new → open)
+(4, 16, 'new', 'open', NULL, '2025-08-29 08:00:00'),
+-- Request 4: Morgan changed to stalled (open → stalled)
+(4, 16, 'open', 'stalled', NULL, '2025-09-03 13:10:00'),
+-- Request 5: Morgan took the request (new → open)
+(5, 16, 'new', 'open', NULL, '2025-08-20 09:36:00'),
+-- Request 5: Morgan resolved with comment (open → resolved) - references comment_id 6
+(5, 16, 'open', 'resolved', 6, '2025-08-22 16:15:00');
+
+-- ------------------------------
+-- Notifications
+-- ------------------------------
+INSERT INTO Notifications (user_id, type, reference_id, message, is_read, created_at) VALUES
+-- Notification to Bob (3) when request 2 was taken by Morgan
+(3, 'request_assigned', 2, 'Your support request #2 has been taken by Morgan Reeves', TRUE, '2025-09-05 11:20:30'),
+-- Notification to Bob (3) when request 2 status changed to open
+(3, 'request_status_changed', 2, 'Your support request #2 status changed to Open', TRUE, '2025-09-05 11:20:30'),
+-- Notification to Carol (4) when request 3 was taken
+(4, 'request_assigned', 3, 'Your support request #3 has been taken by Morgan Reeves', TRUE, '2025-09-04 18:11:00'),
+-- Notification to Carol (4) when request 3 status changed to open
+(4, 'request_status_changed', 3, 'Your support request #3 status changed to Open', TRUE, '2025-09-04 18:11:00'),
+-- Notification to Dave (5) when request 4 was taken
+(5, 'request_assigned', 4, 'Your support request #4 has been taken by Morgan Reeves', TRUE, '2025-08-29 08:00:00'),
+-- Notification to Dave (5) when request 4 changed to stalled
+(5, 'request_status_changed', 4, 'Your support request #4 status changed to Stalled', FALSE, '2025-09-03 13:10:00'),
+-- Notification to Emma (6) when request 5 was taken
+(6, 'request_assigned', 5, 'Your support request #5 has been taken by Morgan Reeves', TRUE, '2025-08-20 09:36:00'),
+-- Notification to Emma (6) when request 5 was resolved
+(6, 'request_status_changed', 5, 'Your support request #5 status changed to Resolved', FALSE, '2025-08-22 16:15:00'),
+-- Notification to Morgan (16) for new comment on request 2
+(16, 'request_comment', 2, 'Bob Jones added a comment to request #2', TRUE, '2025-09-05 11:22:00'),
+-- Notification to Morgan (16) for new comment on request 3
+(16, 'request_comment', 3, 'Carol Smith added a comment to request #3', TRUE, '2025-09-04 18:12:00');
+

@@ -182,6 +182,8 @@ def manage_group(group_id):
     group = GroupService.get_group_by_id(group_id)
     members = GroupService.get_group_members(group_id)
     upcoming_events = GroupService.get_group_events(group_id)
+    challenges = GroupService.get_group_challenges(group_id)
+    challenge_options = GroupService.get_group_challenge_options(group_id)
     visibility_options = [option.value for option in GroupVisibility]
     status_options = [option.value for option in GroupStatus]
 
@@ -197,13 +199,15 @@ def manage_group(group_id):
                          group=group, 
                          members=members,
                          upcoming_events=upcoming_events,
+                         challenges=challenges,
                          visibility_options=visibility_options,
                          status_options=status_options,
                          is_super_admin=is_super_admin,
                          event_assignments=event_assignments,
                          event_assignment_json=event_assignment_list,
                          group_members_json=members,
-                         manager_dashboard_url=url_for('groups.manager_dashboard', group_id=group_id))
+                         manager_dashboard_url=url_for('groups.manager_dashboard', group_id=group_id),
+                         challenge_options=challenge_options)
 
 
 @group_blueprint.route('/manager/dashboard')
@@ -423,6 +427,88 @@ def cancel_group_event(group_id, event_id):
         flash('Failed to cancel event. Please try again.', 'error')
 
     return redirect(url_for('groups.manage_group', group_id=group_id))
+
+
+@group_blueprint.route('/<int:group_id>/challenges', methods=['POST'])
+@require_login
+def create_group_challenge(group_id):
+    """Create a new challenge for the group"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+    manage_url = url_for('groups.manage_group', group_id=group_id) + '#challenges'
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('You do not have permission to manage challenges for this group.', 'error')
+        return redirect(manage_url)
+
+    errors, payload = GroupService.validate_challenge_form(request.form)
+    if errors:
+        for error in errors:
+            flash(error, 'error')
+        return redirect(manage_url)
+
+    try:
+        GroupService.create_group_challenge(group_id, user_id, payload)
+        flash('Challenge created successfully.', 'success')
+    except Exception as exc:
+        current_app.logger.exception('Failed to create group challenge: %s', exc)
+        flash('Failed to create challenge. Please try again.', 'error')
+
+    return redirect(manage_url)
+
+
+@group_blueprint.route('/<int:group_id>/challenges/<int:challenge_id>/update', methods=['POST'])
+@require_login
+def update_group_challenge(group_id, challenge_id):
+    """Update an existing challenge"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+    manage_url = url_for('groups.manage_group', group_id=group_id) + '#challenges'
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('You do not have permission to manage challenges for this group.', 'error')
+        return redirect(manage_url)
+
+    errors, payload = GroupService.validate_challenge_form(request.form)
+    if errors:
+        for error in errors:
+            flash(error, 'error')
+        return redirect(manage_url)
+
+    try:
+        GroupService.update_group_challenge(group_id, challenge_id, payload)
+        flash('Challenge updated successfully.', 'success')
+    except ValueError as error:
+        flash(str(error), 'error')
+    except Exception as exc:
+        current_app.logger.exception('Failed to update group challenge: %s', exc)
+        flash('Failed to update challenge. Please try again.', 'error')
+
+    return redirect(manage_url)
+
+
+@group_blueprint.route('/<int:group_id>/challenges/<int:challenge_id>/delete', methods=['POST'])
+@require_login
+def delete_group_challenge(group_id, challenge_id):
+    """Delete a challenge"""
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+    manage_url = url_for('groups.manage_group', group_id=group_id) + '#challenges'
+
+    if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin):
+        flash('You do not have permission to manage challenges for this group.', 'error')
+        return redirect(manage_url)
+
+    try:
+        GroupService.delete_group_challenge(group_id, challenge_id)
+        flash('Challenge deleted.', 'warning')
+    except ValueError as error:
+        flash(str(error), 'error')
+    except Exception as exc:
+        current_app.logger.exception('Failed to delete group challenge: %s', exc)
+        flash('Failed to delete challenge. Please try again.', 'error')
+
+    return redirect(manage_url)
 
 
 def _build_event_assignment_payload(group_id, event_id):
@@ -702,6 +788,8 @@ def _validate_event_form(form_data):
     else:
         try:
             event_datetime = datetime.strptime(f"{event_date} {event_time}", '%Y-%m-%d %H:%M')
+            if event_datetime <= datetime.now():
+                errors.append('Events must be scheduled for a future date and time.')
         except ValueError:
             errors.append('Invalid date or time format. Please use the provided pickers.')
 
@@ -936,6 +1024,7 @@ def participant_search():
     """Participant-specific search for groups and events"""
     user_id = auth_service.get_user_id()
 
+
     # Only allow participants to use this search
     if not auth_service.is_participant():
         flash('This search feature is for participants only', 'error')
@@ -1047,6 +1136,54 @@ def request_join_form(group_id):
 
     return render_template('group/join_request.html', group=group)
 
+@group_blueprint.route('/<int:group_id>/cancel-join-request', methods=['POST'])
+@require_login
+def cancel_join_request(group_id):
+   """
+   Cancel pending join request for a private group
+   """  
+   user_id = auth_service.get_user_id()
+    # get the URL parameter of the current page for redirection back
+   search_term = request.args.get('search', '').strip()
+   location_filter = request.args.get('location', '').strip()
+   date_filter = request.args.get('date', '').strip()
+   type_filter = request.args.get('type', '').strip()
+   sort_by = request.args.get('sort', 'popularity').strip()
+   try:
+        
+        result = GroupService.cancel_join_request(group_id, user_id)
+        
+        if result['success']:
+            flash(result['message'], 'success')
+        else:
+            flash(result['message'], 'error')
+            
+   except Exception as e:
+        flash('Error cancelling join request', 'error')
+    
+   return redirect(url_for('groups.participant_search', group_id=group_id,        search=search_term,location=location_filter,date=date_filter, type=type_filter,
+   sort=sort_by))
+
+# 可选：添加查看待处理请求的路由 check if this one is used this is can delete only in the conter not used in the html page
+@group_blueprint.route('/my-pending-requests')
+@require_login
+def my_pending_requests():
+    """Show user's pending join requests"""
+    user_id = auth_service.get_user_id()
+    
+    try:
+        pending_requests = GroupService.get_user_pending_requests(user_id)
+        return render_template('groups/my_pending_requests.html', 
+                             pending_requests=pending_requests)
+    except Exception as e:
+        flash('Error loading your pending requests', 'error')
+        return redirect(url_for('groups.index'))
+
+
+
+
+
+
 
 @group_blueprint.route('/<int:group_id>/request-join', methods=['POST'])
 @require_login
@@ -1100,7 +1237,7 @@ def approve_join_request(request_id):
 
     try:
         GroupService.process_join_request(request_id, 'approve', manager_id)
-        flash('Join request approved successfully', 'success')
+        flash('Join request approved successfully and participant has been notified', 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception as e:
@@ -1122,10 +1259,11 @@ def approve_join_request(request_id):
 def reject_join_request(request_id):
     """Reject a join request"""
     manager_id = auth_service.get_user_id()
+    rejection_reason = request.form.get('rejection_reason', '').strip()
 
     try:
-        GroupService.process_join_request(request_id, 'reject', manager_id)
-        flash('Join request rejected', 'success')
+        GroupService.process_join_request(request_id, 'reject', manager_id, rejection_reason)
+        flash('Join request rejected and participant has been notified', 'success')
     except ValueError as e:
         flash(str(e), 'error')
     except Exception as e:

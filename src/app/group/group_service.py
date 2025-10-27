@@ -14,6 +14,34 @@ from src.app.user.user import (
 
 
 class GroupService:
+
+    CHALLENGE_STATUS_CHOICES = (
+        {
+            'value': 'draft',
+            'label': 'Draft (hidden)',
+            'description': 'Keep editing without showing the challenge to members.'
+        },
+        {
+            'value': 'published',
+            'label': 'Published (visible)',
+            'description': 'Make the challenge live for group members.'
+        },
+        {
+            'value': 'archived',
+            'label': 'Archived (read-only)',
+            'description': 'Preserve results without allowing new progress.'
+        }
+    )
+
+    CHALLENGE_TARGET_METRICS = (
+        {'value': 'events_attended', 'label': 'Events attended'},
+        {'value': 'distance_km', 'label': 'Distance (km)'},
+        {'value': 'volunteer_hours', 'label': 'Volunteer hours'},
+        {'value': 'photos_submitted', 'label': 'Photos submitted'},
+        {'value': 'elevation_gain_meters', 'label': 'Elevation gain (m)'}
+    )
+
+    CHALLENGE_STATUS_SET = {choice['value'] for choice in CHALLENGE_STATUS_CHOICES}
     
     @staticmethod
     def get_all_groups(visibility_filter=None, town_filter=None, page=1, per_page=10):
@@ -332,6 +360,192 @@ class GroupService:
                 events.append(event)
 
             return events
+
+    @staticmethod
+    def get_group_challenges(group_id, include_archived=True):
+        """Return challenges for the given group"""
+        with get_cursor() as cursor:
+            rows = GroupRepository.get_group_challenges(cursor, group_id, include_archived)
+
+        challenges = []
+        target_metric_lookup = {
+            option['value']: option.get('label', option['value'])
+            for option in GroupService.get_challenge_target_metrics()
+        }
+        status_lookup = {
+            option['value']: option.get('label', option['value'])
+            for option in GroupService.get_challenge_status_choices()
+        }
+
+        for row in rows:
+            challenge = dict(row)
+            challenge['verification_required'] = bool(challenge.get('verification_required'))
+
+            # Normalize numeric fields
+            try:
+                challenge['target_value'] = int(challenge.get('target_value'))
+            except (TypeError, ValueError):
+                challenge['target_value'] = None
+
+            try:
+                timeframe = challenge.get('timeframe_days')
+                challenge['timeframe_days'] = int(timeframe) if timeframe is not None else None
+            except (TypeError, ValueError):
+                challenge['timeframe_days'] = None
+
+            metric_value = challenge.get('target_metric')
+            challenge['target_metric_label'] = target_metric_lookup.get(metric_value, metric_value)
+
+            status_value = challenge.get('status')
+            challenge['status_label'] = status_lookup.get(status_value, status_value)
+
+            challenges.append(challenge)
+
+        return challenges
+
+    @classmethod
+    def get_challenge_target_metrics(cls):
+        return cls.CHALLENGE_TARGET_METRICS
+
+    @classmethod
+    def get_challenge_status_choices(cls):
+        return cls.CHALLENGE_STATUS_CHOICES
+
+    @staticmethod
+    def get_group_challenge_options(group_id=None):
+        with get_cursor() as cursor:
+            achievements = GroupRepository.list_achievements(cursor)
+
+        formatted_achievements = []
+        for achievement in achievements:
+            item = dict(achievement)
+            points = item.get('points_reward')
+            if points is not None:
+                try:
+                    item['points_reward'] = int(points)
+                except (TypeError, ValueError):
+                    item['points_reward'] = points
+            formatted_achievements.append(item)
+
+        return {
+            'target_metrics': GroupService.get_challenge_target_metrics(),
+            'status_choices': GroupService.get_challenge_status_choices(),
+            'achievements': formatted_achievements
+        }
+
+    @classmethod
+    def validate_challenge_form(cls, form_data):
+        """Validate challenge form input and return sanitised payload"""
+        errors = []
+
+        name = (form_data.get('name') or '').strip()
+        if not name:
+            errors.append('Challenge name is required.')
+
+        description = (form_data.get('description') or '').strip()
+        description_value = description or None
+
+        target_metric = (form_data.get('target_metric') or '').strip()
+        if not target_metric:
+            errors.append('Target metric is required.')
+
+        target_value_raw = (form_data.get('target_value') or '').strip()
+        target_value = None
+        if not target_value_raw:
+            errors.append('Target value is required.')
+        else:
+            try:
+                target_value = int(target_value_raw)
+                if target_value <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors.append('Target value must be a positive whole number.')
+
+        timeframe_raw = (form_data.get('timeframe_days') or '').strip()
+        timeframe_days = None
+        if timeframe_raw:
+            try:
+                timeframe_days = int(timeframe_raw)
+                if timeframe_days <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors.append('Timeframe must be a positive whole number if provided.')
+
+        achievement_raw = (form_data.get('achievement_id') or '').strip()
+        achievement_id = None
+        if achievement_raw:
+            try:
+                achievement_id = int(achievement_raw)
+                if achievement_id <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors.append('Achievement selection is invalid.')
+                achievement_id = None
+
+        reward_badge_label = (form_data.get('reward_badge_label') or '').strip() or None
+        reward_trophy_label = (form_data.get('reward_trophy_label') or '').strip() or None
+
+        verification_required = str(form_data.get('verification_required')).lower() in {'1', 'true', 'on', 'yes'}
+
+        status = (form_data.get('status') or 'draft').strip().lower()
+        if status not in cls.CHALLENGE_STATUS_SET:
+            errors.append('Invalid challenge status selected.')
+            status = 'draft'
+
+        payload = {
+            'name': name,
+            'description': description_value,
+            'target_metric': target_metric,
+            'target_value': target_value,
+            'timeframe_days': timeframe_days,
+            'achievement_id': achievement_id,
+            'reward_badge_label': reward_badge_label,
+            'reward_trophy_label': reward_trophy_label,
+            'verification_required': verification_required,
+            'status': status
+        }
+
+        return errors, payload
+
+    @staticmethod
+    def create_group_challenge(group_id, created_by, payload):
+        """Persist a new group challenge"""
+        published_at = datetime.utcnow() if payload['status'] == 'published' else None
+        with get_cursor() as cursor:
+            try:
+                challenge_id = GroupRepository.create_group_challenge(cursor, group_id, created_by, payload, published_at)
+            except Exception:
+                raise
+        return challenge_id
+
+    @staticmethod
+    def update_group_challenge(group_id, challenge_id, payload):
+        """Update an existing challenge"""
+        with get_cursor() as cursor:
+            existing = GroupRepository.get_group_challenge(cursor, group_id, challenge_id)
+            if not existing:
+                raise ValueError('Challenge not found.')
+
+            published_at = existing.get('published_at')
+            if payload['status'] == 'published' and existing.get('status') != 'published':
+                published_at = datetime.utcnow()
+            if payload['status'] != 'published':
+                published_at = None
+
+            updated = GroupRepository.update_group_challenge(cursor, group_id, challenge_id, payload, published_at)
+            if updated == 0:
+                raise ValueError('Challenge update failed.')
+
+    @staticmethod
+    def delete_group_challenge(group_id, challenge_id):
+        with get_cursor() as cursor:
+            existing = GroupRepository.get_group_challenge(cursor, group_id, challenge_id)
+            if not existing:
+                raise ValueError('Challenge not found.')
+
+            deleted = GroupRepository.delete_group_challenge(cursor, group_id, challenge_id)
+            if deleted == 0:
+                raise ValueError('Unable to delete challenge.')
 
     @staticmethod
     def get_group_event(group_id, event_id):
@@ -687,61 +901,109 @@ class GroupService:
         with get_cursor() as cursor:
             results = GroupRepository.search_groups_and_events_for_participants(
                 cursor, participant_id, search_term, location_filter,
-                date_filter, type_filter, sort_by
+                date_filter, type_filter
             )
 
-            # Process results to add additional context for participants (now only groups)
             processed_results = []
+            sort_key = (sort_by or 'popularity').strip().lower()
+
             for result in results:
                 processed_result = dict(result)
+                raw_events = processed_result.pop('events', None)
+                events = []
 
-                # All results are groups now
+                if raw_events:
+                    events_iterable = raw_events
+                else:
+                    events_blob = processed_result.pop('events_data', '')
+                    if events_blob:
+                        events_iterable = events_blob.split(';;')
+                    else:
+                        events_iterable = []
+
+                for event_entry in events_iterable:
+                    if isinstance(event_entry, dict):
+                        event_data = event_entry
+                    else:
+                        event_string = (event_entry or '').strip()
+                        if not event_string:
+                            continue
+                        parts = event_string.split('|')
+                        if len(parts) < 7:
+                            continue
+                        event_data = {
+                            'id': parts[0].strip(),
+                            'name': parts[1].strip(),
+                            'description': parts[2].strip() if parts[2] != 'None' else '',
+                            'datetime': parts[3].strip(),
+                            'event_type': parts[4].strip(),
+                            'max_participants': parts[5].strip(),
+                            'registered_count': parts[6].strip()
+                        }
+
+                    event = {
+                        'id': event_data.get('id'),
+                        'name': (event_data.get('name') or '').strip(),
+                        'description': (event_data.get('description') or ''),
+                        'event_type': (event_data.get('event_type') or '').strip() or None,
+                        'town': event_data.get('town'),
+                        'registered_count': int(event_data.get('registered_count') or 0)
+                    }
+
+                    raw_datetime = event_data.get('datetime')
+                    dt_obj = None
+                    if isinstance(raw_datetime, datetime):
+                        dt_obj = raw_datetime
+                    elif isinstance(raw_datetime, str) and raw_datetime:
+                        try:
+                            dt_obj = datetime.strptime(raw_datetime, '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            dt_obj = None
+
+                    if dt_obj:
+                        event['formatted_datetime'] = dt_obj.strftime('%Y-%m-%d %H:%M')
+                        event['datetime_sort'] = dt_obj
+                    else:
+                        event['formatted_datetime'] = raw_datetime or 'TBD'
+                        event['datetime_sort'] = None
+
+                    max_participants = event_data.get('max_participants')
+                    try:
+                        max_participants = int(max_participants) if max_participants is not None else None
+                    except (TypeError, ValueError):
+                        max_participants = None
+
+                    if max_participants is not None:
+                        event['max_participants'] = max_participants
+                        registered = event['registered_count']
+                        event['available_spaces'] = max(max_participants - registered, 0)
+
+                    events.append(event)
+
+                events.sort(key=lambda item: (item.get('datetime_sort') or datetime.max, item['name'].lower()))
+
+                processed_result['events'] = events
+                processed_result['upcoming_events'] = len(events)
                 processed_result['can_join'] = GroupService._can_participant_join_group(processed_result)
                 processed_result['join_action'] = GroupService._get_group_join_action(processed_result)
 
-                # Parse events data if present
-                if processed_result.get('events_data'):
-                    events = []
-                    seen_event_ids = set()
-                    for event_data in processed_result['events_data'].split(';;'):
-                        if event_data.strip():
-                            parts = event_data.split('|')
-                            if len(parts) >= 7:
-                                event_id = parts[0].strip()
-                                if not event_id:
-                                    continue
-                                unique_key = (event_id, parts[3].strip())
-                                if unique_key in seen_event_ids:
-                                    continue
-                                seen_event_ids.add(unique_key)
-                                event = {
-                                    'id': event_id,
-                                    'name': parts[1].strip(),
-                                    'description': parts[2].strip() if parts[2] != 'None' else '',
-                                    'datetime': parts[3].strip(),
-                                    'event_type': parts[4].strip(),
-                                    'max_participants': int(parts[5]) if parts[5] != '0' else None,
-                                    'registered_count': int(parts[6])
-                                }
-                                # Format datetime
-                                try:
-                                    from datetime import datetime
-                                    dt = datetime.strptime(event['datetime'], '%Y-%m-%d %H:%M:%S')
-                                    event['formatted_datetime'] = dt.strftime('%Y-%m-%d %H:%M')
-                                except:
-                                    event['formatted_datetime'] = event['datetime']
-
-                                # Calculate available spaces
-                                if event['max_participants']:
-                                    event['available_spaces'] = event['max_participants'] - event['registered_count']
-
-                                events.append(event)
-
-                    processed_result['events'] = events
-                else:
-                    processed_result['events'] = []
-
                 processed_results.append(processed_result)
+
+            if sort_key == 'alphabetical':
+                processed_results.sort(key=lambda item: item['group_name'].lower())
+            elif sort_key == 'date':
+                def first_event_datetime(group_item):
+                    if not group_item['events']:
+                        return datetime.max
+                    return min((evt.get('datetime_sort') or datetime.max) for evt in group_item['events'])
+
+                processed_results.sort(key=lambda item: (first_event_datetime(item), item['group_name'].lower()))
+            else:
+                processed_results.sort(key=lambda item: (-int(item.get('popularity_score', 0)), item['group_name'].lower()))
+
+            for item in processed_results:
+                for event in item['events']:
+                    event.pop('datetime_sort', None)
 
             return processed_results
 
@@ -872,7 +1134,7 @@ class GroupService:
             return GroupRepository.get_join_request_by_id(cursor, request_id)
 
     @staticmethod
-    def process_join_request(request_id, action, manager_id):
+    def process_join_request(request_id, action, manager_id, rejection_reason=None):
         """Approve or reject join request"""
         with get_cursor() as cursor:
             # Get request details
@@ -889,10 +1151,36 @@ class GroupService:
                 GroupRepository.update_join_request_status(cursor, request_id, 'approved', manager_id)
                 # Add user to group as member
                 GroupRepository.add_group_member(cursor, request['group_id'], request['user_id'], 'member')
+
+                # Send notification to the participant
+                notification_message = f"Your request to join '{request['group_name']}' has been approved. Welcome to the group!"
+                GroupRepository.create_notification(
+                    cursor,
+                    request['user_id'],
+                    'group_join_approved',
+                    request['group_id'],
+                    notification_message
+                )
+
                 return True
             elif action == 'reject':
-                # Update request status
-                GroupRepository.update_join_request_status(cursor, request_id, 'rejected', manager_id)
+                # Validate rejection reason
+                if not rejection_reason or not rejection_reason.strip():
+                    raise ValueError("A reason is required when rejecting a join request")
+
+                # Update request status with rejection reason
+                GroupRepository.update_join_request_status(cursor, request_id, 'rejected', manager_id, rejection_reason)
+
+                # Send notification to the participant
+                notification_message = f"Your request to join '{request['group_name']}' has been rejected. Reason: {rejection_reason}"
+                GroupRepository.create_notification(
+                    cursor,
+                    request['user_id'],
+                    'group_join_rejected',
+                    request['group_id'],
+                    notification_message
+                )
+
                 return True
             else:
                 raise ValueError("Invalid action. Must be 'approve' or 'reject'")
@@ -924,3 +1212,83 @@ class GroupService:
 
             result = cursor.fetchone()
             return result['count'] > 0 if result else False
+        
+        
+    # from here is the new code added cancel join priovate group
+    @staticmethod
+    def cancel_join_request(group_id, user_id):
+        """
+        Cancel a pending join request
+        """
+        try:
+            with get_cursor() as cursor:
+                print(f"🔍 DEBUG: Searching pending request for user_id={user_id}, group_id={group_id}")
+                
+                pending_request = GroupRepository.get_pending_request_by_user_group(
+                    cursor, user_id, group_id
+                )
+                
+                print(f"🔍 DEBUG: Query result: {pending_request}")
+                
+                if not pending_request:
+                    print("❌ DEBUG: No pending request found")
+                    return {
+                        'success': False,
+                        'message': 'No pending join request found for this group'
+                    }
+                
+                print(f"✅ DEBUG: Found pending request with ID: {pending_request['id']}")
+                
+                # 使用 Repository 方法删除请求
+                success = GroupRepository.delete_join_request(cursor, pending_request['id'])
+                print(f"🔍 DEBUG: Delete operation result: {success}")
+                
+                if success:
+                    print("✅ DEBUG: Transaction committed successfully")
+                    return {
+                        'success': True,
+                        'message': 'Your join request has been cancelled successfully'
+                    }
+                else:
+                    print("❌ DEBUG: Delete operation failed")
+                    return {
+                        'success': False,
+                        'message': 'Failed to cancel join request'
+                    }
+                        
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                'success': False,
+                'message': f'An error occurred: {str(e)}'
+            }
+    
+    @staticmethod
+    def can_user_cancel_request(group_id, user_id):
+        """
+        Check if user can cancel a join request for the group
+        """
+        try:
+            with get_cursor() as cursor:
+                pending_request = GroupRepository.get_pending_request_by_user_group(
+                    cursor, user_id, group_id
+                )
+                return pending_request is not None
+                    
+        except Exception as e:
+            print(f"Error checking cancel permission: {str(e)}")
+            return False
+    
+    @staticmethod
+    def get_user_pending_requests(user_id):
+        """
+        Get all pending join requests for a user
+        """
+        try:
+            with get_cursor() as cursor:
+                return GroupRepository.get_user_pending_requests(cursor, user_id)
+                    
+        except Exception as e:
+            print(f"Error getting user pending requests: {str(e)}")
+            return []
