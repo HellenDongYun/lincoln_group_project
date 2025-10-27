@@ -817,3 +817,51 @@ class GroupRepository(Repository):
             WHERE gjr.id = %s
         """, (request_id,))
         return cursor.fetchone()
+    
+    
+
+# === new add delete method ===
+    @staticmethod
+    def get_pending_request_by_user_group(cursor, user_id, group_id):
+        """Get pending join request for specific user and group"""
+        cursor.execute("""
+            SELECT gjr.id, gjr.user_id, gjr.group_id, gjr.message, gjr.created_at,
+                   u.first_name, u.last_name, u.email,
+                   g.name as group_name
+            FROM Group_Join_Requests gjr
+            JOIN Users u ON gjr.user_id = u.id
+            JOIN Community_Groups g ON gjr.group_id = g.id
+            WHERE gjr.user_id = %s AND gjr.group_id = %s AND gjr.status = 'pending'
+        """, (user_id, group_id))
+        return cursor.fetchone()
+
+    @staticmethod
+    def delete_join_request(cursor, request_id):
+        """Delete a join request by ID"""
+        cursor.execute("""
+            DELETE FROM Group_Join_Requests 
+            WHERE id = %s
+        """, (request_id,))
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def get_user_pending_requests(cursor, user_id):
+        """Get all pending join requests for a user"""
+        cursor.execute("""
+            SELECT gjr.id, gjr.group_id, gjr.message, gjr.created_at,
+                   g.name as group_name, g.description, g.town, g.visibility
+            FROM Group_Join_Requests gjr
+            JOIN Community_Groups g ON gjr.group_id = g.id
+            WHERE gjr.user_id = %s AND gjr.status = 'pending'
+            ORDER BY gjr.created_at DESC
+        """, (user_id,))
+        return cursor.fetchall()
+    
+    @staticmethod
+    def check_existing_join_request(cursor, user_id, group_id):
+        """Check if user already has pending request - 保持原有方法"""
+        cursor.execute("""
+            SELECT id FROM Group_Join_Requests
+            WHERE user_id = %s AND group_id = %s AND status = 'pending'
+        """, (user_id, group_id))
+        return cursor.fetchone()

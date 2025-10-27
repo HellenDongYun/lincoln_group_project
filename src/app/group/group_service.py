@@ -924,3 +924,83 @@ class GroupService:
 
             result = cursor.fetchone()
             return result['count'] > 0 if result else False
+        
+        
+    # from here is the new code added cancel join priovate group
+    @staticmethod
+    def cancel_join_request(group_id, user_id):
+        """
+        Cancel a pending join request
+        """
+        try:
+            with get_cursor() as cursor:
+                print(f"🔍 DEBUG: Searching pending request for user_id={user_id}, group_id={group_id}")
+                
+                pending_request = GroupRepository.get_pending_request_by_user_group(
+                    cursor, user_id, group_id
+                )
+                
+                print(f"🔍 DEBUG: Query result: {pending_request}")
+                
+                if not pending_request:
+                    print("❌ DEBUG: No pending request found")
+                    return {
+                        'success': False,
+                        'message': 'No pending join request found for this group'
+                    }
+                
+                print(f"✅ DEBUG: Found pending request with ID: {pending_request['id']}")
+                
+                # 使用 Repository 方法删除请求
+                success = GroupRepository.delete_join_request(cursor, pending_request['id'])
+                print(f"🔍 DEBUG: Delete operation result: {success}")
+                
+                if success:
+                    print("✅ DEBUG: Transaction committed successfully")
+                    return {
+                        'success': True,
+                        'message': 'Your join request has been cancelled successfully'
+                    }
+                else:
+                    print("❌ DEBUG: Delete operation failed")
+                    return {
+                        'success': False,
+                        'message': 'Failed to cancel join request'
+                    }
+                        
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                'success': False,
+                'message': f'An error occurred: {str(e)}'
+            }
+    
+    @staticmethod
+    def can_user_cancel_request(group_id, user_id):
+        """
+        Check if user can cancel a join request for the group
+        """
+        try:
+            with get_cursor() as cursor:
+                pending_request = GroupRepository.get_pending_request_by_user_group(
+                    cursor, user_id, group_id
+                )
+                return pending_request is not None
+                    
+        except Exception as e:
+            print(f"Error checking cancel permission: {str(e)}")
+            return False
+    
+    @staticmethod
+    def get_user_pending_requests(user_id):
+        """
+        Get all pending join requests for a user
+        """
+        try:
+            with get_cursor() as cursor:
+                return GroupRepository.get_user_pending_requests(cursor, user_id)
+                    
+        except Exception as e:
+            print(f"Error getting user pending requests: {str(e)}")
+            return []

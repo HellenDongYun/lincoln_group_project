@@ -936,6 +936,7 @@ def participant_search():
     """Participant-specific search for groups and events"""
     user_id = auth_service.get_user_id()
 
+
     # Only allow participants to use this search
     if not auth_service.is_participant():
         flash('This search feature is for participants only', 'error')
@@ -1046,6 +1047,54 @@ def request_join_form(group_id):
         return redirect(url_for('groups.index'))
 
     return render_template('group/join_request.html', group=group)
+
+@group_blueprint.route('/<int:group_id>/cancel-join-request', methods=['POST'])
+@require_login
+def cancel_join_request(group_id):
+   """
+   Cancel pending join request for a private group
+   """  
+   user_id = auth_service.get_user_id()
+    # get the URL parameter of the current page for redirection back
+   search_term = request.args.get('search', '').strip()
+   location_filter = request.args.get('location', '').strip()
+   date_filter = request.args.get('date', '').strip()
+   type_filter = request.args.get('type', '').strip()
+   sort_by = request.args.get('sort', 'popularity').strip()
+   try:
+        
+        result = GroupService.cancel_join_request(group_id, user_id)
+        
+        if result['success']:
+            flash(result['message'], 'success')
+        else:
+            flash(result['message'], 'error')
+            
+   except Exception as e:
+        flash('Error cancelling join request', 'error')
+    
+   return redirect(url_for('groups.participant_search', group_id=group_id,        search=search_term,location=location_filter,date=date_filter, type=type_filter,
+   sort=sort_by))
+
+# 可选：添加查看待处理请求的路由 check if this one is used this is can delete only in the conter not used in the html page
+@group_blueprint.route('/my-pending-requests')
+@require_login
+def my_pending_requests():
+    """Show user's pending join requests"""
+    user_id = auth_service.get_user_id()
+    
+    try:
+        pending_requests = GroupService.get_user_pending_requests(user_id)
+        return render_template('groups/my_pending_requests.html', 
+                             pending_requests=pending_requests)
+    except Exception as e:
+        flash('Error loading your pending requests', 'error')
+        return redirect(url_for('groups.index'))
+
+
+
+
+
 
 
 @group_blueprint.route('/<int:group_id>/request-join', methods=['POST'])
