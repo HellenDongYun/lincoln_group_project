@@ -10,8 +10,6 @@ from src.app.participant.participant_controller import participant_blueprint
 from src.app.group.group_controller import group_blueprint
 from src.app.support.support_controller import support_blueprint
 
-
-
 from src.app.common.db import db
 from src.app.common.nav.nav_items import left_nav_items, right_nav_items
 from src.app.common.nav.nav_link import nav_link
@@ -29,8 +27,6 @@ app.jinja_env.globals.update(nav_link=nav_link)
 # Register Jinja filters for timezone conversion
 app.jinja_env.filters['to_nz_time'] = to_nz_time
 app.jinja_env.filters['format_nz_datetime'] = format_nz_datetime
-
-
 
 # Register Blueprints
 app.register_blueprint(app_blueprint, url_prefix='/')
@@ -63,7 +59,3 @@ def get_nav_items():
         "unread_notification_count": unread_notification_count,
         "current_user_id": user_id
     }
-
-
-
-
