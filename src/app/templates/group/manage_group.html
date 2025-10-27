@@ -156,6 +156,123 @@
       </div>
 
       <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h2 id="challenges" class="h5 fw-bold mb-1">Group challenges</h2>
+                <p class="text-muted small mb-0">Create goals tailored to your community and reward members for verified progress.</p>
+              </div>
+              <button type="button"
+                      class="btn btn-warning text-black btn-sm shadow-sm"
+                      data-action="create-challenge"
+                      data-url="{{ url_for('groups.create_group_challenge', group_id=group.id) }}">
+                <i class="bi bi-plus-circle me-1"></i>New challenge
+              </button>
+            </div>
+            {% if challenges %}
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">Challenge</th>
+                    <th scope="col">Target</th>
+                    <th scope="col">Timeframe</th>
+                    <th scope="col">Rewards</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end" style="width: 160px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for challenge in challenges %}
+                  <tr>
+                    <td>
+                      <p class="fw-semibold mb-1">{{ challenge.name }}</p>
+                      <p class="text-muted small mb-0">{{ challenge.description or 'No description provided.' }}</p>
+                    </td>
+                    <td>
+                      <span class="badge bg-light text-dark border small text-uppercase">{{ challenge.target_metric_label }}</span>
+                      <div class="small text-muted mt-1">Goal: {{ challenge.target_value if challenge.target_value is not none else '—' }}</div>
+                    </td>
+                    <td>
+                      {% if challenge.timeframe_days %}
+                        <span class="badge bg-secondary-subtle text-secondary">{{ challenge.timeframe_days }} day{{ challenge.timeframe_days != 1 and 's' or '' }}</span>
+                      {% else %}
+                        <span class="text-muted small">Flexible</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if challenge.achievement_name %}
+                        <div class="small text-muted">Achievement: {{ challenge.achievement_name }}</div>
+                      {% endif %}
+                      {% if challenge.reward_badge_label %}
+                        <div class="small text-muted">Badge: {{ challenge.reward_badge_label }}</div>
+                      {% endif %}
+                      {% if challenge.reward_trophy_label %}
+                        <div class="small text-muted">Trophy: {{ challenge.reward_trophy_label }}</div>
+                      {% endif %}
+                      {% if not (challenge.achievement_name or challenge.reward_badge_label or challenge.reward_trophy_label) %}
+                        <span class="text-muted small">No rewards configured.</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if challenge.status == 'published' %}
+                        <span class="badge bg-success-subtle text-success">{{ challenge.status_label }}</span>
+                      {% elif challenge.status == 'archived' %}
+                        <span class="badge bg-secondary-subtle text-secondary">{{ challenge.status_label }}</span>
+                      {% else %}
+                        <span class="badge bg-primary-subtle text-primary">{{ challenge.status_label }}</span>
+                      {% endif %}
+                      <div class="small text-muted mt-1">
+                        {% if challenge.verification_required %}
+                          <i class="bi bi-shield-check me-1 text-success"></i>Verification required
+                        {% else %}
+                          <i class="bi bi-check-circle me-1 text-muted"></i>Auto-complete allowed
+                        {% endif %}
+                      </div>
+                    </td>
+                    <td class="text-end">
+                      <div class="d-flex gap-2 justify-content-end">
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                data-action="edit-challenge"
+                                data-url="{{ url_for('groups.update_group_challenge', group_id=group.id, challenge_id=challenge.id) }}"
+                                data-challenge-id="{{ challenge.id }}"
+                                data-challenge-name="{{ challenge.name|e }}"
+                                data-challenge-description="{{ (challenge.description or '')|e }}"
+                                data-challenge-target-metric="{{ challenge.target_metric|e }}"
+                                data-challenge-target-value="{{ challenge.target_value if challenge.target_value is not none else '' }}"
+                                data-challenge-timeframe="{{ challenge.timeframe_days if challenge.timeframe_days is not none else '' }}"
+                                data-challenge-achievement="{{ challenge.achievement_id or '' }}"
+                                data-challenge-reward-badge="{{ (challenge.reward_badge_label or '')|e }}"
+                                data-challenge-reward-trophy="{{ (challenge.reward_trophy_label or '')|e }}"
+                                data-challenge-status="{{ challenge.status }}"
+                                data-challenge-verification="{{ '1' if challenge.verification_required else '0' }}">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="post"
+                              action="{{ url_for('groups.delete_group_challenge', group_id=group.id, challenge_id=challenge.id) }}"
+                              class="challenge-delete-form"
+                              data-challenge-name="{{ challenge.name|e }}">
+                          <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0 text-center py-4">No challenges configured yet. Create one to launch a new group goal.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
         <div id="manage-alert" class="alert d-none" role="alert"></div>
         <div class="card shadow-sm border-0">
           <div class="card-body p-4">
@@ -223,6 +340,98 @@
     </div>
   </div>
 </section>
+<div class="modal fade" id="challengeModal" tabindex="-1" aria-labelledby="challengeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" id="challengeModalForm" action="{{ url_for('groups.create_group_challenge', group_id=group.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="challengeModalLabel" data-role="challenge-modal-title">Create challenge</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="challengeModalAlert" class="alert d-none" role="alert"></div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="challengeName" class="form-label fw-semibold">Challenge name</label>
+              <input type="text" class="form-control" id="challengeName" name="name" maxlength="100" required>
+            </div>
+            <div class="col-md-6">
+              <label for="challengeStatus" class="form-label fw-semibold">Status</label>
+              <select class="form-select" id="challengeStatus" name="status" required>
+                {% for choice in challenge_options.status_choices %}
+                <option value="{{ choice.value }}" {% if choice.value == 'draft' %}selected{% endif %}>{{ choice.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="challengeDescription" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="challengeDescription" name="description" rows="3" maxlength="500" placeholder="Outline what the group should accomplish."></textarea>
+            </div>
+            <div class="col-md-6">
+              <label for="challengeMetric" class="form-label fw-semibold">Target metric</label>
+              <select class="form-select" id="challengeMetric" name="target_metric" required>
+                <option value="" selected>Select target metric</option>
+                {% for metric in challenge_options.target_metrics %}
+                <option value="{{ metric.value }}">{{ metric.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="challengeTargetValue" class="form-label fw-semibold">Target value</label>
+              <input type="number" class="form-control" id="challengeTargetValue" name="target_value" min="1" required>
+            </div>
+            <div class="col-md-3">
+              <label for="challengeTimeframe" class="form-label fw-semibold">Timeframe (days)</label>
+              <input type="number" class="form-control" id="challengeTimeframe" name="timeframe_days" min="1" placeholder="Optional">
+            </div>
+            <div class="col-md-6">
+              <label for="challengeAchievement" class="form-label fw-semibold">Linked achievement</label>
+              <select class="form-select" id="challengeAchievement" name="achievement_id">
+                <option value="">No linked achievement</option>
+                {% for achievement in challenge_options.achievements %}
+                <option value="{{ achievement.id }}">{{ achievement.name }}{% if achievement.points_reward %} ({{ achievement.points_reward|int }} pts){% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="challengeBadgeSelect" class="form-label fw-semibold">Badge label</label>
+              <select class="form-select" id="challengeBadgeSelect">
+                <option value="">No badge reward</option>
+                {% for label in challenge_options.reward_badge_labels %}
+                <option value="{{ label }}">{{ label }}</option>
+                {% endfor %}
+                <option value="__custom__">Custom label...</option>
+              </select>
+              <div class="mt-2 d-none" id="challengeBadgeCustomWrapper">
+                <input type="text" class="form-control" id="challengeBadgeCustom" maxlength="100" placeholder="Enter custom badge label">
+              </div>
+              <input type="hidden" id="challengeBadgeValue" name="reward_badge_label">
+            </div>
+            <div class="col-md-3">
+              <label for="challengeTrophySelect" class="form-label fw-semibold">Trophy label</label>
+              <select class="form-select" id="challengeTrophySelect">
+                <option value="">No trophy reward</option>
+                {% for label in challenge_options.reward_trophy_labels %}
+                <option value="{{ label }}">{{ label }}</option>
+                {% endfor %}
+                <option value="__custom__">Custom label...</option>
+              </select>
+              <div class="mt-2 d-none" id="challengeTrophyCustomWrapper">
+                <input type="text" class="form-control" id="challengeTrophyCustom" maxlength="100" placeholder="Enter custom trophy label">
+              </div>
+              <input type="hidden" id="challengeTrophyValue" name="reward_trophy_label">
+            </div>
+            <input type="hidden" id="challengeVerificationValue" name="verification_required" value="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning text-black" data-role="challenge-submit">Save challenge</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 <div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true" data-group-id="{{ group.id }}">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
@@ -313,6 +522,295 @@
 
       return data;
     }
+
+    const challengeModalEl = document.getElementById('challengeModal');
+    const challengeForm = document.getElementById('challengeModalForm');
+    const challengeModalTitle = challengeModalEl ? challengeModalEl.querySelector('[data-role="challenge-modal-title"]') : null;
+    const challengeSubmitButton = challengeModalEl ? challengeModalEl.querySelector('[data-role="challenge-submit"]') : null;
+    const challengeNameInput = document.getElementById('challengeName');
+    const challengeDescriptionInput = document.getElementById('challengeDescription');
+    const challengeMetricSelect = document.getElementById('challengeMetric');
+    const challengeTargetValueInput = document.getElementById('challengeTargetValue');
+    const challengeTimeframeInput = document.getElementById('challengeTimeframe');
+    const challengeAchievementSelect = document.getElementById('challengeAchievement');
+    const challengeBadgeSelect = document.getElementById('challengeBadgeSelect');
+    const challengeBadgeValueInput = document.getElementById('challengeBadgeValue');
+    const challengeBadgeCustomWrapper = document.getElementById('challengeBadgeCustomWrapper');
+    const challengeBadgeCustomInput = document.getElementById('challengeBadgeCustom');
+    const challengeTrophySelect = document.getElementById('challengeTrophySelect');
+    const challengeTrophyValueInput = document.getElementById('challengeTrophyValue');
+    const challengeTrophyCustomWrapper = document.getElementById('challengeTrophyCustomWrapper');
+    const challengeTrophyCustomInput = document.getElementById('challengeTrophyCustom');
+    const challengeStatusSelect = document.getElementById('challengeStatus');
+    const challengeVerificationInput = document.getElementById('challengeVerificationValue');
+    const createChallengeButton = document.querySelector('[data-action="create-challenge"]');
+    const challengeModalInstance = challengeModalEl && typeof bootstrap !== 'undefined'
+      ? new bootstrap.Modal(challengeModalEl)
+      : null;
+    const createChallengeUrl = createChallengeButton ? createChallengeButton.dataset.url : challengeForm?.getAttribute('action') || null;
+
+    function getDefaultChallengeStatus() {
+      if (!challengeStatusSelect) return '';
+      const selectedOption = challengeStatusSelect.querySelector('option[selected]');
+      if (selectedOption && selectedOption.value) return selectedOption.value;
+      return challengeStatusSelect.value || '';
+    }
+
+    function setupCustomSelect(selectEl, hiddenInput, customWrapper, customInput) {
+      if (!selectEl || !hiddenInput) {
+        return () => {};
+      }
+
+      const optionValues = new Set(Array.from(selectEl.options).map((option) => option.value));
+      const hasCustomOption = optionValues.has('__custom__');
+
+      function hideCustom(clearValue = true) {
+        if (customWrapper) {
+          customWrapper.classList.add('d-none');
+        }
+        if (customInput) {
+          customInput.required = false;
+          if (clearValue) {
+            customInput.value = '';
+          }
+        }
+      }
+
+      function showCustom() {
+        if (customWrapper) {
+          customWrapper.classList.remove('d-none');
+        }
+        if (customInput) {
+          customInput.required = true;
+        }
+      }
+
+      selectEl.addEventListener('change', () => {
+        const selected = selectEl.value;
+        if (hasCustomOption && selected === '__custom__') {
+          showCustom();
+          if (customInput) {
+            if (!customInput.value) {
+              hiddenInput.value = '';
+            } else {
+              hiddenInput.value = customInput.value.trim();
+            }
+            customInput.focus();
+          } else {
+            hiddenInput.value = '';
+          }
+        } else {
+          hideCustom();
+          hiddenInput.value = selected || '';
+        }
+      });
+
+      if (customInput) {
+        customInput.addEventListener('input', () => {
+          if (hasCustomOption && selectEl.value === '__custom__') {
+            hiddenInput.value = customInput.value.trim();
+          }
+        });
+      }
+
+      function applyValue(rawValue) {
+        const value = rawValue == null ? '' : String(rawValue).trim();
+
+        if (value && optionValues.has(value) && value !== '__custom__') {
+          selectEl.value = value;
+          hideCustom();
+          hiddenInput.value = value;
+          return;
+        }
+
+        if (value && hasCustomOption && value !== '__custom__') {
+          selectEl.value = '__custom__';
+          showCustom();
+          if (customInput) {
+            customInput.value = value;
+          }
+          hiddenInput.value = value;
+          return;
+        }
+
+        if (value === '__custom__' && hasCustomOption) {
+          selectEl.value = '__custom__';
+          showCustom();
+          hiddenInput.value = customInput ? customInput.value.trim() : '';
+          return;
+        }
+
+        selectEl.value = '';
+        hideCustom();
+        hiddenInput.value = '';
+      }
+
+      return applyValue;
+    }
+
+    const applyBadgeValue = setupCustomSelect(
+      challengeBadgeSelect,
+      challengeBadgeValueInput,
+      challengeBadgeCustomWrapper,
+      challengeBadgeCustomInput
+    );
+
+    const applyTrophyValue = setupCustomSelect(
+      challengeTrophySelect,
+      challengeTrophyValueInput,
+      challengeTrophyCustomWrapper,
+      challengeTrophyCustomInput
+    );
+
+    function configureChallengeForm(values) {
+      if (!challengeForm) return;
+      challengeForm.reset();
+      challengeForm.action = values?.action || createChallengeUrl || '';
+
+      if (challengeModalTitle) {
+        challengeModalTitle.textContent = values?.title || 'Create challenge';
+      }
+
+      if (challengeSubmitButton) {
+        challengeSubmitButton.textContent = values?.submitLabel || 'Save challenge';
+      }
+
+      if (!values) {
+        return;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'name') && challengeNameInput) {
+        challengeNameInput.value = values.name || '';
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'description') && challengeDescriptionInput) {
+        challengeDescriptionInput.value = values.description || '';
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'target_metric') && challengeMetricSelect) {
+        const metricValue = values.target_metric || '';
+        if (metricValue) {
+          const hasOption = Array.from(challengeMetricSelect.options).some((option) => option.value === metricValue);
+          if (!hasOption) {
+            const customOption = document.createElement('option');
+            customOption.value = metricValue;
+            customOption.textContent = metricValue;
+            challengeMetricSelect.appendChild(customOption);
+          }
+          challengeMetricSelect.value = metricValue;
+        } else {
+          challengeMetricSelect.value = '';
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'target_value') && challengeTargetValueInput) {
+        challengeTargetValueInput.value = values.target_value || '';
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'timeframe_days') && challengeTimeframeInput) {
+        challengeTimeframeInput.value = values.timeframe_days || '';
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'achievement_id') && challengeAchievementSelect) {
+        const value = values.achievement_id != null && values.achievement_id !== ''
+          ? String(values.achievement_id)
+          : '';
+        challengeAchievementSelect.value = value;
+      }
+
+      if (typeof applyBadgeValue === 'function') {
+        applyBadgeValue(values?.reward_badge_label || '');
+      }
+
+      if (typeof applyTrophyValue === 'function') {
+        applyTrophyValue(values?.reward_trophy_label || '');
+      }
+
+      if (Object.prototype.hasOwnProperty.call(values, 'status') && challengeStatusSelect) {
+        const currentStatus = values.status || getDefaultChallengeStatus();
+        challengeStatusSelect.value = currentStatus;
+      }
+
+      if (challengeVerificationInput && Object.prototype.hasOwnProperty.call(values, 'verification_required')) {
+        challengeVerificationInput.value = values.verification_required ? '1' : '0';
+      }
+    }
+
+    if (challengeModalEl && challengeModalInstance && challengeForm) {
+      if (createChallengeButton) {
+        createChallengeButton.addEventListener('click', () => {
+          configureChallengeForm({
+            action: createChallengeUrl,
+            title: 'Create challenge',
+            submitLabel: 'Save challenge',
+            verification_required: false
+          });
+          challengeModalInstance.show();
+          if (challengeNameInput) {
+            challengeNameInput.focus();
+          }
+        });
+      }
+
+      document.querySelectorAll('[data-action="edit-challenge"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          configureChallengeForm({
+            action: button.dataset.url,
+            title: 'Edit challenge',
+            submitLabel: 'Save changes',
+            name: button.dataset.challengeName || '',
+            description: button.dataset.challengeDescription || '',
+            target_metric: button.dataset.challengeTargetMetric || '',
+            target_value: button.dataset.challengeTargetValue || '',
+            timeframe_days: button.dataset.challengeTimeframe || '',
+            achievement_id: button.dataset.challengeAchievement || '',
+            reward_badge_label: button.dataset.challengeRewardBadge || '',
+            reward_trophy_label: button.dataset.challengeRewardTrophy || '',
+            status: button.dataset.challengeStatus || getDefaultChallengeStatus(),
+            verification_required: button.dataset.challengeVerification === '1'
+          });
+          challengeModalInstance.show();
+          if (challengeNameInput) {
+            challengeNameInput.focus();
+          }
+        });
+      });
+
+      challengeModalEl.addEventListener('hidden.bs.modal', () => {
+        configureChallengeForm({
+          action: createChallengeUrl,
+          title: 'Create challenge',
+          submitLabel: 'Save challenge',
+          verification_required: false
+        });
+      });
+    }
+
+    if (challengeForm) {
+      challengeForm.addEventListener('submit', () => {
+        if (challengeBadgeValueInput && challengeBadgeCustomInput && challengeBadgeSelect && challengeBadgeSelect.value === '__custom__') {
+          challengeBadgeValueInput.value = challengeBadgeCustomInput.value.trim();
+        }
+        if (challengeBadgeValueInput) {
+          challengeBadgeValueInput.value = (challengeBadgeValueInput.value || '').trim();
+        }
+        if (challengeTrophyValueInput && challengeTrophyCustomInput && challengeTrophySelect && challengeTrophySelect.value === '__custom__') {
+          challengeTrophyValueInput.value = challengeTrophyCustomInput.value.trim();
+        }
+        if (challengeTrophyValueInput) {
+          challengeTrophyValueInput.value = (challengeTrophyValueInput.value || '').trim();
+        }
+      });
+    }
+
+    document.querySelectorAll('.challenge-delete-form').forEach((form) => {
+      form.addEventListener('submit', (event) => {
+        const name = form.dataset.challengeName || 'this challenge';
+        if (!confirm(`Delete the "${name}" challenge? This cannot be undone.`)) {
+          event.preventDefault();
+        }
+      });
+    });
 
     document.querySelectorAll('.role-select').forEach((select) => {
       select.addEventListener('change', async (event) => {
@@ -706,9 +1204,9 @@
       const eventName = eventMeta.name || 'Event assignments';
       const eventInfoParts = [eventMeta.datetime_display, eventMeta.town].filter(Boolean);
 
-  if (assignmentModalLabel) assignmentModalLabel.textContent = `Manage participants & volunteers – ${eventName}`;
+      if (assignmentModalLabel) assignmentModalLabel.textContent = `Manage participants & volunteers - ${eventName}`;
       if (assignmentEventName) assignmentEventName.textContent = eventName;
-      if (assignmentEventMeta) assignmentEventMeta.textContent = eventInfoParts.join(' • ');
+      if (assignmentEventMeta) assignmentEventMeta.textContent = eventInfoParts.join(' - ');
 
       renderParticipants(assignment);
       renderVolunteerRoles(assignment);

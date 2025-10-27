@@ -411,11 +411,11 @@ def notifications():
 @support_blueprint.route('/notifications/<int:notification_id>/mark-read', methods=['GET', 'POST'])
 @require_login
 def mark_notification_read(notification_id):
-    #Mark a notification as read and redirect to the associated request
+    #Mark a notification as read and redirect to the associated page
     user_id = auth_service.get_user_id()
 
     try:
-        # Get the notification to find the reference_id (request_id)
+        # Get the notification to find the reference_id and type
         notifications = SupportService.get_notifications(user_id, unread_only=False)
         notification = next((n for n in notifications if n['id'] == notification_id), None)
 
@@ -423,8 +423,13 @@ def mark_notification_read(notification_id):
             # Mark as read
             SupportService.mark_notification_read(notification_id, user_id)
 
-            # Redirect to the associated request
-            return redirect(url_for('support.view_request', request_id=notification['reference_id']))
+            # Redirect based on notification type
+            if notification['type'] in ['group_join_approved', 'group_join_rejected']:
+                # For group notifications, redirect to the group page
+                return redirect(url_for('groups.participant_search'))
+            else:
+                # For support request notifications, redirect to the request
+                return redirect(url_for('support.view_request', request_id=notification['reference_id']))
         else:
             flash("Notification not found.", "warning")
             return redirect(url_for('support.notifications'))

@@ -10,10 +10,10 @@
                 <h1 class="display-5 text-white">Support Queue</h1>
                 <p class="lead text-white-50">Manage and respond to user support requests.</p>
             </div>
-            {% if is_super_admin %}
+            {% if is_admin_or_tech %}
             <div>
                 <a href="{{ url_for('admin.manage_user_roles') }}" class="btn btn-outline-light">
-                    <i class="bi bi-people me-2"></i>Manage User Roles
+                    <i class="bi bi-person-check-fill me-2"></i>Manage User Status
                 </a>
             </div>
             {% endif %}
@@ -207,8 +207,8 @@
                             </td>
                             <td>
                                 <small class="text-muted">
-                                    {{ req.created_at.strftime('%d %b %Y') }}<br>
-                                    {{ req.created_at.strftime('%I:%M %p') }}
+                                    {{ req.created_at|format_nz_datetime('%d %b %Y') }}<br>
+                                    {{ req.created_at|format_nz_datetime('%I:%M %p') }}
                                 </small>
                             </td>
                             <td>
@@ -252,9 +252,10 @@
                                     </a>
                                 </div>
                                 {% else %}
-                                <span class="badge bg-light text-muted">
-                                    <i class="bi bi-x-circle me-1"></i>Closed - No Actions
-                                </span>
+                                <a href="{{ url_for('support.view_request', request_id=req.id) }}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>View
+                                </a>
                                 {% endif %}
                             </td>
                         </tr>

@@ -107,6 +107,10 @@ def register_for_event(encoded_participant_id: str, event_id: int):
     else:
         flash("Unable to register for this event. It may be full or you may already be registered.", "danger")
 
+    next_url = request.form.get("next")
+    if next_url and next_url.startswith("/"):
+        return redirect(next_url)
+
     return redirect(
         url_for("participant.dashboard", encoded_participant_id=encoded_participant_id)
     )
@@ -131,6 +135,10 @@ def cancel_registration(encoded_participant_id: str, event_id: int):
         flash("Registration cancelled successfully.", "success")
     else:
         flash("Unable to cancel this registration.", "danger")
+
+    next_url = request.form.get("next")
+    if next_url and next_url.startswith("/"):
+        return redirect(next_url)
 
     return redirect(
         url_for("participant.dashboard", encoded_participant_id=encoded_participant_id)
@@ -438,6 +446,31 @@ def leaderboard(encoded_participant_id):
     metric = request.args.get('metric', 'events')  # events, points, volunteer
     time_filter = request.args.get('time', 'all')  # 1month, 3months, 6months, all
     group_id_param = request.args.get('group', 'all')  # 'all' or numeric id
+    gender_param = (request.args.get('gender', 'all') or 'all').strip().lower()
+    age_group_param = (request.args.get('age_group', 'all') or 'all').strip()
+
+    gender_options = [
+        {"value": "all", "label": "All genders"},
+        {"value": "female", "label": "Female"},
+        {"value": "male", "label": "Male"},
+        {"value": "other", "label": "Other"},
+        {"value": "unspecified", "label": "Prefer not to say"},
+    ]
+    valid_gender_values = {option["value"] for option in gender_options}
+    if gender_param not in valid_gender_values:
+        gender_param = "all"
+
+    age_group_options = [
+        {"value": "all", "label": "All age groups"},
+        {"value": "Under 18", "label": "Under 18"},
+        {"value": "18-29", "label": "18-29"},
+        {"value": "30-44", "label": "30-44"},
+        {"value": "45+", "label": "45+"},
+        {"value": "prefer_not_to_say", "label": "Prefer not to say"},
+    ]
+    valid_age_group_values = {option["value"] for option in age_group_options}
+    if age_group_param not in valid_age_group_values:
+        age_group_param = "all"
     
     # Validate metric
     if metric not in ['events', 'points', 'volunteer']:
@@ -467,12 +500,26 @@ def leaderboard(encoded_participant_id):
             selected_group_id = None
             group_id_param = 'all'
 
+    gender_value = None
+    if gender_param == 'unspecified':
+        gender_value = 'unspecified'
+    elif gender_param != 'all':
+        gender_value = gender_param
+
+    age_group_value = None
+    if age_group_param == 'prefer_not_to_say':
+        age_group_value = 'Unknown'
+    elif age_group_param != 'all':
+        age_group_value = age_group_param
+
     # Get leaderboard data
     leaderboard_data = participant_service.get_leaderboard_data(
         metric=metric,
         time_window_days=time_window_days,
         current_user_id=participant_id,
-        group_id=selected_group_id
+        group_id=selected_group_id,
+        gender=gender_value,
+        age_group=age_group_value
     )
     
     return render_template(
@@ -483,6 +530,10 @@ def leaderboard(encoded_participant_id):
         current_time_filter=time_filter,
         time_windows=LEADERBOARD_TIME_WINDOWS,
         groups=user_groups,
-        current_group=group_id_param
+        current_group=group_id_param,
+        gender_options=gender_options,
+        current_gender=gender_param,
+        age_group_options=age_group_options,
+        current_age_group=age_group_param
     )
 

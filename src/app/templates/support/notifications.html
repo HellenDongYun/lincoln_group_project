@@ -39,6 +39,10 @@
                             <i class="bi bi-chat-left text-success me-2"></i>
                         {% elif notification.type == 'request_dropped' %}
                             <i class="bi bi-arrow-return-left text-warning me-2"></i>
+                        {% elif notification.type == 'group_join_approved' %}
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                        {% elif notification.type == 'group_join_rejected' %}
+                            <i class="bi bi-x-circle text-danger me-2"></i>
                         {% endif %}
                         {{ notification.message }}
                         {% if not notification.is_read %}
@@ -46,15 +50,19 @@
                         {% endif %}
                     </h6>
                     <p class="mb-1 small text-muted">
-                        Request #{{ notification.reference_id }}
-                        {% if notification.request_subject %}
-                            - {{ notification.request_subject }}
+                        {% if notification.type in ['group_join_approved', 'group_join_rejected'] %}
+                            Group notification
+                        {% else %}
+                            Request #{{ notification.reference_id }}
+                            {% if notification.request_subject %}
+                                - {{ notification.request_subject }}
+                            {% endif %}
                         {% endif %}
                     </p>
                 </div>
                 <small class="text-muted text-nowrap ms-3">
-                    {{ notification.created_at.strftime('%d %b %Y') }}<br>
-                    {{ notification.created_at.strftime('%I:%M %p') }}
+                    {{ notification.created_at|format_nz_datetime('%d %b %Y') }}<br>
+                    {{ notification.created_at|format_nz_datetime('%I:%M %p') }}
                 </small>
             </div>
         </a>
@@ -70,7 +78,8 @@
             <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>A support request is assigned to you</li>
             <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your request status changes</li>
             <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Someone comments on your request</li>
-            <li><i class="bi bi-check-circle text-success me-2"></i>Your request is unassigned</li>
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your request is unassigned</li>
+            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your group join request is approved or rejected</li>
         </ul>
         <a href="{{ url_for('support.my_requests') }}" class="btn btn-primary mt-3">
             <i class="bi bi-ticket-detailed me-2"></i>View My Requests
