@@ -21,99 +21,15 @@
                                 <div class="input-group">
                                     <input aria-label="Search by event name and location"
                                            class="form-control"
-                                           id="search"
-                                           name="search"
-                                           placeholder="Search by event name and location"
-                                           value="{{ search_query or '' }}"
-                                           type="text"
-                                    >
-                                    <button class="btn btn-dark" type="submit">Search</button>
-                                </div>
-                            </div>
-                        </div>
+                                        {% extends "base.html" %}
+                                        {% block title %}Events{% endblock %}
 
-                        <!-- Filters row -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="location" class="form-label">Location</label>
-                                <select class="form-select" id="location" name="location">
-                                    <option value="">All Locations</option>
-                                    {% for location in locations %}
-                                        <option value="{{ location }}" 
-                                                {% if location_filter == location %}selected{% endif %}>
-                                            {{ location }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="date" class="form-label">Time Period</label>
-                                <select class="form-select" id="date" name="date">
-                                    <option value="">All Upcoming Events</option>
-                                    <option value="next_2_weeks" {% if date_filter == 'next_2_weeks' %}selected{% endif %}>Next 2 Weeks</option>
-                                    <option value="next_month" {% if date_filter == 'next_month' %}selected{% endif %}>Next Month</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-12">
-                                <a class="btn btn-outline-dark" href="{{ request.path }}">Clear All Filters</a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                {% if events %}
-                    {% for event in events %}
-                        <div class="card mt-4">
-                            <div class="card-body row">
-                                <div class="col-md-6">
-                                    <h5><i class="fas fa-calendar-check text-primary"></i> {{ event.name }}</h5>
-                                    {% if event.description %}
-                                    <p>{{ event.description }}</p>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-6">
-                                    <small class="text-muted">
-                                        <i class="fas fa-map-marker-alt"></i> {{ event.town }}
-                                        <i class="fas fa-clock"></i> {{ event.datetime_str }}
-                                        <br/>
-                                        <i class="fas fa-tag me-1"></i>{{ event.event_type }}
-                                        <br/>
-                                    </small>
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <span class="badge bg-primary">{{ event.available_spaces }} available spaces</span>
-                                        
-                                        {% if not is_logged_in %}
-                                            <a href="{{ url_for('app.login') }}" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-sign-in-alt"></i> Login to Register
-                                            </a>
-                                        {% elif not is_participant %}
-                                            <button class="btn btn-outline-secondary btn-sm" disabled title="Only participants can register for events">
-                                                <i class="fas fa-user-times"></i> Participant Only
-                                            </button>
-                                        {% elif event.available_spaces > 0 %}
-                                            <form method="POST" action="{{ url_for('participant.register_for_event', encoded_participant_id=current_user_encoded_id, event_id=event.id) }}" style="display: inline;">
-                                                <button type="submit" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-plus"></i> Register
-                                                </button>
-                                            </form>
-                                        {% else %}
-                                            <button class="btn btn-secondary btn-sm" disabled>
-                                                <i class="fas fa-times"></i> Full
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-
-            </div>
-        </div>
-
-</div>
-{% endblock %}
+                                        {% block content %}
+                                        <section class="container py-5 text-center">
+                                          <div class="mx-auto" style="max-width: 600px;">
+                                            <h1 class="display-6 mb-3">Looking for events?</h1>
+                                            <p class="text-muted mb-4">The dedicated events page has been retired. Use the enhanced search experience instead.</p>
+                                            <a href="{{ url_for('app.home_filter_events', filter_type='events') }}" class="btn btn-primary">Browse events</a>
+                                          </div>
+                                        </section>
+                                        {% endblock %}

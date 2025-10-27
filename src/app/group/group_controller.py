@@ -83,6 +83,11 @@ def view_group(group_id):
 def join_group(group_id):
     """Join a group"""
     user_id = auth_service.get_user_id()
+    next_url = (request.form.get('next') or '').strip()
+    redirect_target = url_for('groups.view_group', group_id=group_id)
+    if next_url.startswith('/'):
+        redirect_target = next_url
+
     group = GroupService.get_group_by_id(group_id)
 
     if not group:
@@ -93,11 +98,11 @@ def join_group(group_id):
 
     if GroupService.is_group_member(group_id, user_id):
         flash('You are already a member of this group.', 'info')
-        return redirect(url_for('groups.view_group', group_id=group_id))
+        return redirect(redirect_target)
 
     if visibility != 'public' and not auth_service.is_super_admin():
         flash('This group requires a request to join.', 'warning')
-        return redirect(url_for('groups.view_group', group_id=group_id))
+        return redirect(redirect_target)
 
     try:
         GroupService.add_member_to_group(group_id, user_id)
@@ -105,7 +110,7 @@ def join_group(group_id):
     except Exception:
         flash('Error joining group. Please try again later.', 'error')
 
-    return redirect(url_for('groups.view_group', group_id=group_id))
+    return redirect(redirect_target)
 
 
 @group_blueprint.route('/<int:group_id>/events/<int:event_id>/volunteer/<int:role_id>', methods=['POST'])
@@ -1119,6 +1124,9 @@ def reject_application(application_id):
 def request_join_form(group_id):
     """Show form to request joining a private group"""
     user_id = auth_service.get_user_id()
+    next_url = (request.args.get('next') or '').strip()
+    if next_url and not next_url.startswith('/'):
+        next_url = ''
 
     try:
         can_join, join_action = GroupService.can_user_join_group_enhanced(group_id, user_id)
@@ -1134,7 +1142,7 @@ def request_join_form(group_id):
         flash('Group not found', 'error')
         return redirect(url_for('groups.index'))
 
-    return render_template('group/join_request.html', group=group)
+    return render_template('group/join_request.html', group=group, next_url=next_url)
 
 @group_blueprint.route('/<int:group_id>/cancel-join-request', methods=['POST'])
 @require_login
@@ -1191,6 +1199,10 @@ def submit_join_request(group_id):
     """Submit request to join private group"""
     user_id = auth_service.get_user_id()
     message = request.form.get('message', '').strip()
+    next_url = (request.form.get('next') or '').strip()
+    redirect_target = url_for('groups.view_group', group_id=group_id)
+    if next_url.startswith('/'):
+        redirect_target = next_url
 
     try:
         GroupService.request_to_join_group(user_id, group_id, message)
@@ -1200,7 +1212,7 @@ def submit_join_request(group_id):
     except Exception as e:
         flash('Error submitting request', 'error')
 
-    return redirect(url_for('groups.view_group', group_id=group_id))
+    return redirect(redirect_target)
 
 
 @group_blueprint.route('/<int:group_id>/manage/join-requests')

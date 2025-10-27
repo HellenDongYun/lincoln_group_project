@@ -12,7 +12,7 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
         nav_items.append(
             {"label": "Race Results", "url": url_for("results.public_results")}
         )
-        nav_items.append({"label": "Events", "url": url_for("app.get_events")})
+        nav_items.append({"label": "Events", "url": url_for("app.home_filter_events", filter_type="events")})
         return nav_items
 
     if user_role == GlobalRole.SUPER_ADMIN:
@@ -33,7 +33,7 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "Support Queue",
             "url": url_for('support.support_queue')
         })
-        nav_items.append({"label": "Events", "url": url_for("app.get_events")})
+        nav_items.append({"label": "Events", "url": url_for("app.home_filter_events", filter_type="events")})
         nav_items.append({
             "label": "Help & Support",
             "url": url_for('support.my_requests')
@@ -115,7 +115,7 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
         })
         nav_items.append({
             "label": "Events",
-            "url": url_for('app.get_events')
+            "url": url_for('app.home_filter_events', filter_type='events')
         })
 
         nav_items.append(
