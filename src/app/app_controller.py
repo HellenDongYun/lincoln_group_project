@@ -48,42 +48,6 @@ def home():
                          is_logged_in=auth_service.is_logged_in(),
                          upcoming_events=upcoming_events)
 
-@app_blueprint.route("events")
-def get_events():
-    # Get search and filter parameters
-    search_query = request.args.get("search", "").strip()
-    location_filter = request.args.get("location", "").strip()
-    date_filter = request.args.get("date", "").strip()
-
-    # Get events based on filters
-    events = event_service.get_events(search_query, location_filter, date_filter)
-    
-    # Get unique locations for filter dropdown
-    locations = event_service.get_unique_locations()
-
-    # Build flash message for no results
-    if (search_query or location_filter or date_filter) and len(events) == 0:
-        filters_applied = []
-        if search_query:
-            filters_applied.append(f'search: "{search_query}"')
-        if location_filter:
-            filters_applied.append(f'location: "{location_filter}"')
-        if date_filter:
-            filters_applied.append(f'date: "{date_filter}"')
-        
-        flash(f'No events found for {", ".join(filters_applied)}.', "warning")
-
-    return render_template("app/events.html",
-                           search_query=search_query,
-                           location_filter=location_filter,
-                           date_filter=date_filter,
-                           locations=locations,
-                           events=events,
-                           is_logged_in=auth_service.is_logged_in(),
-                           is_participant=auth_service.is_participant(),
-                           current_user_encoded_id=auth_service.get_user_resource_id())
-
-
 @app_blueprint.route("login", methods=["GET", "POST"])
 def login():
 
@@ -340,8 +304,125 @@ def home_filter_events():
     filter_group_results = []
     if filter_type == "events":
         filter_event_results = HomeService.home_filter_events(limit,location, event_type, date_str)
+        if auth_service.is_logged_in() and auth_service.is_participant():
+            user_id = auth_service.get_user_id()
+
+            registered_event_ids = set()
+            try:
+                my_registrations = participant_service.get_my_registrations(user_id) or []
+                registered_event_ids = {
+                    record.get('Event_ID') for record in my_registrations if record.get('Event_ID') is not None
+                }
+            except Exception:
+                registered_event_ids = set()
+
+            member_group_ids = set()
+            try:
+                user_groups = GroupService.get_user_groups(user_id) or []
+                member_group_ids = {
+                    group.get('id')
+                    for group in user_groups
+                    if group.get('id') is not None and (group.get('member_status') or 'active') == 'active'
+                }
+            except Exception:
+                member_group_ids = set()
+
+            for event in filter_event_results or []:
+                event_id = event.get('id')
+                group_id = event.get('group_id')
+                is_registered = event_id in registered_event_ids
+                is_group_member = group_id in member_group_ids if group_id is not None else False
+                # Grey out quick register when participant already signed up or belongs to hosting group
+                event['disable_quick_register'] = bool(is_registered or is_group_member)
+                event['quick_register_label'] = (
+                    "Registered" if is_registered else ("Joined" if is_group_member else "Register Now")
+                )
     elif filter_type == "groups":
         filter_group_results = HomeService.home_filter_groups()
+        for group in filter_group_results or []:
+            group_id = group.get('group_id') or group.get('id')
+            group['group_id'] = group_id
+            upcoming_events = []
+            has_more_events = False
+
+            if group_id is not None:
+                try:
+                    raw_events = GroupService.get_group_events(group_id, include_past=False, limit=4)
+                    has_more_events = len(raw_events) > 3
+                    for event in raw_events[:3]:
+                        if not event:
+                            continue
+
+                        datetime_label = getattr(event, 'datetime_str', None)
+                        if not datetime_label and getattr(event, 'datetime', None):
+                            try:
+                                datetime_label = event.datetime.strftime('%d %b %Y %H:%M')
+                            except Exception:
+                                datetime_label = None
+
+                        upcoming_events.append({
+                            'id': event.id,
+                            'name': event.name,
+                            'datetime_label': datetime_label or 'Date to be confirmed',
+                            'town': event.town,
+                            'event_type': event.event_type,
+                        })
+                except Exception:
+                    upcoming_events = []
+                    has_more_events = False
+
+            group['upcoming_events'] = upcoming_events
+            group['has_more_events'] = has_more_events
+
+        if auth_service.is_logged_in() and auth_service.is_participant():
+            user_id = auth_service.get_user_id()
+
+            active_group_ids = set()
+            try:
+                user_groups = GroupService.get_user_groups(user_id) or []
+                active_group_ids = {
+                    group.get('id')
+                    for group in user_groups
+                    if group.get('id') is not None and (group.get('member_status') or 'active') == 'active'
+                }
+            except Exception:
+                active_group_ids = set()
+
+            pending_group_ids = set()
+            try:
+                pending_requests = GroupService.get_user_pending_requests(user_id) or []
+                pending_group_ids = {
+                    request.get('group_id')
+                    for request in pending_requests
+                    if request.get('group_id') is not None
+                }
+            except Exception:
+                pending_group_ids = set()
+
+            for group in filter_group_results or []:
+                group_id = group.get('group_id') or group.get('id')
+                visibility = (group.get('visibility') or '').lower()
+                is_member = group_id in active_group_ids
+                has_pending = group_id in pending_group_ids
+
+                disable_join = bool(is_member or has_pending)
+                if is_member:
+                    label = "Member"
+                    icon = "bi-check-circle"
+                elif has_pending:
+                    label = "Pending"
+                    icon = "bi-hourglass-split"
+                elif visibility == 'public':
+                    label = "Join group"
+                    icon = "bi-person-plus-fill"
+                else:
+                    label = "Apply to Join"
+                    icon = "bi-envelope-plus"
+
+                group['disable_join'] = disable_join
+                group['join_label'] = label
+                group['join_icon'] = icon
+                group['join_action'] = 'join' if visibility == 'public' else 'request'
     return render_template(
         "app/search.html",
         events=filter_event_results,

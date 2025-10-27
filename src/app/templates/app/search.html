@@ -219,10 +219,12 @@ block content %}
                                 <span class="h6 fw-bold mb-0 {% if event.visibility == 'private' %}text-danger{% else %}text-success{% endif %}">{{event.visibility|capitalize}}</span>
                             </div>
               {% if is_logged_in and is_participant %}
-                            <form method="post" action="{{ url_for('app.quick_register_event', event_id=event.id) }}" class="m-0 d-inline">
-                <input type="hidden" name="next" value="{{ request.full_path }}">
-                <button type="submit" class="btn btn-dark btn-sm px-3">Register Now</button>
-              </form>
+                {% set disable_quick = event.disable_quick_register %}
+                {% set button_label = event.quick_register_label or 'Register Now' %}
+                <form method="post" action="{{ url_for('app.quick_register_event', event_id=event.id) }}" class="m-0 d-inline">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  <button type="submit" class="btn {% if disable_quick %}btn-secondary{% else %}btn-dark{% endif %} btn-sm px-3" {% if disable_quick %}disabled aria-disabled="true"{% endif %}>{{ button_label }}</button>
+                </form>
               {% else %}
               <a
                 href="{{ url_for('app.login', next=request.full_path) }}"
@@ -349,25 +351,83 @@ block content %}
                     {{ group.total_members }} member | {{ group.group_status }}
                   </div>
 
+                  <!-- upcoming events -->
+                  <div class="mb-3">
+                    <div class="d-flex align-items-center text-muted text-uppercase small fw-semibold mb-2">
+                      <i class="bi bi-calendar-event me-2"></i>Upcoming events
+                    </div>
+                    {% set upcoming_events = group.upcoming_events %}
+                    {% if upcoming_events %}
+                      <ul class="list-unstyled small mb-2">
+                        {% for event in upcoming_events %}
+                        <li class="mb-2">
+                          <div class="fw-semibold text-dark">{{ event.name }}</div>
+                          <div class="text-muted">
+                            <i class="bi bi-clock me-1"></i>{{ event.datetime_label }}
+                            {% if event.town %}
+                            <span class="ms-2"><i class="bi bi-geo-alt me-1"></i>{{ event.town }}</span>
+                            {% endif %}
+                          </div>
+                        </li>
+                        {% endfor %}
+                      </ul>
+                      {% if group.has_more_events %}
+                      <a href="{{ url_for('groups.view_group', group_id=group.group_id) }}" class="small text-decoration-none">
+                        View all events
+                      </a>
+                      {% endif %}
+                    {% else %}
+                      <p class="text-muted small mb-0">No upcoming events listed.</p>
+                    {% endif %}
+                  </div>
+
                   <!-- join button -->
                   <div class="mt-auto text-end">
-                    {% if group.visibility == 'public' %}
-                    <a
-                       href="{{ url_for('app.login') }}"
-                      class="btn btn-dark btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2"
-                    >
-                      <i class="bi bi-person-plus-fill"></i>
-                      Join group
-                    </a>
-
+                    {% if is_logged_in and is_participant %}
+                      {% set disable_join = group.disable_join %}
+                      {% set join_label = group.join_label or ('Join group' if group.visibility == 'public' else 'Apply to Join') %}
+                      {% set join_icon = group.join_icon or ('bi-person-plus-fill' if group.visibility == 'public' else 'bi-envelope-plus') %}
+                      {% set join_action = group.join_action or ('join' if group.visibility == 'public' else 'request') %}
+                      {% if join_action == 'join' %}
+                        <form method="post" action="{{ url_for('groups.join_group', group_id=group.group_id) }}" class="m-0 d-inline">
+                          <input type="hidden" name="next" value="{{ request.full_path }}">
+                          <button type="submit" class="btn {% if disable_join %}btn-secondary{% else %}btn-dark{% endif %} btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2" {% if disable_join %}disabled aria-disabled="true"{% endif %}>
+                            <i class="bi {{ join_icon }}"></i>
+                            {{ join_label }}
+                          </button>
+                        </form>
+                      {% else %}
+                        {% if disable_join %}
+                          <button type="button" class="btn btn-secondary btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2" disabled aria-disabled="true">
+                            <i class="bi {{ join_icon }}"></i>
+                            {{ join_label }}
+                          </button>
+                        {% else %}
+                          <a href="{{ url_for('groups.request_join_form', group_id=group.group_id, next=request.full_path) }}" class="btn bg-warning text-dark btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2">
+                            <i class="bi {{ join_icon }}"></i>
+                            {{ join_label }}
+                          </a>
+                        {% endif %}
+                      {% endif %}
                     {% else %}
-                    <a
-                      href="{{ url_for('app.login') }}"
-                      class="btn bg-warning text-dark btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2"
-                    >
-                      <i class="bi bi-envelope-plus"></i>
-                      Apply to Join
-                    </a>
+                      {% if group.visibility == 'public' %}
+                      <a
+                         href="{{ url_for('app.login', next=request.full_path) }}"
+                        class="btn btn-dark btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2"
+                      >
+                        <i class="bi bi-person-plus-fill"></i>
+                        Join group
+                      </a>
+
+                      {% else %}
+                      <a
+                        href="{{ url_for('app.login', next=request.full_path) }}"
+                        class="btn bg-warning text-dark btn-sm px-4 rounded-pill d-inline-flex align-items-center gap-2"
+                      >
+                        <i class="bi bi-envelope-plus"></i>
+                        Apply to Join
+                      </a>
+                      {% endif %}
                     {% endif %}
                   </div>
                 </div>
