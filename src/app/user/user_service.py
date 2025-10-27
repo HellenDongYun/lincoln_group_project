@@ -1,4 +1,5 @@
 import re
+from typing import Optional, Tuple
 
 from email_validator import validate_email, EmailNotValidError
 from flask_bcrypt import check_password_hash
@@ -70,23 +71,23 @@ class UserService:
 
         return errors
 
-    def validate_user(self, email: str, password: str) -> User:
-        """Validate user credentials and return user object if valid"""
+    def validate_user(self, email: str, password: str) -> Tuple[Optional[User], Optional[str]]:
+        """Validate user credentials. Returns (user, error_message)."""
         if not email or not password:
-            return None
+            return None, "Invalid email or password."
 
         # Get user from database
         user_data = self.repository.get_user_by_email(email.strip())
         if not user_data:
-            return None
+            return None, "Invalid email or password."
 
         # Check if user is active
         if user_data.get('status') == 'inactive':
-            return None
+            return None, "Your account is suspended. Please contact the super admin."
 
         # Check password
         if not check_password_hash(user_data['password_hash'], password):
-            return None
+            return None, "Invalid email or password."
 
 
         # Convert global_role string to GlobalRole enum
@@ -97,7 +98,7 @@ class UserService:
                 user_data['global_role'] = GlobalRole.PARTICIPANT  # Default fallback
 
         # Return user object
-        return User(**user_data)
+        return User(**user_data), None
 
     def get_user_by_id(self, user_id: int) -> dict:
         """Get user by ID"""

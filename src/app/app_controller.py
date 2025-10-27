@@ -99,7 +99,7 @@ def login():
         form_group.get("email").value = email
         form_group.get("password").value = password
 
-        user = user_service.validate_user(email, password)
+        user, error_message = user_service.validate_user(email, password)
 
         if user:
             auth_service.login(user.id, user.global_role)
@@ -120,7 +120,7 @@ def login():
                 flash("Unknown role. Contact support.", "danger")
                 return redirect(url_for("app.login"))
         else:
-            form_group.get("password").errors.append("Invalid email or password.")
+            form_group.get("password").errors.append(error_message or "Invalid email or password.")
 
 
     return render_template("app/login.html", form_group=form_group)
@@ -194,7 +194,7 @@ def register():
 
         # Create User
         password_hash = generate_password_hash(password_input)
-        # Map age_group to representative age (stored in Users.age; DB computes age_group)
+        # Map age_group to representative age integer
         age_value = map_age_group_to_age(age_group_input)
 
         success = user_service.create_user(

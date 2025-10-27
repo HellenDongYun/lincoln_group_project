@@ -205,15 +205,15 @@ INSERT INTO Event_Task_Vacancies (event_id, task_id, spots) VALUES
 -- Event Task Assignments (Volunteers)
 -- ------------------------------
 INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
--- Assignments for UPCOMING Event 1 (Avon River Fun Run)
+-- Assignments for UPCOMING Event 1 Avon River Fun Run
 (1, 1, 2), -- Alice (2) Event Coordinator
 (1, 3, 5), -- Dave (5) Course Marshal
 
--- Assignments for UPCOMING Event 2 (Harbour Walk Challenge)
+-- Assignments for UPCOMING Event 2 Harbour Walk Challenge
 (2, 2, 7),-- Frank (7) Registration Assistant
-(2, 3, 2), -- Alice (2) Course Marshal (Member of Group 2)
+(2, 3, 2), -- Alice (2) Course Marshal -Member of Group 2
 
--- Assignments for UPCOMING Event 3 (City Park Trail Intro)
+-- Assignments for UPCOMING Event 3 City Park Trail Intro
 (3, 1, 12), -- Violet (12) Event Coordinator
 (3, 9, 6), -- Emma (6) Photographer
 

@@ -560,7 +560,15 @@ def update_user_status_ajax(user_id):
         if not user:
             return {'success': False, 'message': 'User not found'}, 404
         
-        # Update the status (with audit)
+        # Restrict support technicians from modifying super admins or fellow support technicians
+        if auth_service.is_support_technician() and not auth_service.is_super_admin():
+            target_role = (user.get('role') or '').strip().lower()
+            if target_role in {'super_admin', 'support_technician'}:
+                message = 'Support technicians cannot change the status of super admins or fellow support technicians.'
+                flash(message, 'warning')
+                return {'success': False, 'message': message}, 403
+
+        # Update the status with audit
         changed_by = auth_service.get_user_id()
         success = AdminService.update_user_status(user_id, new_status, reason=reason, changed_by=changed_by)
         
