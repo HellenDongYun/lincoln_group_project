@@ -38,8 +38,7 @@ class GroupService:
         {'value': 'distance_km', 'label': 'Distance (km)'},
         {'value': 'volunteer_hours', 'label': 'Volunteer hours'},
         {'value': 'photos_submitted', 'label': 'Photos submitted'},
-        {'value': 'elevation_gain_meters', 'label': 'Elevation gain (m)'},
-        {'value': 'custom', 'label': 'Custom metric'}
+        {'value': 'elevation_gain_meters', 'label': 'Elevation gain (m)'}
     )
 
     CHALLENGE_STATUS_SET = {choice['value'] for choice in CHALLENGE_STATUS_CHOICES}
@@ -416,7 +415,6 @@ class GroupService:
     def get_group_challenge_options(group_id=None):
         with get_cursor() as cursor:
             achievements = GroupRepository.list_achievements(cursor)
-            reward_labels = GroupRepository.list_reward_label_options(cursor)
 
         formatted_achievements = []
         for achievement in achievements:
@@ -432,9 +430,7 @@ class GroupService:
         return {
             'target_metrics': GroupService.get_challenge_target_metrics(),
             'status_choices': GroupService.get_challenge_status_choices(),
-            'achievements': formatted_achievements,
-            'reward_badge_labels': reward_labels.get('badges', []),
-            'reward_trophy_labels': reward_labels.get('trophies', [])
+            'achievements': formatted_achievements
         }
 
     @classmethod

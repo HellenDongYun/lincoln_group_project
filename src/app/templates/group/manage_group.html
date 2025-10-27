@@ -244,8 +244,6 @@
                                 data-challenge-target-value="{{ challenge.target_value if challenge.target_value is not none else '' }}"
                                 data-challenge-timeframe="{{ challenge.timeframe_days if challenge.timeframe_days is not none else '' }}"
                                 data-challenge-achievement="{{ challenge.achievement_id or '' }}"
-                                data-challenge-reward-badge="{{ (challenge.reward_badge_label or '')|e }}"
-                                data-challenge-reward-trophy="{{ (challenge.reward_trophy_label or '')|e }}"
                                 data-challenge-status="{{ challenge.status }}"
                                 data-challenge-verification="{{ '1' if challenge.verification_required else '0' }}">
                           <i class="bi bi-pencil"></i>
@@ -393,34 +391,6 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="col-md-3">
-              <label for="challengeBadgeSelect" class="form-label fw-semibold">Badge label</label>
-              <select class="form-select" id="challengeBadgeSelect">
-                <option value="">No badge reward</option>
-                {% for label in challenge_options.reward_badge_labels %}
-                <option value="{{ label }}">{{ label }}</option>
-                {% endfor %}
-                <option value="__custom__">Custom label...</option>
-              </select>
-              <div class="mt-2 d-none" id="challengeBadgeCustomWrapper">
-                <input type="text" class="form-control" id="challengeBadgeCustom" maxlength="100" placeholder="Enter custom badge label">
-              </div>
-              <input type="hidden" id="challengeBadgeValue" name="reward_badge_label">
-            </div>
-            <div class="col-md-3">
-              <label for="challengeTrophySelect" class="form-label fw-semibold">Trophy label</label>
-              <select class="form-select" id="challengeTrophySelect">
-                <option value="">No trophy reward</option>
-                {% for label in challenge_options.reward_trophy_labels %}
-                <option value="{{ label }}">{{ label }}</option>
-                {% endfor %}
-                <option value="__custom__">Custom label...</option>
-              </select>
-              <div class="mt-2 d-none" id="challengeTrophyCustomWrapper">
-                <input type="text" class="form-control" id="challengeTrophyCustom" maxlength="100" placeholder="Enter custom trophy label">
-              </div>
-              <input type="hidden" id="challengeTrophyValue" name="reward_trophy_label">
-            </div>
             <input type="hidden" id="challengeVerificationValue" name="verification_required" value="0">
           </div>
         </div>
@@ -533,14 +503,6 @@
     const challengeTargetValueInput = document.getElementById('challengeTargetValue');
     const challengeTimeframeInput = document.getElementById('challengeTimeframe');
     const challengeAchievementSelect = document.getElementById('challengeAchievement');
-    const challengeBadgeSelect = document.getElementById('challengeBadgeSelect');
-    const challengeBadgeValueInput = document.getElementById('challengeBadgeValue');
-    const challengeBadgeCustomWrapper = document.getElementById('challengeBadgeCustomWrapper');
-    const challengeBadgeCustomInput = document.getElementById('challengeBadgeCustom');
-    const challengeTrophySelect = document.getElementById('challengeTrophySelect');
-    const challengeTrophyValueInput = document.getElementById('challengeTrophyValue');
-    const challengeTrophyCustomWrapper = document.getElementById('challengeTrophyCustomWrapper');
-    const challengeTrophyCustomInput = document.getElementById('challengeTrophyCustom');
     const challengeStatusSelect = document.getElementById('challengeStatus');
     const challengeVerificationInput = document.getElementById('challengeVerificationValue');
     const createChallengeButton = document.querySelector('[data-action="create-challenge"]');
@@ -555,112 +517,6 @@
       if (selectedOption && selectedOption.value) return selectedOption.value;
       return challengeStatusSelect.value || '';
     }
-
-    function setupCustomSelect(selectEl, hiddenInput, customWrapper, customInput) {
-      if (!selectEl || !hiddenInput) {
-        return () => {};
-      }
-
-      const optionValues = new Set(Array.from(selectEl.options).map((option) => option.value));
-      const hasCustomOption = optionValues.has('__custom__');
-
-      function hideCustom(clearValue = true) {
-        if (customWrapper) {
-          customWrapper.classList.add('d-none');
-        }
-        if (customInput) {
-          customInput.required = false;
-          if (clearValue) {
-            customInput.value = '';
-          }
-        }
-      }
-
-      function showCustom() {
-        if (customWrapper) {
-          customWrapper.classList.remove('d-none');
-        }
-        if (customInput) {
-          customInput.required = true;
-        }
-      }
-
-      selectEl.addEventListener('change', () => {
-        const selected = selectEl.value;
-        if (hasCustomOption && selected === '__custom__') {
-          showCustom();
-          if (customInput) {
-            if (!customInput.value) {
-              hiddenInput.value = '';
-            } else {
-              hiddenInput.value = customInput.value.trim();
-            }
-            customInput.focus();
-          } else {
-            hiddenInput.value = '';
-          }
-        } else {
-          hideCustom();
-          hiddenInput.value = selected || '';
-        }
-      });
-
-      if (customInput) {
-        customInput.addEventListener('input', () => {
-          if (hasCustomOption && selectEl.value === '__custom__') {
-            hiddenInput.value = customInput.value.trim();
-          }
-        });
-      }
-
-      function applyValue(rawValue) {
-        const value = rawValue == null ? '' : String(rawValue).trim();
-
-        if (value && optionValues.has(value) && value !== '__custom__') {
-          selectEl.value = value;
-          hideCustom();
-          hiddenInput.value = value;
-          return;
-        }
-
-        if (value && hasCustomOption && value !== '__custom__') {
-          selectEl.value = '__custom__';
-          showCustom();
-          if (customInput) {
-            customInput.value = value;
-          }
-          hiddenInput.value = value;
-          return;
-        }
-
-        if (value === '__custom__' && hasCustomOption) {
-          selectEl.value = '__custom__';
-          showCustom();
-          hiddenInput.value = customInput ? customInput.value.trim() : '';
-          return;
-        }
-
-        selectEl.value = '';
-        hideCustom();
-        hiddenInput.value = '';
-      }
-
-      return applyValue;
-    }
-
-    const applyBadgeValue = setupCustomSelect(
-      challengeBadgeSelect,
-      challengeBadgeValueInput,
-      challengeBadgeCustomWrapper,
-      challengeBadgeCustomInput
-    );
-
-    const applyTrophyValue = setupCustomSelect(
-      challengeTrophySelect,
-      challengeTrophyValueInput,
-      challengeTrophyCustomWrapper,
-      challengeTrophyCustomInput
-    );
 
     function configureChallengeForm(values) {
       if (!challengeForm) return;
@@ -718,14 +574,6 @@
         challengeAchievementSelect.value = value;
       }
 
-      if (typeof applyBadgeValue === 'function') {
-        applyBadgeValue(values?.reward_badge_label || '');
-      }
-
-      if (typeof applyTrophyValue === 'function') {
-        applyTrophyValue(values?.reward_trophy_label || '');
-      }
-
       if (Object.prototype.hasOwnProperty.call(values, 'status') && challengeStatusSelect) {
         const currentStatus = values.status || getDefaultChallengeStatus();
         challengeStatusSelect.value = currentStatus;
@@ -764,8 +612,6 @@
             target_value: button.dataset.challengeTargetValue || '',
             timeframe_days: button.dataset.challengeTimeframe || '',
             achievement_id: button.dataset.challengeAchievement || '',
-            reward_badge_label: button.dataset.challengeRewardBadge || '',
-            reward_trophy_label: button.dataset.challengeRewardTrophy || '',
             status: button.dataset.challengeStatus || getDefaultChallengeStatus(),
             verification_required: button.dataset.challengeVerification === '1'
           });
@@ -783,23 +629,6 @@
           submitLabel: 'Save challenge',
           verification_required: false
         });
-      });
-    }
-
-    if (challengeForm) {
-      challengeForm.addEventListener('submit', () => {
-        if (challengeBadgeValueInput && challengeBadgeCustomInput && challengeBadgeSelect && challengeBadgeSelect.value === '__custom__') {
-          challengeBadgeValueInput.value = challengeBadgeCustomInput.value.trim();
-        }
-        if (challengeBadgeValueInput) {
-          challengeBadgeValueInput.value = (challengeBadgeValueInput.value || '').trim();
-        }
-        if (challengeTrophyValueInput && challengeTrophyCustomInput && challengeTrophySelect && challengeTrophySelect.value === '__custom__') {
-          challengeTrophyValueInput.value = challengeTrophyCustomInput.value.trim();
-        }
-        if (challengeTrophyValueInput) {
-          challengeTrophyValueInput.value = (challengeTrophyValueInput.value || '').trim();
-        }
       });
     }
 
