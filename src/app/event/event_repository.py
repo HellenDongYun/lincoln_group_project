@@ -63,3 +63,8 @@ class EventRepository(Repository):
             print(f"Database error in get_unique_locations: {e}")
             return []
 
+    def get_event_by_id(self, event_id: int):
+        """Fetch a single event record by its ID."""
+        sql = "SELECT * FROM Events WHERE id = %s"
+        return self.fetchone(sql, (event_id,))
+

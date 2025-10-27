@@ -12,6 +12,7 @@ from src.app.user.user import GlobalRole
 from src.app.user.user_service import UserService
 from src.app.home_service import HomeService
 from src.app.group.group_service import GroupService
+from src.app.participant.participant_service import ParticipantService
 
 admin_service = AdminService()
 auth_service = AuthService()
@@ -20,6 +21,7 @@ file_service = FileService()
 town_service = TownService()
 user_service = UserService()
 home_service = HomeService()
+participant_service = ParticipantService()
 
 app_blueprint = Blueprint('app', __name__)
 
@@ -340,6 +342,65 @@ def home_filter_events():
         filter_event_results = HomeService.home_filter_events(limit,location, event_type, date_str)
     elif filter_type == "groups":
         filter_group_results = HomeService.home_filter_groups()
-    print("events=", filter_event_results)
-    return render_template("app/search.html", events=filter_event_results, groups=filter_group_results, filter_type=filter_type, location=location,event_type=event_type,date_str =formatted_date   )
+    return render_template(
+        "app/search.html",
+        events=filter_event_results,
+        groups=filter_group_results,
+        filter_type=filter_type,
+        location=location,
+        event_type=event_type,
+        date_str=formatted_date,
+        is_logged_in=auth_service.is_logged_in(),
+        is_participant=auth_service.is_participant(),
+        current_user_id=auth_service.get_user_id(),
+    )
+
+
+@app_blueprint.route("/events/<int:event_id>/quick-register", methods=["POST"])
+def quick_register_event(event_id: int):
+    """Allow logged-in visitors to join an open group and register for an event from the discovery page."""
+    fallback_url = url_for("app.home_filter_events", filter_type="events")
+    requested_next = (request.form.get("next") or "").strip()
+    redirect_target = fallback_url
+    if requested_next and requested_next.startswith("/"):
+        redirect_target = requested_next
+
+    if not auth_service.is_logged_in():
+        flash("Please log in to register for events.", "warning")
+        return redirect(url_for("app.login"))
+
+    if not auth_service.is_participant():
+        flash("Only participant accounts can register for events.", "warning")
+        return redirect(redirect_target)
+
+    user_id = auth_service.get_user_id()
+    event = event_service.get_event_by_id(event_id)
+
+    if not event:
+        flash("Event not found.", "danger")
+        return redirect(redirect_target)
+
+    # Ensure the user belongs to the hosting group when it is public/open.
+    if event.group_id:
+        membership = GroupService.get_group_membership(event.group_id, user_id)
+        if not membership:
+            group = GroupService.get_group_by_id(event.group_id)
+            visibility = (group or {}).get("visibility", "").strip().lower() if group else ""
+            if visibility == "public":
+                try:
+                    GroupService.add_member_to_group(event.group_id, user_id)
+                except Exception:
+                    flash("Unable to join the hosting group at this time. Please try again later.", "danger")
+                    return redirect(redirect_target)
+            else:
+                flash("You need to be a member of this group before registering for the event.", "warning")
+                return redirect(url_for("groups.view_group", group_id=event.group_id))
+
+    success = participant_service.register_for_event(user_id, event_id)
+    if success:
+        flash("You are registered for the event.", "success")
+    else:
+        flash("Unable to register for this event. It may be full or you may already be registered.", "danger")
+
+    return redirect(redirect_target)
 

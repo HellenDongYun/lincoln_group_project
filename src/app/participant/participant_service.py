@@ -217,7 +217,7 @@ class ParticipantService:
                     "events": []
                 }
 
-            # add event info（include top3）
+            # add event info
             grouped[group_id]["events"].append({
                 "event_id": row["event_id"],
                 "event_name": row["event_name"],
@@ -234,7 +234,7 @@ class ParticipantService:
                 "user_total_time_str": self.format_seconds(row["user_total_seconds"]),
                 "user_rank": row["user_rank"],
 
-                # 🏆 top 3 info
+                # top 3 info
                 "first_user_name": row["first_user_name"],
                 "first_user_time": row["first_user_time"],
                 "first_user_time_str": self.format_seconds(row["first_user_time"]),

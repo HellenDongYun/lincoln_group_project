@@ -194,7 +194,7 @@ class AdminRepository(Repository):
             cursor.execute(query, (status, user_id))
             updated = cursor.rowcount > 0
 
-            # Optional audit insert if table exists
+            # Audit insert
             if updated:
                 try:
                     cursor.execute(
@@ -205,7 +205,7 @@ class AdminRepository(Repository):
                         (user_id, status, reason, changed_by)
                     )
                 except Exception as e:
-                    # If the audit table doesn't exist, skip silently
+                    # If the audit table doesn't exist, skip 
                     if 'User_Status_Audit' not in str(e):
                         raise e
             return updated
@@ -604,7 +604,7 @@ class AdminRepository(Repository):
                 query += " AND LOWER(ep.status) LIKE %s"
                 params.append(f"%{status.lower()}%")
 
-            # Sort by event datetime (upcoming events first), then by user name
+            # Sort by event datetime upcoming events first, then by user name
             query += """ ORDER BY 
                 CASE WHEN e.datetime IS NULL THEN 1 ELSE 0 END,
                 e.datetime ASC,

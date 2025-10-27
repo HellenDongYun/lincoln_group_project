@@ -67,7 +67,7 @@ class AuthService:
         return self.is_super_admin()
 
     def is_volunteer(self) -> bool:
-        # Volunteering is now task-based, not a global role
+        # Volunteering is task-based, not  role
         return False
     
 auth_service = AuthService()    

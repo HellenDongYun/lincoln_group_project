@@ -38,7 +38,7 @@ def require_super_admin(callback):
     return guard
 
 def require_participant(callback):
-    #Require user to be a participant (or super admin)
+    #Require user to be a participant or super admin
     @wraps(callback)
     def guard(*args, **kwargs):
         auth_service = AuthService()
@@ -56,7 +56,7 @@ def require_participant(callback):
 
 
 def require_group_manager(group_id_param='group_id'):
-    #Require user to be a manager of the specified group (or super admin)
+    #Require user to be a manager of the specified group or super admin
     def decorator(callback):
         @wraps(callback)
         def guard(*args, **kwargs):
@@ -85,7 +85,7 @@ def require_group_manager(group_id_param='group_id'):
     return decorator
 
 def require_volunteer_or_manager(callback):
-    # Require user to be a volunteer (have group memberships) or super admin
+    # Require user to be a volunteer with group memberships or super admin
     @wraps(callback)
     def guard(*args, **kwargs):
 
