@@ -290,6 +290,11 @@ INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_rep
 (5, 6, 'Duplicate row only appears after refreshing the page.', FALSE, '2025-08-20 09:35:00'),
 (5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00');
 
+INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
+VALUES
+(2, 1, 50, 25, 1, 'Super Admin corrected wrong badge points'),  
+(3, 2, 0, 75, 1, 'Super Admin added missing achievement points');
+
 -- ------------------------------
 -- Support Request Status Changes (Audit Log)
 -- ------------------------------
@@ -331,3 +336,4 @@ INSERT INTO Notifications (user_id, type, reference_id, message, is_read, create
 (16, 'request_comment', 2, 'Bob Jones added a comment to request #2', TRUE, '2025-09-05 11:22:00'),
 -- Notification to Morgan (16) for new comment on request 3
 (16, 'request_comment', 3, 'Carol Smith added a comment to request #3', TRUE, '2025-09-04 18:12:00');
+

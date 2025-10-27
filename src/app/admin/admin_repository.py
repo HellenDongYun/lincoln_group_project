@@ -1,7 +1,7 @@
 from flask import flash, request
 from src.app.common.db.cursor import get_cursor
 from src.app.common.db.repository import Repository
-
+from datetime import datetime
 
 class AdminRepository(Repository):
 
@@ -643,3 +643,132 @@ class AdminRepository(Repository):
             cursor.execute(query, params)
             result = cursor.fetchone()
             return result['count'] if isinstance(result, dict) else result[0]
+    @staticmethod
+    def get_user_achievements(user_id: int):
+        """获取指定用户的成就列表"""
+        with get_cursor() as cursor:
+            query = """
+                SELECT ua.user_id, a.id AS achievement_id, a.name, a.points_reward, ua.earned_at
+                FROM User_Achievements ua
+                JOIN Achievements a ON ua.achievement_id = a.id
+                WHERE ua.user_id = %s
+            """
+            cursor.execute(query, (user_id,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def get_user_total_points(user_id: int) -> int:
+        """获取指定用户的总积分"""
+        with get_cursor() as cursor:
+            query = "SELECT total_points FROM Users WHERE id = %s"
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+            return result['total_points'] if result else 0
+
+    @staticmethod
+    def adjust_achievement(user_id: int, action: str, achievement_id: int = None, new_points: int = None, reason: str = None):
+        """调整用户成就或积分，记录到 Achievement_Adjustments"""
+        with get_cursor() as cursor:
+            # 检查用户是否存在
+            cursor.execute("SELECT 1 FROM Users WHERE id = %s", (user_id,))
+            if not cursor.fetchone():
+                raise ValueError("User not found")
+
+            if action in ['grant', 'revoke']:
+                if not achievement_id:
+                    raise ValueError("Achievement ID is required for badge adjustment")
+                cursor.execute("SELECT points_reward FROM Achievements WHERE id = %s", (achievement_id,))
+                ach = cursor.fetchone()
+                if not ach:
+                    raise ValueError("Achievement not found")
+
+                cursor.execute("SELECT 1 FROM User_Achievements WHERE user_id = %s AND achievement_id = %s",
+                              (user_id, achievement_id))
+                exists = cursor.fetchone()
+
+                old_points = ach['points_reward'] if exists else 0
+                if action == 'grant' and not exists:
+                    cursor.execute(
+                        "INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES (%s, %s, %s)",
+                        (user_id, achievement_id, datetime.now())
+                    )
+                    cursor.execute(
+                        "UPDATE Users SET total_points = total_points + %s WHERE id = %s",
+                        (ach['points_reward'], user_id)
+                    )
+                    new_points = ach['points_reward']
+                elif action == 'revoke' and exists:
+                    cursor.execute(
+                        "DELETE FROM User_Achievements WHERE user_id = %s AND achievement_id = %s",
+                        (user_id, achievement_id)
+                    )
+                    cursor.execute(
+                        "UPDATE Users SET total_points = total_points - %s WHERE id = %s",
+                        (old_points, user_id)
+                    )
+                    new_points = 0
+
+                cursor.execute(
+                    """
+                    INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (user_id, achievement_id, old_points, new_points, 1, reason)  # adjusted_by=1 假设super_admin
+                )
+            elif action == 'set_points':
+                if not new_points:
+                    raise ValueError("New points value is required")
+                cursor.execute("SELECT total_points FROM Users WHERE id = %s", (user_id,))
+                result = cursor.fetchone()
+                old_points = result['total_points'] if result else 0
+                cursor.execute("UPDATE Users SET total_points = %s WHERE id = %s", (new_points, user_id))
+
+                cursor.execute(
+                    """
+                    INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
+                    VALUES (%s, NULL, %s, %s, %s, %s)
+                    """,
+                    (user_id, old_points, new_points, 1, reason)
+                )
+
+            cursor.connection.commit()
+            return {"success": True, "message": f"{action.capitalize()} successful"}
+
+    @staticmethod
+    def get_all_users_with_achievements(page: int = 1, per_page: int = 10, search: str = None):
+        """获取所有用户及其成就，带分页"""
+        offset = (page - 1) * per_page
+        with get_cursor() as cursor:
+            query = """
+                SELECT u.id, u.email, u.total_points,
+                       GROUP_CONCAT(a.name SEPARATOR ', ') AS achievements
+                FROM Users u
+                LEFT JOIN User_Achievements ua ON u.id = ua.user_id
+                LEFT JOIN Achievements a ON ua.achievement_id = a.id
+            """
+            params = []
+            if search:
+                query += " WHERE u.email LIKE %s"
+                params.append(f"%{search}%")
+            query += " GROUP BY u.id LIMIT %s OFFSET %s"
+            params.extend([per_page, offset])
+
+            cursor.execute(query, params)
+            users = [dict(row) for row in cursor.fetchall()]
+
+            count_query = "SELECT COUNT(DISTINCT u.id) AS total FROM Users u"
+            if search:
+                count_query += " WHERE u.email LIKE %s"
+                cursor.execute(count_query, (f"%{search}%",))
+            else:
+                cursor.execute(count_query)
+            total = cursor.fetchone()['total']
+            total_pages = (total + per_page - 1) // per_page  # 整数除法向上取整
+
+            return {
+                "users": users,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+                "total_count": total
+            }
