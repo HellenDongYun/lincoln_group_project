@@ -4,7 +4,6 @@ from src.app.common.nav.encode import encode_id
 from src.app.group.group_service import GroupService
 from src.app.user.user import GlobalRole
 
-
 def left_nav_items(user_id: int, user_role: GlobalRole):
     """Build the primary navigation links for the current user."""
     nav_items = []
@@ -89,6 +88,7 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 "label": "Leaderboard",
                 "url": url_for('participant.leaderboard', encoded_participant_id=encoded_participant_id)
             })
+
         nav_items.append({
             "label": "My Applications",
             "url": url_for('participant.myapplications', encoded_participant_id=encoded_participant_id)
@@ -97,8 +97,6 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "label": "Results",
             "url": url_for('participant.myresults', encoded_participant_id=encoded_participant_id)
         })
-      
-
         nav_items.append({
             "label": "Help & Support",
             "url": url_for('support.my_requests')
@@ -112,14 +110,21 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
             "url": url_for('support.support_queue')
         })
         nav_items.append({
-            "label": "Events",
-            "url": url_for('app.get_events')
-        })
-        nav_items.append({
             "label": "Help & Support",
             "url": url_for('support.my_requests')
         })
+        nav_items.append({
+            "label": "Events",
+            "url": url_for('app.get_events')
+        })
 
+        nav_items.append(
+            {"label": "Find Groups & Events", "url": url_for("groups.participant_search")}
+        )        
+        nav_items.append({
+            "label": "Results",
+            "url": url_for('participant.myresults', encoded_participant_id=encoded_user_id)
+        })
         nav_items.append(
             {
                 "label": "My Applications",
@@ -129,9 +134,19 @@ def left_nav_items(user_id: int, user_role: GlobalRole):
                 ),
             }
         )
+        if GroupService.user_has_group_memberships(user_id):
+            nav_items.append(
+                {
+                    "label": "Record Completion Time",
+                    "url": url_for("results.record_time"),
+                }
+            )
+            nav_items.append({
+                "label": "Leaderboard",
+                "url": url_for('participant.leaderboard', encoded_participant_id=encoded_user_id)
+            })
 
     return nav_items
-
 
 def right_nav_items(user_id: int, user_role: GlobalRole):
     """Build the secondary navigation (account) links for the current user."""

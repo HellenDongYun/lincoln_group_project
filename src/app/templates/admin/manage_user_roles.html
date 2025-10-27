@@ -151,19 +151,23 @@
                                         {% endif %}
                                     </td>
                                     <td class="d-flex gap-2">
-                                        <button class="btn btn-sm 
-                                            {% if user.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %} 
-                                            status-toggle-btn" 
-                                                data-user-id="{{ user.id }}" 
-                                                data-user-name="{{ user.full_name }}" 
-                                                data-current-status="{{ user.status }}"
-                                                id="status-btn-{{ user.id }}">
-                                            {% if user.status == 'active' %}
-                                                </i>Deactivate
-                                            {% else %}
-                                                </i>Activate
-                                            {% endif %}
-                                        </button>
+                                       {% if user.role != 'super_admin' and user.role != 'support_technician' %}
+                                            <button class="btn btn-sm 
+                                                {% if user.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %} 
+                                                status-toggle-btn" 
+                                                    data-user-id="{{ user.id }}" 
+                                                    data-user-name="{{ user.full_name }}" 
+                                                    data-current-status="{{ user.status }}"
+                                                    id="status-btn-{{ user.id }}">
+                                                {% if user.status == 'active' %}
+                                                    </i>Deactivate
+                                                {% else %}
+                                                    </i>Activate
+                                                {% endif %}
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">No actions</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
