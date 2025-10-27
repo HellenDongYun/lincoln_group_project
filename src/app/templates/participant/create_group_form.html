@@ -145,14 +145,14 @@
                 type="submit"
                 class="btn btn-primary btn-lg px-4 flex-fill"
               >
-                <i class="bi bi-check-circle me-2"></i>{%if is_edit_mode  %} update changes {%else%} submit application {%endif%}
+                <i class="bi bi-check-circle me-2"></i>{%if is_edit_mode  %} update changes {%else%} Submit application {%endif%}
               </button>
               <a
                 href="{{url_for('participant.myapplications',encoded_participant_id=encoded_participant_id)}}"
                 type="button"
                 class="btn btn-outline-secondary btn-lg px-4"
               >
-                <i class="bi bi-arrow-left me-2"></i>cancel
+                <i class="bi bi-arrow-left me-2"></i>Cancel
               </a>
             </div>
           </form>
