@@ -1,4 +1,4 @@
-USE activeloop;
+USE TeamAmberProject$activeloop;
 
 -- ------------------------------
 -- Users (1 super admin + participants)

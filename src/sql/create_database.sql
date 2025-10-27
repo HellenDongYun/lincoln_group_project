@@ -1,7 +1,7 @@
 -- SQL script to create the activeloop database schema
-DROP DATABASE IF EXISTS activeloop;
-CREATE DATABASE activeloop;
-USE activeloop;
+DROP DATABASE IF EXISTS TeamAmberProject$activeloop;
+CREATE DATABASE TeamAmberProject$activeloop;
+USE TeamAmberProject$activeloop;
 
 -- Core Users & Roles
 -- Global roles simplified to: super_admin, participant
