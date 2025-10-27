@@ -1,4 +1,5 @@
 from flask import flash, request
+from typing import Optional
 from src.app.common.db.cursor import get_cursor
 from src.app.common.db.repository import Repository
 from datetime import datetime
@@ -658,81 +659,14 @@ class AdminRepository(Repository):
 
     @staticmethod
     def get_user_total_points(user_id: int) -> int:
-        """获取指定用户的总积分"""
+        """Return the participant's effective points including manual overrides."""
         with get_cursor() as cursor:
-            query = "SELECT total_points FROM Users WHERE id = %s"
-            cursor.execute(query, (user_id,))
-            result = cursor.fetchone()
-            return result['total_points'] if result else 0
+            snapshot = AdminRepository._get_point_snapshot(cursor, user_id)
+            return snapshot.get('effective_points', 0)
 
     @staticmethod
     def adjust_achievement(user_id: int, action: str, achievement_id: int = None, new_points: int = None, reason: str = None):
-        """调整用户成就或积分，记录到 Achievement_Adjustments"""
-        with get_cursor() as cursor:
-            # 检查用户是否存在
-            cursor.execute("SELECT 1 FROM Users WHERE id = %s", (user_id,))
-            if not cursor.fetchone():
-                raise ValueError("User not found")
-
-            if action in ['grant', 'revoke']:
-                if not achievement_id:
-                    raise ValueError("Achievement ID is required for badge adjustment")
-                cursor.execute("SELECT points_reward FROM Achievements WHERE id = %s", (achievement_id,))
-                ach = cursor.fetchone()
-                if not ach:
-                    raise ValueError("Achievement not found")
-
-                cursor.execute("SELECT 1 FROM User_Achievements WHERE user_id = %s AND achievement_id = %s",
-                              (user_id, achievement_id))
-                exists = cursor.fetchone()
-
-                old_points = ach['points_reward'] if exists else 0
-                if action == 'grant' and not exists:
-                    cursor.execute(
-                        "INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES (%s, %s, %s)",
-                        (user_id, achievement_id, datetime.now())
-                    )
-                    cursor.execute(
-                        "UPDATE Users SET total_points = total_points + %s WHERE id = %s",
-                        (ach['points_reward'], user_id)
-                    )
-                    new_points = ach['points_reward']
-                elif action == 'revoke' and exists:
-                    cursor.execute(
-                        "DELETE FROM User_Achievements WHERE user_id = %s AND achievement_id = %s",
-                        (user_id, achievement_id)
-                    )
-                    cursor.execute(
-                        "UPDATE Users SET total_points = total_points - %s WHERE id = %s",
-                        (old_points, user_id)
-                    )
-                    new_points = 0
-
-                cursor.execute(
-                    """
-                    INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """,
-                    (user_id, achievement_id, old_points, new_points, 1, reason)  # adjusted_by=1 假设super_admin
-                )
-            elif action == 'set_points':
-                if not new_points:
-                    raise ValueError("New points value is required")
-                cursor.execute("SELECT total_points FROM Users WHERE id = %s", (user_id,))
-                result = cursor.fetchone()
-                old_points = result['total_points'] if result else 0
-                cursor.execute("UPDATE Users SET total_points = %s WHERE id = %s", (new_points, user_id))
-
-                cursor.execute(
-                    """
-                    INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
-                    VALUES (%s, NULL, %s, %s, %s, %s)
-                    """,
-                    (user_id, old_points, new_points, 1, reason)
-                )
-
-            cursor.connection.commit()
-            return {"success": True, "message": f"{action.capitalize()} successful"}
+        raise NotImplementedError("adjust_achievement has been replaced by adjust_reward")
 
     @staticmethod
     def get_all_users_with_achievements(page: int = 1, per_page: int = 10, search: str = None):
@@ -772,3 +706,305 @@ class AdminRepository(Repository):
                 "total_pages": total_pages,
                 "total_count": total
             }
+
+    @staticmethod
+    def ensure_reward_tables(cursor=None):
+        """Ensure reward adjustment support tables exist before querying."""
+        create_sql = """
+        CREATE TABLE IF NOT EXISTS Achievement_Adjustments (
+            adjustment_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            achievement_id INT NULL,
+            old_points INT,
+            new_points INT,
+            adjusted_by INT NOT NULL,
+            adjusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            reason TEXT,
+            FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+            FOREIGN KEY (achievement_id) REFERENCES Achievements(id) ON DELETE SET NULL,
+            FOREIGN KEY (adjusted_by) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
+        ) ENGINE=InnoDB;
+        """
+
+        if cursor is not None:
+            cursor.execute(create_sql)
+            return
+
+        with get_cursor() as local_cursor:
+            local_cursor.execute(create_sql)
+
+    @staticmethod
+    def _get_point_snapshot(cursor, user_id: int) -> dict:
+        """Internal helper to calculate earned points, overrides, and effective total."""
+        AdminRepository.ensure_reward_tables(cursor)
+        try:
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(a.points_reward), 0) AS earned_points
+                FROM User_Achievements ua
+                JOIN Achievements a ON ua.achievement_id = a.id
+                WHERE ua.user_id = %s
+                """,
+                (user_id,)
+            )
+            earned_row = cursor.fetchone() or {}
+            earned = earned_row.get('earned_points', 0) if isinstance(earned_row, dict) else (earned_row or 0)
+
+            cursor.execute(
+                """
+                SELECT old_points, new_points, reason, adjusted_at
+                FROM Achievement_Adjustments
+                WHERE user_id = %s AND achievement_id IS NULL
+                ORDER BY adjusted_at DESC
+                LIMIT 1
+                """,
+                (user_id,)
+            )
+            override_row = cursor.fetchone()
+        except Exception:
+            # If adjustments table is unavailable fall back to earned points
+            override_row = None
+            earned = earned_row.get('earned_points', 0) if 'earned_row' in locals() else 0
+
+        override = None
+        if isinstance(override_row, dict) and override_row.get('new_points') is not None:
+            override = override_row['new_points']
+
+        effective = override if override is not None else earned
+
+        return {
+            "earned_points": earned,
+            "override_points": override,
+            "effective_points": effective,
+            "last_adjustment": override_row,
+        }
+
+    @staticmethod
+    def fetch_reward_group_options():
+        with get_cursor() as cursor:
+            cursor.execute("SELECT id, name FROM Community_Groups ORDER BY name ASC")
+            return cursor.fetchall()
+
+    @staticmethod
+    def fetch_badge_rewards(participant_search: Optional[str] = None, group_id: Optional[int] = None, limit: int = 100):
+        with get_cursor() as cursor:
+            query = """
+                SELECT 
+                    ua.user_id,
+                    ua.achievement_id,
+                    a.name AS achievement_name,
+                    a.points_reward,
+                    ua.earned_at,
+                    u.first_name,
+                    u.last_name,
+                    u.email,
+                    GROUP_CONCAT(DISTINCT cg.name ORDER BY cg.name SEPARATOR ', ') AS group_names
+                FROM User_Achievements ua
+                JOIN Users u ON u.id = ua.user_id
+                JOIN Achievements a ON a.id = ua.achievement_id
+                LEFT JOIN Group_Memberships gm ON gm.user_id = u.id AND gm.member_status = 'active'
+                LEFT JOIN Community_Groups cg ON cg.id = gm.group_id
+                WHERE 1=1
+            """
+            params: list = []
+
+            if participant_search:
+                like = f"%{participant_search.lower()}%"
+                query += " AND (LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE %s OR LOWER(u.email) LIKE %s)"
+                params.extend([like, like])
+
+            if group_id:
+                query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm2 WHERE gm2.user_id = u.id AND gm2.group_id = %s AND gm2.member_status = 'active')"
+                params.append(group_id)
+
+            query += """
+                GROUP BY ua.user_id, ua.achievement_id, a.name, a.points_reward, ua.earned_at, u.first_name, u.last_name, u.email
+                ORDER BY ua.earned_at DESC
+                LIMIT %s
+            """
+            params.append(limit)
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            rewards = []
+            for row in rows:
+                rewards.append({
+                    "entry_id": f"badge-{row['user_id']}-{row['achievement_id']}",
+                    "user_id": row['user_id'],
+                    "achievement_id": row['achievement_id'],
+                    "type": "badge",
+                    "reward_name": row['achievement_name'],
+                    "points_reward": row['points_reward'],
+                    "earned_at": row.get('earned_at'),
+                    "participant_name": f"{row['first_name']} {row['last_name']}",
+                    "participant_email": row['email'],
+                    "group_names": row.get('group_names') or "",
+                })
+            return rewards
+
+    @staticmethod
+    def fetch_point_rewards(participant_search: Optional[str] = None, group_id: Optional[int] = None, limit: int = 100):
+        with get_cursor() as cursor:
+            AdminRepository.ensure_reward_tables(cursor)
+            query = """
+                SELECT
+                    u.id AS user_id,
+                    CONCAT(u.first_name, ' ', u.last_name) AS participant_name,
+                    u.email,
+                    COALESCE(override.new_points, earned.total_points, 0) AS total_points,
+                    COALESCE(earned.total_points, 0) AS earned_points,
+                    override.new_points AS override_points,
+                    GROUP_CONCAT(DISTINCT cg.name ORDER BY cg.name SEPARATOR ', ') AS group_names
+                FROM Users u
+                LEFT JOIN (
+                    SELECT ua.user_id, SUM(a.points_reward) AS total_points
+                    FROM User_Achievements ua
+                    JOIN Achievements a ON a.id = ua.achievement_id
+                    GROUP BY ua.user_id
+                ) earned ON earned.user_id = u.id
+                LEFT JOIN (
+                    SELECT adj.user_id, adj.new_points
+                    FROM Achievement_Adjustments adj
+                    JOIN (
+                        SELECT user_id, MAX(adjusted_at) AS adjusted_at
+                        FROM Achievement_Adjustments
+                        WHERE achievement_id IS NULL
+                        GROUP BY user_id
+                    ) latest ON latest.user_id = adj.user_id AND latest.adjusted_at = adj.adjusted_at
+                    WHERE adj.achievement_id IS NULL
+                ) override ON override.user_id = u.id
+                LEFT JOIN Group_Memberships gm ON gm.user_id = u.id AND gm.member_status = 'active'
+                LEFT JOIN Community_Groups cg ON cg.id = gm.group_id
+                WHERE u.global_role = 'participant'
+            """
+            params: list = []
+
+            if participant_search:
+                like = f"%{participant_search.lower()}%"
+                query += " AND (LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE %s OR LOWER(u.email) LIKE %s)"
+                params.extend([like, like])
+
+            if group_id:
+                query += " AND EXISTS (SELECT 1 FROM Group_Memberships gm2 WHERE gm2.user_id = u.id AND gm2.group_id = %s AND gm2.member_status = 'active')"
+                params.append(group_id)
+
+            query += """
+                GROUP BY u.id, participant_name, u.email, total_points, earned_points, override_points
+                ORDER BY total_points DESC, participant_name ASC
+                LIMIT %s
+            """
+            params.append(limit)
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            rewards = []
+            for row in rows:
+                rewards.append({
+                    "entry_id": f"point-{row['user_id']}",
+                    "user_id": row['user_id'],
+                    "type": "point",
+                    "participant_name": row['participant_name'],
+                    "participant_email": row['email'],
+                    "total_points": row.get('total_points', 0),
+                    "earned_points": row.get('earned_points', 0),
+                    "group_names": row.get('group_names') or "",
+                })
+            return rewards
+
+    @staticmethod
+    def adjust_reward(
+        user_id: int,
+        entry_type: str,
+        action: str,
+        *,
+        achievement_id: Optional[int] = None,
+        new_points: Optional[int] = None,
+        reason: Optional[str] = None,
+        adjusted_by: Optional[int] = None,
+    ):
+        if adjusted_by is None:
+            adjusted_by = 1  # Fallback to system admin if not provided
+
+        with get_cursor() as cursor:
+            AdminRepository.ensure_reward_tables(cursor)
+            cursor.execute("SELECT id FROM Users WHERE id = %s", (user_id,))
+            if not cursor.fetchone():
+                raise ValueError("User not found")
+
+            before_snapshot = AdminRepository._get_point_snapshot(cursor, user_id)
+
+            if entry_type == 'badge':
+                if not achievement_id:
+                    raise ValueError("Achievement ID is required for badge adjustments")
+
+                cursor.execute("SELECT points_reward FROM Achievements WHERE id = %s", (achievement_id,))
+                achievement_row = cursor.fetchone()
+                if not achievement_row:
+                    raise ValueError("Achievement not found")
+
+                cursor.execute(
+                    "SELECT 1 FROM User_Achievements WHERE user_id = %s AND achievement_id = %s",
+                    (user_id, achievement_id)
+                )
+                has_badge = cursor.fetchone() is not None
+
+                if action == 'grant':
+                    if not has_badge:
+                        cursor.execute(
+                            "INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES (%s, %s, %s)",
+                            (user_id, achievement_id, datetime.now())
+                        )
+                elif action == 'revoke':
+                    if has_badge:
+                        cursor.execute(
+                            "DELETE FROM User_Achievements WHERE user_id = %s AND achievement_id = %s",
+                            (user_id, achievement_id)
+                        )
+                else:
+                    raise ValueError("Unsupported badge action")
+
+                after_snapshot = AdminRepository._get_point_snapshot(cursor, user_id)
+                cursor.execute(
+                    """
+                    INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        user_id,
+                        achievement_id,
+                        before_snapshot['effective_points'],
+                        after_snapshot['effective_points'],
+                        adjusted_by,
+                        reason,
+                    ),
+                )
+                return {
+                    "old_points": before_snapshot['effective_points'],
+                    "new_points": after_snapshot['effective_points'],
+                }
+
+            if entry_type == 'point':
+                if action not in ('set', 'override'):
+                    raise ValueError("Unsupported point adjustment action")
+                if new_points is None:
+                    raise ValueError("New points value is required for overrides")
+
+                cursor.execute(
+                    """
+                    INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
+                    VALUES (%s, NULL, %s, %s, %s, %s)
+                    """,
+                    (
+                        user_id,
+                        before_snapshot['effective_points'],
+                        new_points,
+                        adjusted_by,
+                        reason,
+                    ),
+                )
+                return {
+                    "old_points": before_snapshot['effective_points'],
+                    "new_points": new_points,
+                }
+
+            raise ValueError("Unknown entry type for reward adjustment")

@@ -263,6 +263,22 @@ def admin_dashboard():
         monitoring_days = 30
         monitoring_timeframe = "30"
 
+    reward_filters_form = {
+        "participant_search": request.args.get("participant_search", "").strip(),
+        "entry_type": request.args.get("entry_type", "").strip(),
+        "group_id": request.args.get("reward_group", "").strip(),
+    }
+    metric_focus = "badge" if reward_filters_form["entry_type"] == "badge" else "points"
+    reward_filters_form["metric"] = metric_focus
+    reward_filters_query = {
+        "participant_search": reward_filters_form["participant_search"] or None,
+        "entry_type": reward_filters_form["entry_type"] or None,
+        "group_id": reward_filters_form["group_id"] or None,
+        "metric": metric_focus,
+    }
+
+    reward_data = AdminService.get_reward_management_data(reward_filters_query)
+
     upcoming_events = AdminService.get_upcoming_events_with_volunteers(event_filters_query)
     volunteer_roles = AdminService.fetch_all_volunteer_roles()
     groups_overview = AdminService.get_group_overview(group_filters_query)
@@ -283,7 +299,94 @@ def admin_dashboard():
         event_filters=event_filters_form,
         group_filters=group_filters_form,
         monitoring_filters={"timeframe": monitoring_timeframe},
+    reward_filters=reward_filters_form,
+    reward_participants=reward_data["participant_groups"],
+        reward_summary=reward_data["summary"],
+        reward_groups=reward_data["groups"],
     )
+
+
+@admin_blueprint.route('/rewards/adjust', methods=['POST'])
+@require_super_admin
+def adjust_reward_entry():
+    redirect_target = request.form.get('redirect_url') or url_for('admin.admin_dashboard')
+    redirect_target = redirect_target.split('#')[0]
+    redirect_target = redirect_target.rstrip('?') or url_for('admin.admin_dashboard')
+    redirect_target = f"{redirect_target}#badges-points"
+
+    user_id_raw = request.form.get('user_id', '').strip()
+    entry_type = request.form.get('entry_type', '').strip()
+    action = request.form.get('action', '').strip()
+    reason = request.form.get('reason', '').strip() or None
+    achievement_id_raw = request.form.get('achievement_id', '').strip()
+    new_points_raw = request.form.get('new_points', '').strip()
+
+    try:
+        user_id = int(user_id_raw)
+    except (TypeError, ValueError):
+        flash("Invalid participant selected for adjustment.", "danger")
+        return redirect(redirect_target)
+
+    if entry_type not in ('badge', 'point'):
+        flash("Unsupported reward entry type.", "danger")
+        return redirect(redirect_target)
+
+    achievement_id = None
+    new_points = None
+
+    if entry_type == 'badge':
+        try:
+            achievement_id = int(achievement_id_raw)
+        except (TypeError, ValueError):
+            flash("Please choose a badge to adjust.", "danger")
+            return redirect(redirect_target)
+
+        if action not in ('grant', 'revoke'):
+            flash("Select a valid badge adjustment action.", "danger")
+            return redirect(redirect_target)
+    else:
+        if not new_points_raw:
+            flash("Please provide a point total to set.", "danger")
+            return redirect(redirect_target)
+        try:
+            new_points = int(new_points_raw)
+        except (TypeError, ValueError):
+            flash("Point totals must be whole numbers.", "danger")
+            return redirect(redirect_target)
+
+        action = action or 'override'
+
+    adjusted_by = auth_service.get_user_id()
+    if not adjusted_by:
+        adjusted_by = session.get('user_id')
+    if not adjusted_by:
+        adjusted_by = 1
+
+    try:
+        result = AdminService.adjust_reward(
+            user_id=user_id,
+            entry_type=entry_type,
+            action=action,
+            achievement_id=achievement_id,
+            new_points=new_points,
+            reason=reason,
+            adjusted_by=adjusted_by,
+        )
+
+        if entry_type == 'badge':
+            verb = 'Granted' if action == 'grant' else 'Revoked'
+            flash(f"{verb} badge successfully.", "success")
+        else:
+            old_points = result.get('old_points', 0)
+            new_total = result.get('new_points', new_points)
+            flash(f"Adjusted points from {old_points} to {new_total}.", "success")
+
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        flash(f"Unable to adjust reward: {str(exc)}", "danger")
+
+    return redirect(redirect_target)
 
 
 @admin_blueprint.route('/groups/<int:group_id>/assign-manager', methods=['POST'])

@@ -1,4 +1,5 @@
 import math
+from typing import Optional
 from src.app.common.db.cursor import get_cursor
 from src.app.admin.admin import Admin
 from src.app.admin.admin_repository import AdminRepository
@@ -303,9 +304,184 @@ class AdminService:
         return AdminRepository.get_user_total_points(user_id)
 
     @staticmethod
-    def adjust_achievement(user_id: int, action: str, achievement_id: int = None, new_points: int = None, reason: str = None):
-        return AdminRepository.adjust_achievement(user_id, action, achievement_id, new_points, reason)
+    def adjust_reward(
+        user_id: int,
+        entry_type: str,
+        action: str,
+        achievement_id: Optional[int] = None,
+        new_points: Optional[int] = None,
+        reason: Optional[str] = None,
+        adjusted_by: Optional[int] = None,
+    ):
+        return AdminRepository.adjust_reward(
+            user_id,
+            entry_type,
+            action,
+            achievement_id=achievement_id,
+            new_points=new_points,
+            reason=reason,
+            adjusted_by=adjusted_by,
+        )
 
     @staticmethod
     def get_all_users_with_achievements(page: int = 1, per_page: int = 10, search: str = None):
         return AdminRepository.get_all_users_with_achievements(page, per_page, search)
+
+    @staticmethod
+    def get_reward_management_data(filters: dict):
+        participant_search = (filters or {}).get('participant_search') or None
+        entry_type = (filters or {}).get('entry_type') or None
+        group_id_raw = (filters or {}).get('group_id') or None
+        metric = (filters or {}).get('metric') or 'points'
+
+        group_id = None
+        if group_id_raw:
+            try:
+                group_id = int(group_id_raw)
+            except (TypeError, ValueError):
+                group_id = None
+
+        badge_rows = AdminRepository.fetch_badge_rewards(participant_search, group_id)
+        point_rows = AdminRepository.fetch_point_rewards(participant_search, group_id)
+        reward_groups = AdminRepository.fetch_reward_group_options()
+
+        summary = AdminService._build_reward_summary(point_rows, badge_rows, metric)
+
+        combined_rows = AdminService._combine_reward_rows(badge_rows, point_rows)
+
+        if entry_type == 'badge':
+            table_rows = [row for row in combined_rows if row['entry_type'] == 'badge']
+        elif entry_type == 'point':
+            table_rows = [row for row in combined_rows if row['entry_type'] == 'point']
+        else:
+            table_rows = combined_rows
+
+        table_rows.sort(key=lambda item: (item.get('participant_name', '').lower(), item.get('entry_type', '')))
+
+        return {
+            'table_rows': table_rows,
+            'badge_rows': badge_rows,
+            'point_rows': point_rows,
+            'summary': summary,
+            'groups': reward_groups,
+            'participant_groups': AdminService._group_rewards_by_participant(badge_rows, point_rows),
+        }
+
+    @staticmethod
+    def _combine_reward_rows(badge_rows: list, point_rows: list) -> list:
+        combined: list = []
+
+        for row in badge_rows:
+            combined.append({
+                'entry_id': row['entry_id'],
+                'entry_type': 'badge',
+                'user_id': row['user_id'],
+                'achievement_id': row['achievement_id'],
+                'participant_name': row.get('participant_name', ''),
+                'participant_email': row.get('participant_email', ''),
+                'reward_label': row.get('reward_name', 'Badge'),
+                'display_value': f"{row.get('points_reward', 0)} pts",
+                'numeric_value': row.get('points_reward', 0),
+                'group_names': row.get('group_names', ''),
+                'earned_at': row.get('earned_at'),
+            })
+
+        for row in point_rows:
+            combined.append({
+                'entry_id': row['entry_id'],
+                'entry_type': 'point',
+                'user_id': row['user_id'],
+                'achievement_id': None,
+                'participant_name': row.get('participant_name', ''),
+                'participant_email': row.get('participant_email', ''),
+                'reward_label': 'Point total',
+                'display_value': row.get('total_points', 0),
+                'numeric_value': row.get('total_points', 0),
+                'earned_points': row.get('earned_points', 0),
+                'group_names': row.get('group_names', ''),
+            })
+
+        return combined
+
+    @staticmethod
+    def _group_rewards_by_participant(badge_rows: list, point_rows: list) -> list:
+        grouped = {}
+
+        for row in badge_rows:
+            user_id = row['user_id']
+            entry = grouped.setdefault(user_id, {
+                'user_id': user_id,
+                'participant_name': row.get('participant_name', ''),
+                'participant_email': row.get('participant_email', ''),
+                'group_names': row.get('group_names', ''),
+                'badges': [],
+                'points': None,
+            })
+            entry['badges'].append({
+                'entry_id': row['entry_id'],
+                'achievement_id': row['achievement_id'],
+                'reward_name': row.get('reward_name'),
+                'points_reward': row.get('points_reward', 0),
+                'earned_at': row.get('earned_at'),
+            })
+
+        for row in point_rows:
+            user_id = row['user_id']
+            entry = grouped.setdefault(user_id, {
+                'user_id': user_id,
+                'participant_name': row.get('participant_name', ''),
+                'participant_email': row.get('participant_email', ''),
+                'group_names': row.get('group_names', ''),
+                'badges': [],
+                'points': None,
+            })
+            entry['points'] = {
+                'entry_id': row['entry_id'],
+                'total_points': row.get('total_points', 0),
+                'earned_points': row.get('earned_points', 0),
+            }
+
+        grouped_list = list(grouped.values())
+        grouped_list.sort(key=lambda item: item.get('participant_name', '').lower())
+        return grouped_list
+
+    @staticmethod
+    def _build_reward_summary(point_rows: list, badge_rows: list, metric: str):
+        metric_key = metric or 'points'
+        if metric_key == 'badge':
+            participant_badge_counts = {}
+            for row in badge_rows:
+                participant_badge_counts[row['user_id']] = participant_badge_counts.get(row['user_id'], 0) + 1
+
+            total_badges = len(badge_rows)
+            top_performer = None
+            if participant_badge_counts:
+                top_user_id, top_count = max(participant_badge_counts.items(), key=lambda item: item[1])
+                exemplar = next((row for row in badge_rows if row['user_id'] == top_user_id), None)
+                top_performer = {
+                    'name': exemplar['participant_name'] if exemplar else 'Unknown participant',
+                    'value': top_count,
+                }
+
+            return {
+                'metric': 'badge',
+                'participant_count': len(participant_badge_counts),
+                'total_badges': total_badges,
+                'top_performer': top_performer,
+            }
+
+        # Default to points summary
+        participant_count = len(point_rows)
+        top_entry = max(point_rows, key=lambda row: row.get('total_points', 0), default=None)
+        top_performer = None
+        if top_entry:
+            top_performer = {
+                'name': top_entry.get('participant_name') or 'Unknown participant',
+                'value': top_entry.get('total_points', 0),
+            }
+
+        return {
+            'metric': 'points',
+            'participant_count': participant_count,
+            'top_performer': top_performer,
+        }

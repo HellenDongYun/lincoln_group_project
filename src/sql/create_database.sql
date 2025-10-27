@@ -160,7 +160,7 @@ CREATE TABLE Group_Join_Requests (
   UNIQUE KEY unique_user_group_pending (user_id, group_id, status)
 );
 
--- Achievement system -------------------------------------------------------
+-- Achievement system 
 
 CREATE TABLE Achievements (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -198,7 +198,7 @@ ALTER TABLE Group_Applications
 ADD COLUMN application_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 
--- Group-specific challenges -------------------------------------------------
+-- Group-specific challenges 
 
 CREATE TABLE Group_Challenges (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -269,7 +269,7 @@ CREATE TABLE User_Status_Audit (
 );
 
 
--- Support Requests for Helpdesk System------ujyh7
+-- Support Requests for Helpdesk System-
 CREATE TABLE Support_Requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
@@ -307,9 +307,9 @@ CREATE TABLE Achievement_Adjustments (
     adjusted_by INT NOT NULL,
     adjusted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     reason TEXT,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,  
-    FOREIGN KEY (achievement_id) REFERENCES Achievements(id) ON DELETE SET NULL,  
-    FOREIGN KEY (adjusted_by) REFERENCES Users(id) ON DELETE RESTRICT  -
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+  FOREIGN KEY (achievement_id) REFERENCES Achievements(id) ON DELETE SET NULL,
+  FOREIGN KEY (adjusted_by) REFERENCES Users(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 
