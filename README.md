@@ -13,17 +13,16 @@ TeamAmberProject2
 
 
 ## Test User Accounts
--- super.admin@platform.org	 Super123!
+- Super Admin: super.admin@platform.org, Password: Super123!
+- Support tech: support.tech@platform.org , Password: Support123!
+- Participant 1 (manager Darfield): alice.wong@gmail.com, Password: Alice123!
+- Participant 2 (manager Harbour Runners): bob.jones@outlook.com , Password: Bob123!
+- Participant 3: carol.smith@yahoo.com , Password: Carol123!
+- Participant 4: dave.brown@xtra.co.nz , Password: Dave123!
+- Participant 5: emma.taylor@gmail.com , Password: Emma123!
 
--- alice.wong@gmail.com	     Alice123!
 
--- bob.jones@outlook.com	 Bob123!
 
--- carol.smith@yahoo.com	 Carol123!
-
--- dave.brown@xtra.co.nz	 Dave123!
-
--- emma.taylor@gmail.com	 Emma123!
 
 ## Technical Stack
 
