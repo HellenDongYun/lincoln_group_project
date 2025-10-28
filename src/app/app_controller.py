@@ -52,7 +52,7 @@ def home():
         location_options=location_options,
         selected_location="",
         selected_event_type="all",
-        selected_date_filter="next_2_weeks",
+        selected_date_filter="all",
     )
 
 @app_blueprint.route("login", methods=["GET", "POST"])
@@ -309,7 +309,7 @@ def home_filter_events():
     allowed_ranges = {"next_2_weeks", "next_3_months", "all"}
     limit = 9
     if filter_type == "events" and not date_param:
-        date_param = "next_2_weeks"
+        date_param = "all"
     if date_param and date_param not in allowed_ranges:
         try:
             date_obj = datetime.strptime(date_param, "%Y-%m-%d")
@@ -443,7 +443,7 @@ def home_filter_events():
                 group['join_icon'] = icon
                 group['join_action'] = 'join' if visibility == 'public' else 'request'
     location_options = home_service.get_event_locations()
-    selected_date_filter = date_param if date_param in allowed_ranges else ("all" if date_param else "next_2_weeks")
+    selected_date_filter = date_param if date_param in allowed_ranges else "all"
     return render_template(
         "app/search.html",
         events=filter_event_results,
