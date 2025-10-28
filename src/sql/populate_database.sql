@@ -1,6 +1,6 @@
 USE TeamAmberProject$activeloop;
 
--- ------------------------------
+
 -- Users (1 super admin + participants)
 -- super.admin@platform.org	Super123!
 -- alice.wong@gmail.com	Alice123!
@@ -19,7 +19,7 @@ USE TeamAmberProject$activeloop;
 -- valentina.green@gmail.com	Valentina123!
 -- support.tech@platform.org    Support123!
 
--- ------------------------------
+
 INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, town, global_role, status) VALUES
 ('super.admin@platform.org', '$2a$12$MJ1uykG7aegnqalX4IYmYOpuBsv3Z62g2eZyb6djTa4I0r7kQ8dV.', 'Super', 'Admin', 'male', 48, 'Christchurch', 'super_admin', 'active'),
 ('alice.wong@gmail.com', '$2b$12$6nK5TrF/e0ItqIj4gfvr8u3bRc0EnNBCDPrCb3RZ0N3WeMM66PnJ2', 'Alice', 'Wong', 'female', 29, 'Christchurch', 'participant', 'active'),
@@ -39,18 +39,18 @@ INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, tow
 ('support.tech@platform.org', '$2a$12$WTDdKSew1rXMuLtWi6vClOgmzI0U4l2Z5U4kl0tTfplKG.1Cm/.xG', 'Morgan', 'Reeves', 'other', 35, 'Christchurch', 'support_technician', 'active');
 
 
--- ------------------------------
+
 -- Seed Groups 
--- ------------------------------
+
 INSERT INTO Community_Groups (name, description, town, visibility, status, created_by) VALUES
 ('Darfield Forest Cycling Group', 'Weekly forest and gravel rides around Darfield area.', 'Christchurch', 'public', 'active', 1),
 ('Harbour Runners Wellington', 'Inclusive running group focusing on 5k to half-marathon training.', 'Wellington', 'public', 'active', 1),
 ('Auckland Trail Explorers', 'Trail running & hiking exploration in Auckland region.', 'Auckland', 'public', 'active', 1),
 ('Rotorua Adventure Club', 'Mixed cycling and trail events in the Redwoods.', 'Rotorua', 'private', 'active', 1);
 
--- ------------------------------
+
 -- Group Memberships (Managers & Members)
--- ------------------------------
+
 -- 1 = Darfield, 2 = Harbour Runners, 3 = Auckland Trail, 4 = Rotorua Adventure
 -- Group Managers (user_id): 2=Alice, 3=Bob, 12=Violet, 10=Irene
 INSERT INTO Group_Memberships (group_id, user_id, group_role, member_status) VALUES
@@ -75,9 +75,9 @@ INSERT INTO Group_Memberships (group_id, user_id, group_role, member_status) VAL
 (4, 9, 'member', 'active'); -- Harry (9) member Rotorua Adventure 
 
 
--- ------------------------------
+
 -- Group Applications 
--- ------------------------------
+
 INSERT INTO Group_Applications (applicant_id, proposed_name, proposed_description, proposed_town, visibility, status, decision_by)
 VALUES
 (5, 'Hamilton Fitness Collective', 'Local mixed-discipline fitness and running events.', 'Hamilton', 'public', 'pending', NULL),
@@ -87,9 +87,9 @@ VALUES
 (8, 'Queenstown Mountain Riders', 'Mountain terrain cycling crew.', 'Queenstown', 'private', 'rejected', 1);
 
 
--- ------------------------------
+
 -- Volunteer Tasks catalogue 
--- ------------------------------
+
 INSERT INTO Volunteer_Tasks (name, description) VALUES
 ('Event Coordinator', 'Oversees the entire event, ensures safety, resolves issues'),
 ('Registration Assistant', 'Welcomes and checks in participants'),
@@ -106,9 +106,9 @@ INSERT INTO Volunteer_Tasks (name, description) VALUES
 ('Bike Marshal', 'Monitors cycling route safety');
 
 
--- ------------------------------
+
 -- Achievements & Challenges
--- ------------------------------
+
 INSERT INTO Achievements (id, name, description, points_reward) VALUES
 (1, 'Getting Started', 'Complete your very first event.', 50),
 (2, 'Weekend Warrior', 'Attend events on a Saturday and Sunday in the same weekend.', 75),
@@ -148,9 +148,9 @@ INSERT INTO User_Achievements (user_id, achievement_id, earned_at) VALUES
 (7, 4, '2025-06-28 07:35:00');
 
 
--- ------------------------------
+
 -- Group Challenges & Assignments
--- ------------------------------
+
 INSERT INTO Group_Challenges (group_id, name, description, target_metric, target_value, timeframe_days, achievement_id, reward_badge_label, reward_trophy_label, verification_required, status, created_by, created_at, published_at) VALUES
 (1, 'Darfield Spring Sprint', 'Complete three club events during the September push.', 'events_attended', 3, 30, 3, 'Darfield Pace Setter', NULL, FALSE, 'published', 2, '2025-08-28 08:00:00', '2025-09-01 08:00:00'),
 (2, 'Harbour Elevation Challenge', 'Climb 1,500 metres cumulative elevation with the club this month.', 'elevation_gain_meters', 1500, 30, NULL, 'Harbour Climber Badge', NULL, TRUE, 'published', 3, '2025-08-25 09:30:00', '2025-09-05 07:00:00'),
@@ -173,9 +173,9 @@ INSERT INTO User_Reward_Items (user_id, challenge_id, item_type, label, awarded_
 (3, 2, 'badge', 'Harbour Climber Badge', '2025-09-24 19:15:00');
 
 
--- ------------------------------
+
 -- Events
--- ------------------------------
+
 INSERT INTO Events (group_id, datetime, town, name, event_type, description, max_participants, visibility, created_by) VALUES
 (1, '2025-11-15 07:30:00', 'Christchurch', 'Avon River Fun Run', '5km Run', 'A scenic 5km loop along the Avon River for all ages.', 50, 'public', 2), -- 1: UPCOMING (Sept 15)
 (2, '2025-11-15 08:00:00', 'Wellington', 'Harbour Walk Challenge', '10km Walk', 'Coastal 10km walk with harbour views.', 80, 'public', 3), -- 2: UPCOMING (Sept 15)
@@ -189,9 +189,9 @@ INSERT INTO Events (group_id, datetime, town, name, event_type, description, max
 (1, '2025-08-10 08:30:00', 'Christchurch', 'Garden City Cycling Challenge', 'Cycling 15km', 'Scenic 15km cycle event.', 180, 'public', 2); -- 10: PAST
 
 
--- ------------------------------
+
 -- Event Task Vacancies 
--- ------------------------------
+
 INSERT INTO Event_Task_Vacancies (event_id, task_id, spots) VALUES
 (1, 1, 1), (1, 3, 3), (1, 6, 2), (1, 7, 2), 
 (2, 2, 3), (2, 3, 5), (2, 8, 1), (2, 10, 2), 
@@ -201,9 +201,8 @@ INSERT INTO Event_Task_Vacancies (event_id, task_id, spots) VALUES
 (10, 1, 1), (10, 2, 2), (10, 13, 2), (10, 6, 1), (10, 7, 1), (10, 4, 1);
 
 
--- ------------------------------
 -- Event Task Assignments (Volunteers)
--- ------------------------------
+
 INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
 -- Assignments for UPCOMING Event 1 Avon River Fun Run
 (1, 1, 2), -- Alice (2) Event Coordinator
@@ -223,9 +222,9 @@ INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
 (10, 1, 2), (10, 2, 13), (10, 13, 14), (10, 6, 12), (10, 7, 11), (10, 4, 5);
 
 
--- ------------------------------
--- Event Participants (Attendees)
--- ------------------------------
+
+-- Event Participants 
+-
 INSERT INTO Event_Participants (event_id, user_id, status) VALUES
 -- Event 1 (Avon River Fun Run - Group 1 members + others)
 (1, 2, 'registered'), (1, 3, 'registered'), (1, 4, 'registered'), (1, 5, 'registered'), (1, 11, 'registered'), (1, 13, 'registered'),
@@ -254,9 +253,9 @@ INSERT INTO Event_Participants (event_id, user_id, status) VALUES
 (10, 2, 'registered'), (10, 5, 'registered'), (10, 6, 'registered'), (10, 12, 'registered');
 
 
--- ------------------------------
+
 -- Event Results
--- ------------------------------
+
 INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (8, 2, '2025-06-15 08:00:00', '2025-06-15 08:52:30'), (8, 3, '2025-06-15 08:00:00', '2025-06-15 08:47:15'),
 (8, 4, '2025-06-15 08:00:00', '2025-06-15 08:55:45'), (8, 5, '2025-06-15 08:00:00', '2025-06-15 08:43:20'),
@@ -269,9 +268,9 @@ INSERT INTO Event_Results (event_id, user_id, start_time, end_time) VALUES
 (10, 12, '2025-08-10 08:30:00', '2025-08-10 09:06:55'), (10, 13, '2025-08-10 08:30:00', '2025-08-10 09:18:40');
 
 
--- ------------------------------
+
 -- Support Requests & Conversations
--- ------------------------------
+
 INSERT INTO Support_Requests (user_id, issue_type, subject, description, screenshot_path, status, priority, assigned_to, created_at, updated_at) VALUES
 (2, 'technical', 'Cannot upload run result screenshot', 'I receive a 500 error when trying to upload my run proof for Avon River Fun Run.', '/uploads/support/avon-run-upload-error.png', 'new', 'high', NULL, '2025-09-07 08:45:00', '2025-09-07 08:45:00'),
 (3, 'event', 'Harbour Walk volunteer roster missing task', 'The Course Marshal slot I usually cover is not available for the October Harbour Walk event.', NULL, 'open', 'medium', 16, '2025-09-05 11:20:00', '2025-09-06 09:05:00'),
@@ -295,9 +294,9 @@ VALUES
 (2, 1, 50, 25, 1, 'Super Admin corrected wrong badge points'),  
 (3, 2, 0, 75, 1, 'Super Admin added missing achievement points');
 
--- ------------------------------
+-
 -- Support Request Status Changes (Audit Log)
--- ------------------------------
+
 INSERT INTO Support_Request_Status_Changes (request_id, changed_by, old_status, new_status, comment_id, changed_at) VALUES
 -- Request 2: Morgan took the request (new → open)
 (2, 16, 'new', 'open', NULL, '2025-09-05 11:20:30'),
@@ -312,9 +311,9 @@ INSERT INTO Support_Request_Status_Changes (request_id, changed_by, old_status, 
 -- Request 5: Morgan resolved with comment (open → resolved) - references comment_id 6
 (5, 16, 'open', 'resolved', 6, '2025-08-22 16:15:00');
 
--- ------------------------------
+
 -- Notifications
--- ------------------------------
+
 INSERT INTO Notifications (user_id, type, reference_id, message, is_read, created_at) VALUES
 -- Notification to Bob (3) when request 2 was taken by Morgan
 (3, 'request_assigned', 2, 'Your support request #2 has been taken by Morgan Reeves', TRUE, '2025-09-05 11:20:30'),
