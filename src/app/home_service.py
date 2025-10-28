@@ -32,6 +32,21 @@ class HomeService(Repository):
             print(f"Database error in get_upcoming_events: {e}")
             return []
 
+    def get_event_locations(self) -> list[str]:
+        """Fetch distinct event towns for filter dropdowns."""
+        sql = """
+            SELECT DISTINCT town
+            FROM Events
+            WHERE COALESCE(town, '') <> ''
+            ORDER BY town ASC
+        """
+        try:
+            rows = self.fetchall(sql)
+            return [row.get('town') for row in rows if row.get('town')]
+        except Exception as exc:
+            print(f"Database error in get_event_locations: {exc}")
+            return []
+
     def home_filter_events(limit,location="", event_type="", date_str=""):
         return Repository.home_filter_events(limit,location, event_type, date_str)
     def home_filter_groups():

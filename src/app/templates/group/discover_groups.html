@@ -38,9 +38,9 @@
         <h2 class="h4 fw-bold mb-0">Groups</h2>
         <p class="text-muted small mb-0">{{ groups|length }} public groups available{% if town_filter %} near <span class="fw-semibold">{{ town_filter }}</span>{% endif %}</p>
       </div>
-      <a href="{{ url_for('groups.apply_for_group') }}" class="btn btn-outline-dark">
-        <i class="bi bi-plus-circle me-2"></i>Request a new group
-      </a>
+      <div class="text-muted small">
+        <i class="bi bi-info-circle me-2"></i>Need a new group? Ask your participant coordinator.
+      </div>
     </div>
 
     {% if groups %}

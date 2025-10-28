@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.app.common.db.cursor import get_cursor
 
 
@@ -23,20 +23,35 @@ class Repository:
     def home_filter_events(limit,location="", event_type="", date_str=""):
         base_query = "SELECT * FROM Events WHERE 1=1"
         params = []
+
         if location:
             base_query += " AND town LIKE %s"
             params.append(f"%{location}%")
+
         if event_type and event_type != "all":
             base_query += " AND name LIKE %s"
             params.append(f"%{event_type}%")
+
         if date_str:
-            try:
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                base_query += " AND DATE(datetime) = %s"
-                params.append(date_obj.date())
-            except ValueError:
+            normalized = date_str.lower()
+            if normalized == "next_2_weeks":
+                base_query += " AND datetime BETWEEN NOW() AND %s"
+                params.append(datetime.now() + timedelta(weeks=2))
+            elif normalized == "next_3_months":
+                base_query += " AND datetime BETWEEN NOW() AND %s"
+                params.append(datetime.now() + timedelta(days=90))
+            elif normalized == "all":
                 pass
+            else:
+                try:
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                    base_query += " AND DATE(datetime) = %s"
+                    params.append(date_obj.date())
+                except ValueError:
+                    pass
+
         base_query += " ORDER BY datetime ASC LIMIT {}".format(int(limit))
+
         with get_cursor() as cursor:
             cursor.execute(base_query, params)
             return cursor.fetchall()     

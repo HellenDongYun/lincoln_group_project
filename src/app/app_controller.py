@@ -44,9 +44,16 @@ def map_age_group_to_age(age_group: str | None) -> int | None:
 def home():
     # Get next 5 upcoming events for home page
     upcoming_events = home_service.get_upcoming_events(5)
-    return render_template("app/home.html", 
-                         is_logged_in=auth_service.is_logged_in(),
-                         upcoming_events=upcoming_events)
+    location_options = home_service.get_event_locations()
+    return render_template(
+        "app/home.html",
+        is_logged_in=auth_service.is_logged_in(),
+        upcoming_events=upcoming_events,
+        location_options=location_options,
+        selected_location="",
+        selected_event_type="all",
+        selected_date_filter="next_2_weeks",
+    )
 
 @app_blueprint.route("login", methods=["GET", "POST"])
 def login():
@@ -86,7 +93,13 @@ def login():
                 flash("Unknown role. Contact support.", "danger")
                 return redirect(url_for("app.login"))
         else:
-            form_group.get("password").errors.append(error_message or "Invalid email or password.")
+            if error_message == "Invalid email.":
+                form_group.get("email").errors.append(error_message)
+            elif error_message == "Please contact super.admin@platform.org to reset password.":
+                form_group.get("password").errors.append(error_message)
+                form_group.get("password").value = ''
+            else:
+                form_group.get("password").errors.append(error_message or "Invalid email or password.")
 
 
     return render_template("app/login.html", form_group=form_group)
@@ -291,19 +304,22 @@ def home_filter_events():
     filter_type = request.args.get("filter_type", "events")  
     location = request.args.get("location", "").strip()
     event_type = request.args.get("event_type", "").strip()
-    date_str = request.args.get("date", "").strip()
+    date_param = request.args.get("date", "").strip()
     formatted_date = ""
+    allowed_ranges = {"next_2_weeks", "next_3_months", "all"}
     limit = 9
-    if date_str:
+    if filter_type == "events" and not date_param:
+        date_param = "next_2_weeks"
+    if date_param and date_param not in allowed_ranges:
         try:
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            date_obj = datetime.strptime(date_param, "%Y-%m-%d")
             formatted_date = date_obj.strftime("%d/%m/%Y")
         except ValueError:
-            formatted_date = date_str
+            formatted_date = date_param
     filter_event_results = []
     filter_group_results = []
     if filter_type == "events":
-        filter_event_results = HomeService.home_filter_events(limit,location, event_type, date_str)
+        filter_event_results = HomeService.home_filter_events(limit, location, event_type, date_param)
         if auth_service.is_logged_in() and auth_service.is_participant():
             user_id = auth_service.get_user_id()
 
@@ -330,13 +346,16 @@ def home_filter_events():
             for event in filter_event_results or []:
                 event_id = event.get('id')
                 group_id = event.get('group_id')
+                visibility = (event.get('visibility') or '').strip().lower()
                 is_registered = event_id in registered_event_ids
                 is_group_member = group_id in member_group_ids if group_id is not None else False
-                # Grey out quick register when participant already signed up or belongs to hosting group
-                event['disable_quick_register'] = bool(is_registered or is_group_member)
-                event['quick_register_label'] = (
-                    "Registered" if is_registered else ("Joined" if is_group_member else "Register Now")
-                )
+
+                if visibility == 'private' and not is_group_member:
+                    event['disable_quick_register'] = True
+                    event['quick_register_label'] = "Apply to Join"
+                else:
+                    event['disable_quick_register'] = bool(is_registered)
+                    event['quick_register_label'] = "Registered" if is_registered else "Register Now"
     elif filter_type == "groups":
         filter_group_results = HomeService.home_filter_groups()
         for group in filter_group_results or []:
@@ -423,6 +442,8 @@ def home_filter_events():
                 group['join_label'] = label
                 group['join_icon'] = icon
                 group['join_action'] = 'join' if visibility == 'public' else 'request'
+    location_options = home_service.get_event_locations()
+    selected_date_filter = date_param if date_param in allowed_ranges else ("all" if date_param else "next_2_weeks")
     return render_template(
         "app/search.html",
         events=filter_event_results,
@@ -431,6 +452,10 @@ def home_filter_events():
         location=location,
         event_type=event_type,
         date_str=formatted_date,
+        selected_location=location,
+        selected_event_type=event_type or "all",
+        selected_date_filter=selected_date_filter,
+        location_options=location_options,
         is_logged_in=auth_service.is_logged_in(),
         is_participant=auth_service.is_participant(),
         current_user_id=auth_service.get_user_id(),

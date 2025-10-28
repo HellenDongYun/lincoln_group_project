@@ -25,24 +25,44 @@ class ResultsRepository(Repository):
             print(f"Database error in get_events_with_results: {e}")
             return []
     
-    def get_all_events(self):
-        """Get all events for the upload dropdown"""
-        sql = """
+    def get_all_events(self, *, group_ids: list[int] | None = None):
+        """Get past events, optionally restricted to specified group IDs."""
+        conditions = ["datetime <= NOW()"]
+        params: list = []
+
+        if group_ids:
+            placeholders = ",".join(["%s"] * len(group_ids))
+            conditions.append(f"group_id IN ({placeholders})")
+            params.extend(group_ids)
+
+        where_clause = " AND ".join(conditions)
+        sql = f"""
             SELECT 
                 id as Event_ID,
                 name as Event_Name,
                 DATE(datetime) as Event_Date,
                 town as Event_Location,
-                event_type as Event_Type
+                event_type as Event_Type,
+                group_id as Group_ID,
+                datetime as Event_DateTime
             FROM Events
-            WHERE DATE(datetime) >= CURDATE() - INTERVAL 30 DAY and DATE(datetime) < NOW()
-            ORDER BY datetime ASC;
+            WHERE {where_clause}
+            ORDER BY datetime DESC
         """
         try:
-            return self.fetchall(sql)
+            return self.fetchall(sql, tuple(params))
         except Exception as e:
             print(f"Database error in get_all_events: {e}")
             return []
+
+    def get_event_group_and_datetime(self, event_id: int):
+        """Return the owning group and scheduled datetime for an event."""
+        sql = "SELECT group_id, datetime FROM Events WHERE id = %s"
+        try:
+            return self.fetchone(sql, (event_id,))
+        except Exception as exc:
+            print(f"Database error in get_event_group_and_datetime: {exc}")
+            return None
     
     def get_event_details(self, event_id):
         """Get details for a specific event"""

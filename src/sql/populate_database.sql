@@ -19,6 +19,8 @@ USE TeamAmberProject$activeloop;
 -- valentina.green@gmail.com	Valentina123!
 -- support.tech@platform.org    Support123!
 
+-- Alice Wong (user_id = 2) is the primary demo participant account used in walkthroughs.
+
 
 INSERT INTO Users (email, password_hash, first_name, last_name, gender, age, town, global_role, status) VALUES
 ('super.admin@platform.org', '$2a$12$MJ1uykG7aegnqalX4IYmYOpuBsv3Z62g2eZyb6djTa4I0r7kQ8dV.', 'Super', 'Admin', 'male', 48, 'Christchurch', 'super_admin', 'active'),
@@ -59,6 +61,9 @@ INSERT INTO Group_Memberships (group_id, user_id, group_role, member_status) VAL
 (1, 4, 'member', 'active'), -- Carol (4) member Darfield
 (1, 11, 'member', 'active'), -- Jack (11) member Darfield
 (1, 5, 'member', 'active'), -- Dave (5) member Darfield 
+(1, 6, 'member', 'active'), -- Emma (6) member Darfield
+(1, 7, 'member', 'active'), -- Frank (7) member Darfield
+(1, 8, 'member', 'active'), -- Grace (8) member Darfield
 
 (2, 3, 'manager', 'active'), -- Bob (3) manager Harbour Runners
 (2, 2, 'member', 'active'), -- Alice (2) member Harbour Runners
@@ -186,7 +191,10 @@ INSERT INTO Events (group_id, datetime, town, name, event_type, description, max
 (4, '2025-11-19 07:45:00', 'Rotorua', 'Redwoods Forest Ride', 'Trail Ride 15km', 'Ride through Whakarewarewa Forest.', 70, 'private', 10), -- 7: UPCOMING
 (2, '2025-06-15 08:00:00', 'Wellington', 'Capital City Marathon', '10km Run', 'Annual Wellington 10km run.', 200, 'public', 3), -- 8: PAST
 (3, '2025-07-20 07:30:00', 'Auckland', 'Auckland Harbour Bridge Fun Run', '5km Run', 'Iconic bridge run.', 250, 'public', 12), -- 9: PAST
-(1, '2025-08-10 08:30:00', 'Christchurch', 'Garden City Cycling Challenge', 'Cycling 15km', 'Scenic 15km cycle event.', 180, 'public', 2); -- 10: PAST
+(1, '2025-08-10 08:30:00', 'Christchurch', 'Garden City Cycling Challenge', 'Cycling 15km', 'Scenic 15km cycle event.', 180, 'public', 2), -- 10: PAST
+(1, '2025-09-28 07:15:00', 'Darfield', 'Darfield Dawn Dash', '5km Run', 'Early-morning community run starting at Darfield Domain.', 120, 'public', 2), -- 11: UPCOMING
+(1, '2025-10-12 09:30:00', 'Darfield', 'Selwyn Family Fun Walk', 'Family Walk 3km', 'Family-friendly walk with activity stations around the town centre.', 150, 'public', 2), -- 12: UPCOMING
+(1, '2025-07-05 18:30:00', 'Darfield', 'Canterbury Night Ride', 'Cycling 12km', 'Evening group cycle along the newly lit rail trail extension.', 80, 'public', 2); -- 13: PAST
 
 
 
@@ -198,7 +206,10 @@ INSERT INTO Event_Task_Vacancies (event_id, task_id, spots) VALUES
 (3, 1, 1), (3, 2, 2), (3, 9, 1), (3, 12, 1), 
 (8, 1, 1), (8, 2, 3), (8, 3, 4), (8, 4, 2), (8, 5, 2), (8, 11, 2),
 (9, 1, 1), (9, 2, 2), (9, 6, 2), (9, 8, 1), (9, 9, 1), (9, 10, 2), (9, 12, 1),
-(10, 1, 1), (10, 2, 2), (10, 13, 2), (10, 6, 1), (10, 7, 1), (10, 4, 1);
+(10, 1, 1), (10, 2, 2), (10, 13, 2), (10, 6, 1), (10, 7, 1), (10, 4, 1),
+(11, 1, 1), (11, 2, 2), (11, 3, 3), (11, 6, 2),
+(12, 2, 3), (12, 5, 2), (12, 10, 2), (12, 11, 1),
+(13, 1, 1), (13, 6, 2), (13, 7, 1), (13, 13, 1);
 
 
 -- Event Task Assignments (Volunteers)
@@ -216,15 +227,27 @@ INSERT INTO Event_Task_Assignments (event_id, task_id, user_id) VALUES
 (3, 1, 12), -- Violet (12) Event Coordinator
 (3, 9, 6), -- Emma (6) Photographer
 
+-- Assignments for UPCOMING Event 11 Darfield Dawn Dash
+(11, 1, 2), -- Alice (2) Event Coordinator
+(11, 2, 6), -- Emma (6) Registration Assistant
+(11, 3, 5), -- Dave (5) Course Marshal
+(11, 6, 8), -- Grace (8) Route Setup Crew
+
+-- Assignments for UPCOMING Event 12 Selwyn Family Fun Walk
+(12, 2, 7), -- Frank (7) Registration Assistant
+(12, 10, 3), -- Bob (3) First Timers Host
+(12, 11, 4), -- Carol (4) Safety & First Aid
+
 -- Assignments for PAST events 
 (8, 1, 2), (8, 2, 3), (8, 3, 4), (8, 4, 5), (8, 5, 6), (8, 11, 7),
 (9, 1, 12), (9, 2, 13), (9, 6, 14), (9, 8, 11), (9, 9, 10), (9, 10, 9), (9, 12, 8),
-(10, 1, 2), (10, 2, 13), (10, 13, 14), (10, 6, 12), (10, 7, 11), (10, 4, 5);
+(10, 1, 2), (10, 2, 13), (10, 13, 14), (10, 6, 12), (10, 7, 11), (10, 4, 5),
+(13, 1, 2), (13, 6, 13), (13, 7, 11), (13, 13, 5);
 
 
 
 -- Event Participants 
--
+
 INSERT INTO Event_Participants (event_id, user_id, status) VALUES
 -- Event 1 (Avon River Fun Run - Group 1 members + others)
 (1, 2, 'registered'), (1, 3, 'registered'), (1, 4, 'registered'), (1, 5, 'registered'), (1, 11, 'registered'), (1, 13, 'registered'),
@@ -250,7 +273,16 @@ INSERT INTO Event_Participants (event_id, user_id, status) VALUES
 -- Registrations for PAST events (retained)
 (8, 2, 'registered'), (8, 3, 'registered'), (8, 4, 'registered'), (8, 5, 'registered'), (8, 6, 'registered'),
 (9, 3, 'registered'), (9, 4, 'registered'), (9, 9, 'registered'), (9, 10, 'registered'), (9, 11, 'registered'),
-(10, 2, 'registered'), (10, 5, 'registered'), (10, 6, 'registered'), (10, 12, 'registered');
+(10, 2, 'registered'), (10, 5, 'registered'), (10, 6, 'registered'), (10, 12, 'registered'),
+
+-- Event 11 (Darfield Dawn Dash - expanded Darfield membership)
+(11, 2, 'registered'), (11, 3, 'registered'), (11, 4, 'registered'), (11, 5, 'registered'), (11, 6, 'registered'), (11, 8, 'registered'),
+
+-- Event 12 (Selwyn Family Fun Walk - Darfield community event)
+(12, 2, 'registered'), (12, 11, 'registered'), (12, 15, 'registered'), (12, 7, 'registered'), (12, 5, 'registered'),
+
+-- Event 13 (Canterbury Night Ride - Darfield cycling night)
+(13, 2, 'registered'), (13, 7, 'registered'), (13, 11, 'registered'), (13, 13, 'registered');
 
 
 
@@ -277,6 +309,9 @@ INSERT INTO Support_Requests (user_id, issue_type, subject, description, screens
 (4, 'group', 'Need help approving private group requests', 'Our Auckland Trail Explorers group has pending join requests but I cannot see the approve button.', '/uploads/support/group-approval.png', 'open', 'high', 16, '2025-09-04 18:10:00', '2025-09-08 10:25:00'),
 (5, 'account', 'Reset password email never arrives', 'Tried resetting my password twice and no email shows up.', NULL, 'stalled', 'medium', 16, '2025-08-29 07:55:00', '2025-09-03 13:10:00'),
 (6, 'bug', 'Results table shows duplicate rows', 'My results dashboard duplicates the Hawke’s Bay Sunrise Walk finishing time.', NULL, 'resolved', 'low', 16, '2025-08-20 09:30:00', '2025-08-22 16:15:00'),
+(2, 'other', 'Request SMS reminders for Darfield events', 'Could we pilot SMS reminders for the Darfield Dawn Dash and other club events?', NULL, 'new', 'low', NULL, '2025-09-10 08:40:00', '2025-09-10 08:40:00'),
+(8, 'other', 'Request personal data export', 'Please provide a full export of my participation and volunteer history for compliance review.', NULL, 'open', 'medium', 16, '2025-09-11 10:15:00', '2025-09-11 10:30:00'),
+(7, 'other', 'Need monthly receipts for donations', 'Our group treasurer needs monthly PDF receipts for the donation add-on charges.', NULL, 'new', 'low', NULL, '2025-09-12 12:05:00', '2025-09-12 12:05:00'),
 (9, 'volunteer', 'Unable to claim Timekeeper spot', 'I click claim for Timekeeper on event ID 5 and nothing happens.', NULL, 'new', 'medium', NULL, '2025-09-09 14:05:00', '2025-09-09 14:05:00');
 
 INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_reply, created_at) VALUES
@@ -287,15 +322,20 @@ INSERT INTO Support_Request_Comments (request_id, user_id, comment, is_staff_rep
 (3, 16, 'Issue traced to missing manager flag. Patch deployed; can you try again?', TRUE, '2025-09-08 10:20:00'),
 (4, 16, 'We see mail logs showing a bounce. Confirming with provider now.', TRUE, '2025-09-01 09:15:00'),
 (5, 6, 'Duplicate row only appears after refreshing the page.', FALSE, '2025-08-20 09:35:00'),
-(5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00');
+(5, 16, 'Bug fixed in results service; verify the dashboard when convenient.', TRUE, '2025-08-22 16:10:00'),
+(7, 2, 'Happy to trial SMS reminders for Darfield members if it helps testing.', FALSE, '2025-09-10 08:42:00'),
+(7, 16, 'We will scope an SMS opt-in feature and keep you updated.', TRUE, '2025-09-10 09:15:00'),
+(8, 8, 'Requesting export to share with our compliance consultant.', FALSE, '2025-09-11 10:20:00'),
+(8, 16, 'Export job queued; expect delivery within 24 hours.', TRUE, '2025-09-11 10:35:00'),
+(9, 7, 'Receipts will help our treasurer reconcile donations each month.', FALSE, '2025-09-12 12:06:00');
 
 INSERT INTO Achievement_Adjustments (user_id, achievement_id, old_points, new_points, adjusted_by, reason)
 VALUES
 (2, 1, 50, 25, 1, 'Super Admin corrected wrong badge points'),  
 (3, 2, 0, 75, 1, 'Super Admin added missing achievement points');
 
--
 -- Support Request Status Changes (Audit Log)
+
 
 INSERT INTO Support_Request_Status_Changes (request_id, changed_by, old_status, new_status, comment_id, changed_at) VALUES
 -- Request 2: Morgan took the request (new → open)
@@ -309,7 +349,9 @@ INSERT INTO Support_Request_Status_Changes (request_id, changed_by, old_status, 
 -- Request 5: Morgan took the request (new → open)
 (5, 16, 'new', 'open', NULL, '2025-08-20 09:36:00'),
 -- Request 5: Morgan resolved with comment (open → resolved) - references comment_id 6
-(5, 16, 'open', 'resolved', 6, '2025-08-22 16:15:00');
+(5, 16, 'open', 'resolved', 6, '2025-08-22 16:15:00'),
+-- Request 8: Morgan took the request (new → open)
+(8, 16, 'new', 'open', NULL, '2025-09-11 10:30:30');
 
 
 -- Notifications
@@ -334,5 +376,12 @@ INSERT INTO Notifications (user_id, type, reference_id, message, is_read, create
 -- Notification to Morgan (16) for new comment on request 2
 (16, 'request_comment', 2, 'Bob Jones added a comment to request #2', TRUE, '2025-09-05 11:22:00'),
 -- Notification to Morgan (16) for new comment on request 3
-(16, 'request_comment', 3, 'Carol Smith added a comment to request #3', TRUE, '2025-09-04 18:12:00');
+(16, 'request_comment', 3, 'Carol Smith added a comment to request #3', TRUE, '2025-09-04 18:12:00'),
+-- Notification to Alice (2) when support replied to her SMS request
+(2, 'request_comment', 7, 'Support replied to your SMS reminder request.', FALSE, '2025-09-10 09:15:00'),
+-- Notification to Grace (8) when request 8 moved to Open
+(8, 'request_status_changed', 8, 'Your support request #8 status changed to Open', FALSE, '2025-09-11 10:30:30'),
+-- Notification to Grace (8) for support comment on data export
+(8, 'request_comment', 8, 'Support provided an update on your data export request.', FALSE, '2025-09-11 10:35:00'),
+(7, 'request_status_changed', 9, 'Your support request #9 has been received and is awaiting assignment.', FALSE, '2025-09-12 12:05:30');
 

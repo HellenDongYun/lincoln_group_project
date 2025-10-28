@@ -69,42 +69,9 @@ content %}
                 class="text-decoration-none"
                 >Sign up</a
               >
-            </div>
+            </div>  
 
-            <!-- Demo account -->
-            <div class="mt-4">
-              <h6 class="fw-semibold">Demo account</h6>
-              <ul class="list-unstyled small text-muted">
-                <li>
-                  Super Admin: super.admin@platform.org, Password:
-                  <em>Super123!</em>
-                </li>
-                <li>
-                  Participant 1 (manager Darfield): alice.wong@gmail.com, Password:
-                  <em>Alice123!</em>
-                </li>
-                <li>
-                  Participant 2(manager Harbour Runners): bob.jones@outlook.com , Password:
-                  <em>Bob123!</em>
-                </li>
-                <li>
-                  Participant 3: carol.smith@yahoo.com , Password:
-                  <em>Carol123!</em>
-                </li>
-                <li>
-                  Participant 4: dave.brown@xtra.co.nz , Password:
-                  <em>Dave123!</em>
-                </li>
-                <li>
-                  Participant 5: emma.taylor@gmail.com , Password:
-                  <em>Emma123!</em>
-                </li>
-                <li>
-                  Support tech: support.tech@platform.org , Password:
-                  <em>Support123!</em>
-                </li>
-              </ul>
-            </div>
+
           </div>
         </div>
         <!-- return to home page -->
@@ -119,72 +86,5 @@ content %}
     </div>
   </div>
 </section>
-<!-- <div class="row justify-content-center mt-5">
-  <div class="col-md-9 col-lg-6">
-    <div class="card">
-      <div class="card-header">
-        <h3><i class="fas fa-user"></i> User Login</h3>
-      </div>
 
-      <div class="card-body">
-        <form method="POST" class="needs-validation" novalidate>
-          <div class="mt-2">
-            <label for="email">Email <span class="text-danger">*</span></label>
-            <input
-              aria-required="true"
-              class="form-control form-control-lg {% if form_group.get('email').errors %}is-invalid{% endif %}"
-              id="email"
-              name="email"
-              required
-              type="text"
-              value="{{form_group.get('email').value}}"
-            />
-
-            {% if not form_group.get('email').errors %}
-            <div class="invalid-feedback">Please enter your email.</div>
-            {% endif %} {% for error in form_group.get('email').errors %}
-            <div class="invalid-feedback">{{error}}</div>
-            {% endfor %}
-          </div>
-
-          <div class="mt-2">
-            <label for="password"
-              >Password <span class="text-danger">*</span></label
-            >
-            <input
-              aria-required="true"
-              class="form-control form-control-lg {% if form_group.get('password').errors %}is-invalid{% endif %}"
-              id="password"
-              name="password"
-              required
-              type="password"
-              value="{{form_group.get('password').value}}"
-            />
-
-            {% if not form_group.get('password').errors %}
-            <div class="invalid-feedback">Please enter your password.</div>
-            {% endif %} {% for error in form_group.get('password').errors %}
-            <div class="invalid-feedback">{{error}}</div>
-            {% endfor %}
-          </div>
-
-          <div class="d-grid mt-5">
-            <button type="submit" class="btn btn-dark">Log in</button>
-            <div class="text-center mt-2">
-              <a href="{{ url_for('app.register') }}">Register new account</a>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  <div class="mt-4">
-    <h6 class="fw-semibold">Demo account</h6>
-    <ul class="list-unstyled small text-muted">
-      <li>Admin: nick.singh@lincoln.ac.nz, Password:<em>Admin123!</em></li>
-      <li>Participant: alice.wong@gmail.com,Password:<em>Alice123!</em></li>
-      <li>Volunteer: vanna.patel@gmail.com,Password:<em>Vanna123!</em></li>
-    </ul>
-  </div>
-</div> -->
 {% endblock %}

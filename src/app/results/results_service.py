@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import datetime, timedelta
 from src.app.results.results_repository import ResultsRepository
+from src.app.group.group_service import GroupService
 
 
 class ResultsService:
@@ -12,13 +13,51 @@ class ResultsService:
         """Get all events that have race results"""
         return self.results_repository.get_events_with_results()
     
-    def get_all_events(self):
-        """Get all events for the upload dropdown"""
-        return self.results_repository.get_all_events()
+    def get_all_events(self, *, user_id: int | None = None, is_super_admin: bool = False):
+        """Get past events the current user can manage or all for super admins."""
+        if is_super_admin:
+            return self.results_repository.get_all_events()
+
+        if not user_id:
+            return []
+
+        managed_groups = GroupService.get_user_managed_groups(user_id) or []
+        group_ids = [group.get('id') for group in managed_groups if group.get('id') is not None]
+
+        if not group_ids:
+            return []
+
+        return self.results_repository.get_all_events(group_ids=group_ids)
     
     def get_event_details(self, event_id):
         """Get details for a specific event"""
         return self.results_repository.get_event_details(event_id)
+
+    def validate_event_access(self, event_id: int, *, user_id: int | None = None, is_super_admin: bool = False):
+        """Ensure the current user can manage results for the given event."""
+        event_meta = self.results_repository.get_event_group_and_datetime(event_id)
+
+        if not event_meta:
+            return False, "Event not found."
+
+        event_datetime = event_meta.get('datetime')
+        if event_datetime and event_datetime > datetime.now():
+            return False, "Results can only be managed after the event has taken place."
+
+        if is_super_admin:
+            return True, ""
+
+        if not user_id:
+            return False, "You must be signed in to manage event results."
+
+        group_id = event_meta.get('group_id')
+        if group_id is None:
+            return False, "Event is missing group assignment."
+
+        if not GroupService.can_user_manage_group(group_id, user_id, is_super_admin=False):
+            return False, "You do not manage the group that hosted this event."
+
+        return True, ""
     
     def get_event_results(self, event_id):
         """Get race results for a specific event"""

@@ -2,16 +2,47 @@
 {% block title %}My Community Groups{% endblock %}
 
 {% block content %}
-<section class="py-5 bg-dark text-white position-relative overflow-hidden">
-  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(110deg, rgba(13, 110, 253, 0.75), rgba(33, 37, 41, 0.9)); opacity: 0.95; z-index: 1;"></div>
-  <div class="container position-relative" style="z-index: 2;">
-    <div class="row align-items-center">
-      <div class="col-lg-8">
-        <h1 class="display-5 fw-bold mb-3">Your community spaces</h1>
-        <p class="lead text-white-50 mb-0">Track the groups you belong to, manage the teams you lead, and jump into action with quick tools.</p>
-      </div>
-      <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
-        <a href="{{ url_for('groups.index') }}" class="btn btn-warning btn-lg fw-semibold">Discover more groups</a>
+<section class="position-relative overflow-hidden text-white" style="min-height: 32vh;">
+  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(120deg, rgba(33, 37, 41, 0.75), rgba(13, 110, 253, 0.55)); z-index: 1;"></div>
+  <img
+    src="{{ url_for('static', filename='images/group.jpg') }}"
+    class="position-absolute top-0 start-0 w-100 h-100"
+    style="object-fit: cover; object-position: center; z-index: 0;"
+    alt="My groups hero background"
+  />
+  <div class="position-relative" style="z-index: 2;">
+    <div class="container py-5">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+          <p class="text-uppercase small fw-semibold text-warning mb-2">Participant hub</p>
+          <h1 class="display-5 fw-bold mb-3">Your community spaces</h1>
+          <p class="lead text-white-50 mb-4">Stay close to the groups you care about, lead your teams with confidence, and jump back into new adventures.</p>
+          <p class="small text-white-50 mb-0">Review your memberships below and jump straight into the spaces that matter most.</p>
+        </div>
+        <div class="col-lg-5">
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="bg-white bg-opacity-10 rounded-4 p-3 h-100 border border-white border-opacity-25">
+                <p class="text-uppercase small mb-1 text-warning">Managing</p>
+                <p class="display-6 fw-bold mb-0">{{ (managed_groups or [])|length }}</p>
+                <p class="small text-white-50 mb-0">Active teams you lead</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="bg-white bg-opacity-10 rounded-4 p-3 h-100 border border-white border-opacity-25">
+                <p class="text-uppercase small mb-1 text-warning">Member of</p>
+                <p class="display-6 fw-bold mb-0">{{ (groups or [])|length }}</p>
+                <p class="small text-white-50 mb-0">Communities you belong to</p>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="bg-white bg-opacity-10 rounded-4 p-3 border border-white border-opacity-25 d-flex align-items-center gap-3">
+                <span class="fs-3 text-warning"><i class="bi bi-calendar-event"></i></span>
+                <p class="small text-white-50 mb-0">Check each group below to see upcoming events, current membership stats, and quick management tools.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -60,7 +91,9 @@
       <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h4 fw-bold mb-0">Groups you belong to</h2>
-          <a href="{{ url_for('groups.apply_for_group') }}" class="btn btn-outline-secondary btn-sm">Apply to start a group</a>
+          {% if create_group_url %}
+            <a href="{{ create_group_url }}" class="btn btn-outline-secondary btn-sm">Apply to start a group</a>
+          {% endif %}
         </div>
         {% if groups %}
         <div class="row g-4">

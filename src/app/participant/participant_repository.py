@@ -15,8 +15,8 @@ class ParticipantRepository(Repository):
                 e.event_type as Event_Type,
                 e.description as Event_Description,
                 e.max_participants as Max_Participants,
-                COALESCE(COUNT(p.participant_id), 0) as Current_Registrations,
-                (e.max_participants - COALESCE(COUNT(p.participant_id), 0)) as Available_Spots
+                COALESCE(COUNT(ep.user_id), 0) as Current_Registrations,
+                (e.max_participants - COALESCE(COUNT(ep.user_id), 0)) as Available_Spots
             FROM Events e
             LEFT JOIN Event_Participants ep ON e.id = ep.event_id AND ep.status = 'registered'
             WHERE DATE(e.datetime) >= CURDATE()
@@ -63,30 +63,32 @@ class ParticipantRepository(Repository):
         """Get participant's past race results"""
         sql = """
             SELECT 
-                e.id as Event_ID,
-                e.name as Event_Name,
-                DATE(e.datetime) as Event_Date,
-                e.town as Event_Location,
-                e.event_type as Event_Type,
-                rr.start_time as Start_Time,
-                rr.end_time as End_Time,
-                SEC_TO_TIME(TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time))) as Race_Time,
-                TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time)) as Race_Time_Seconds,
+                e.id AS Event_ID,
+                e.name AS Event_Name,
+                DATE(e.datetime) AS Event_Date,
+                e.town AS Event_Location,
+                e.event_type AS Event_Type,
+                er.start_time AS Start_Time,
+                er.end_time AS End_Time,
+                SEC_TO_TIME(TIMESTAMPDIFF(SECOND, er.start_time, er.end_time)) AS Race_Time,
+                TIMESTAMPDIFF(SECOND, er.start_time, er.end_time) AS Race_Time_Seconds,
                 RANK() OVER (
-                    PARTITION BY rr.event_id 
-                    ORDER BY TIME_TO_SEC(TIMEDIFF(rr.end_time, rr.start_time))
-                ) as Position,
+                    PARTITION BY er.event_id
+                    ORDER BY TIMESTAMPDIFF(SECOND, er.start_time, er.end_time)
+                ) AS Position,
                 (
-                    SELECT COUNT(*) 
-                    FROM Race_Results rr2 
-                    WHERE rr2.event_id = rr.event_id
-                ) as Total_Participants
-            FROM Race_Results rr
-            JOIN Events e ON rr.event_id = e.id
-            WHERE rr.participant_id = %s
-            AND DATE(e.datetime) < CURDATE()
-            AND rr.start_time IS NOT NULL 
-            AND rr.end_time IS NOT NULL
+                    SELECT COUNT(*)
+                    FROM Event_Results er2
+                    WHERE er2.event_id = er.event_id
+                      AND er2.start_time IS NOT NULL
+                      AND er2.end_time IS NOT NULL
+                ) AS Total_Participants
+            FROM Event_Results er
+            JOIN Events e ON er.event_id = e.id
+            WHERE er.user_id = %s
+              AND DATE(e.datetime) < CURDATE()
+              AND er.start_time IS NOT NULL
+              AND er.end_time IS NOT NULL
             ORDER BY DATE(e.datetime) DESC
         """
         try:

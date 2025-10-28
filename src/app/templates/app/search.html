@@ -45,38 +45,43 @@ block content %}
                     <input type="hidden" name="filter_type" value="events">
               <!-- Location Filter -->
                     <div class="mb-4">
-                        <h6 class="fw-semibold mb-3">location</h6>
+                        <h6 class="fw-semibold mb-3">Location</h6>
                         <div class="input-group">
                         <span class="input-group-text bg-white border-end-0">
                             <i class="bi bi-geo-alt text-muted"></i>
                         </span>
-                          <input
-                            type="text"
+                          <select
                             name="location"
-                            class="form-control"
-                            placeholder="Location"
-                            aria-label="Location"
-                            value="{{ location }}" />
+                            class="form-select"
+                            aria-label="Location">
+                            <option value="">All Locations</option>
+                            {% for option in location_options or [] %}
+                              <option value="{{ option }}" {% if selected_location == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                          </select>
                         </div>
                     </div>
               
                     <!-- Activity Type -->
                     <div class="mb-4">
-                        <h6 class="fw-semibold mb-3">type</h6>
+                        <h6 class="fw-semibold mb-3">Event Type</h6>
                         <select name="event_type" class="form-select" aria-label="Activity Type">
-                            <option value="all">All Events</option>
-                            <option {% if event_type == 'run' %}selected{% endif %} value="run">Run</option>
-                            <option {% if event_type == 'walk' %}selected{% endif %} value="walk">Walk</option>
-                            <option {% if event_type == 'trail' %}selected{% endif %} value="trail">Trail</option>
-                            <option {% if event_type == 'cycling' %}selected{% endif %} value="cycling">Cycling</option>
+                            <option value="all" {% if selected_event_type == 'all' %}selected{% endif %}>All Events</option>
+                            <option value="run" {% if selected_event_type == 'run' %}selected{% endif %}>Run</option>
+                            <option value="walk" {% if selected_event_type == 'walk' %}selected{% endif %}>Walk</option>
+                            <option value="trail" {% if selected_event_type == 'trail' %}selected{% endif %}>Trail</option>
+                            <option value="cycling" {% if selected_event_type == 'cycling' %}selected{% endif %}>Cycling</option>
                         </select>
                     </div>
 
                     <!-- Date Filter -->
                     <div class="mb-4">
-                        <h6 class="fw-semibold mb-3">date</h6>
-
-                            <input type="date" name="date" class="form-control" aria-label="Date" value="{{ date_str }}">
+                        <h6 class="fw-semibold mb-3">Date</h6>
+                            <select name="date" class="form-select" aria-label="Date range">
+                                <option value="next_2_weeks" {% if selected_date_filter == 'next_2_weeks' %}selected{% endif %}>Next 2 weeks</option>
+                                <option value="next_3_months" {% if selected_date_filter == 'next_3_months' %}selected{% endif %}>Next 3 months</option>
+                                <option value="all" {% if selected_date_filter == 'all' %}selected{% endif %}>All dates</option>
+                            </select>
                     </div>
                      
                     <!-- Search Button -->
@@ -221,10 +226,16 @@ block content %}
               {% if is_logged_in and is_participant %}
                 {% set disable_quick = event.disable_quick_register %}
                 {% set button_label = event.quick_register_label or 'Register Now' %}
-                <form method="post" action="{{ url_for('app.quick_register_event', event_id=event.id) }}" class="m-0 d-inline">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="btn {% if disable_quick %}btn-secondary{% else %}btn-dark{% endif %} btn-sm px-3" {% if disable_quick %}disabled aria-disabled="true"{% endif %}>{{ button_label }}</button>
-                </form>
+                {% if button_label == 'Apply to Join' and event.group_id %}
+                  <a href="{{ url_for('groups.request_join_form', group_id=event.group_id, next=request.full_path) }}" class="btn btn-warning text-dark btn-sm px-3">
+                    <i class="bi bi-envelope-plus me-1"></i>Apply to Join
+                  </a>
+                {% else %}
+                  <form method="post" action="{{ url_for('app.quick_register_event', event_id=event.id) }}" class="m-0 d-inline">
+                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                    <button type="submit" class="btn {% if disable_quick %}btn-secondary{% else %}btn-dark{% endif %} btn-sm px-3" {% if disable_quick %}disabled aria-disabled="true"{% endif %}>{{ button_label }}</button>
+                  </form>
+                {% endif %}
               {% else %}
               <a
                 href="{{ url_for('app.login', next=request.full_path) }}"

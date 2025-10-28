@@ -2,10 +2,9 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from werkzeug.utils import secure_filename
 import csv
 import io
-from datetime import datetime
 
+from src.app.auth.auth_service import AuthService
 from src.app.auth.route_guard import require_super_admin, require_volunteer_or_manager
-from src.app.user.user import GlobalRole
 from src.app.results.results_service import ResultsService
 
 results_service = ResultsService()
@@ -44,19 +43,36 @@ def public_results():
 @require_volunteer_or_manager
 def upload_results():
     """Upload CSV results - admins and volunteers only"""
+    auth_service = AuthService()
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
     if request.method == "GET":
         # Get all events for the dropdown
-        events = results_service.get_all_events()
+        events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
         return render_template("results/upload.html", events=events)
     
     # Handle POST request - file upload
-    event_id = request.form.get('event_id')
+    event_id_raw = request.form.get('event_id')
     overwrite = request.form.get('overwrite', 'false').lower() == 'true'
-    
-    if not event_id:
+
+    if not event_id_raw:
         flash("Please select an event.", "danger")
         return redirect(url_for('results.upload_results'))
-    
+
+    try:
+        event_id = int(event_id_raw)
+    except (TypeError, ValueError):
+        flash("Invalid event selection.", "danger")
+        return redirect(url_for('results.upload_results'))
+
+    has_access, error_message = results_service.validate_event_access(
+        event_id, user_id=user_id, is_super_admin=is_super_admin
+    )
+    if not has_access:
+        flash(error_message, "danger")
+        return redirect(url_for('results.upload_results'))
+
     if 'results_file' not in request.files:
         flash("No file selected.", "danger")
         return redirect(url_for('results.upload_results'))
@@ -103,7 +119,7 @@ def upload_results():
                     event = results_service.get_event_details(event_id)
                     
                     return render_template("results/upload.html", 
-                                         events=results_service.get_all_events(),
+                                         events=results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin),
                                          unregistered_confirmation_needed=True,
                                          selected_event=event,
                                          stats=stats,
@@ -123,14 +139,14 @@ def upload_results():
                     }
                     
                     return render_template("results/upload.html", 
-                                         events=results_service.get_all_events(),
+                                         events=results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin),
                                          confirmation_needed=True,
                                          selected_event=event,
                                          existing_summary=existing_summary,
                                          message=message)
                 else:
                     # Other validation errors - show detailed error information
-                    events = results_service.get_all_events()
+                    events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
                     return render_template("results/upload.html", 
                                          events=events,
                                          stats=stats,
@@ -149,12 +165,24 @@ def upload_results():
 @require_volunteer_or_manager
 def confirm_overwrite():
     """Confirm overwriting existing results"""
+    auth_service = AuthService()
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
     action = request.form.get('action')
     
     if action == 'confirm' and 'pending_upload' in session:
         pending = session['pending_upload']
-        event_id = pending['event_id']
+        event_id = int(pending['event_id'])
         csv_content = pending['csv_content']
+
+        has_access, error_message = results_service.validate_event_access(
+            event_id, user_id=user_id, is_super_admin=is_super_admin
+        )
+        if not has_access:
+            flash(error_message, "danger")
+            session.pop('pending_upload', None)
+            return redirect(url_for('results.upload_results'))
         
         # Process with overwrite=True
         success, message, stats = results_service.process_csv_results(
@@ -189,12 +217,24 @@ def confirm_overwrite():
 @require_volunteer_or_manager
 def confirm_unregistered():
     """Handle unregistered participant confirmation"""
+    auth_service = AuthService()
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
     action = request.form.get('action')
     
     if action == 'proceed_registered_only' and 'pending_upload' in session:
         pending = session['pending_upload']
-        event_id = pending['event_id']
+        event_id = int(pending['event_id'])
         csv_content = pending['csv_content']
+
+        has_access, error_message = results_service.validate_event_access(
+            event_id, user_id=user_id, is_super_admin=is_super_admin
+        )
+        if not has_access:
+            flash(error_message, "danger")
+            session.pop('pending_upload', None)
+            return redirect(url_for('results.upload_results'))
         
         # Process with unregistered participants excluded
         success, message, stats = results_service.process_csv_results_with_unregistered(
@@ -217,8 +257,16 @@ def confirm_unregistered():
             
     elif action == 'proceed_include_all' and 'pending_upload' in session:
         pending = session['pending_upload']
-        event_id = pending['event_id']
+        event_id = int(pending['event_id'])
         csv_content = pending['csv_content']
+
+        has_access, error_message = results_service.validate_event_access(
+            event_id, user_id=user_id, is_super_admin=is_super_admin
+        )
+        if not has_access:
+            flash(error_message, "danger")
+            session.pop('pending_upload', None)
+            return redirect(url_for('results.upload_results'))
         
         # Process including unregistered participants
         success, message, stats = results_service.process_csv_results_with_unregistered(
@@ -268,19 +316,29 @@ def remove_results(event_id):
 @require_volunteer_or_manager
 def record_time():
     """Record completion time by participant ID - volunteers and managers only"""
+    auth_service = AuthService()
+    user_id = auth_service.get_user_id()
+    is_super_admin = auth_service.is_super_admin()
+
     if request.method == "GET":
         # Get all events for the dropdown
-        events = results_service.get_all_events()
+        events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
         return render_template("results/record_time.html", events=events)
 
     # Handle POST request - manual time recording
-    event_id = request.form.get('event_id')
+    event_id_raw = request.form.get('event_id')
     participant_id = request.form.get('participant_id')
     participant_email = request.form.get('participant_email')
     completion_time = request.form.get('completion_time')
 
-    if not event_id:
+    if not event_id_raw:
         flash("Please select an event.", "danger")
+        return redirect(url_for('results.record_time'))
+
+    try:
+        event_id = int(event_id_raw)
+    except (TypeError, ValueError):
+        flash("Invalid event selection.", "danger")
         return redirect(url_for('results.record_time'))
 
     if not participant_id and not participant_email:
@@ -305,6 +363,13 @@ def record_time():
             return redirect(url_for('results.record_time'))
 
     try:
+        has_access, error_message = results_service.validate_event_access(
+            event_id, user_id=user_id, is_super_admin=is_super_admin
+        )
+        if not has_access:
+            flash(error_message, "danger")
+            return redirect(url_for('results.record_time'))
+
         # Record the completion time using provided time
         success, message = results_service.record_completion_time(event_id, participant_id, participant_email, completion_time)
 

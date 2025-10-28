@@ -185,7 +185,7 @@
                     <form method="post" action="{{ url_for('participant.cancel_registration', encoded_participant_id=current_user_encoded_id, event_id=event.id) }}">
                       <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
                       <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold">
-                        <i class="bi bi-x-circle me-1"></i>Cancel
+                        </i>Cancel
                       </button>
                     </form>
                   </div>
@@ -242,7 +242,7 @@
                     {% if current_user_encoded_id %}
                       {% if role.is_assigned %}
                         <form method="post" action="{{ url_for('groups.cancel_volunteer_role', group_id=group.id, event_id=event.id, role_id=role.id) }}">
-                          <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold"><i class="bi bi-x-circle me-1"></i>Cancel</button>
+                          <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold"></i>Cancel</button>
                         </form>
                       {% elif not is_member %}
                         <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Join to volunteer.</span>
@@ -253,7 +253,7 @@
                           <button type="submit" class="btn btn-outline-primary btn-sm fw-semibold">+ Sign up</button>
                         </form>
                       {% elif event.is_registered %}
-                        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>You're already registered for this event. Cancel your registration before volunteering.</span>
+                        <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>You're already registered for this event.</span>
                       {% elif event.user_is_volunteer %}
                         <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>You've already signed up to volunteer for this event.</span>
                       {% else %}

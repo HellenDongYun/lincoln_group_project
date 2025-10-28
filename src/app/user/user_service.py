@@ -79,15 +79,15 @@ class UserService:
         # Get user from database
         user_data = self.repository.get_user_by_email(email.strip())
         if not user_data:
-            return None, "Invalid email or password."
+            return None, "Invalid email."
 
         # Check if user is active
         if user_data.get('status') == 'inactive':
-            return None, "Your account is suspended. Please contact the super admin."
+            return None, "Your account is suspended. Please contact super.admin@platform.org."
 
         # Check password
         if not check_password_hash(user_data['password_hash'], password):
-            return None, "Invalid email or password."
+            return None, "Please contact super.admin@platform.org to reset password."
 
 
         # Convert global_role string to GlobalRole enum

@@ -5,7 +5,7 @@ USE TeamAmberProject$activeloop;
 
 -- Core Users & Roles
 -- Global roles simplified to: super_admin, participant
--- (group-level manager/volunteer responsibilities handled via membership tables)
+-- group-level manager/volunteer responsibilities handled via membership tables
 CREATE TABLE Users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,

@@ -11,18 +11,13 @@ from src.app.common.nav.encode import encode_id
 group_blueprint = Blueprint('groups', __name__)
 
 
-@group_blueprint.route('/')
-def index():
-    """Public discovery page for groups"""
-    town_filter = request.args.get('town')
-    search_term = request.args.get('search')
-    
-    groups = GroupService.get_public_groups_for_discovery(town_filter, search_term)
-    
-    return render_template('group/discover_groups.html', 
-                         groups=groups, 
-                         town_filter=town_filter,
-                         search_term=search_term)
+def _group_landing_url():
+    """Return the default landing page for group redirects."""
+    if auth_service.is_logged_in():
+        if auth_service.is_participant():
+            return url_for('groups.participant_search')
+        return url_for('groups.my_groups')
+    return url_for('app.home_filter_events', filter_type='groups')
 
 
 @group_blueprint.route('/<int:group_id>')
@@ -31,18 +26,18 @@ def view_group(group_id):
     group = GroupService.get_group_by_id(group_id)
     if not group:
         flash('Group not found', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
     
     # Check if group is private and user has access
     if group['visibility'] == 'private':
         if not auth_service.is_logged_in():
             flash('This group is private', 'error')
-            return redirect(url_for('groups.index'))
+            return redirect(_group_landing_url())
         
         user_id = auth_service.get_user_id()
         if not auth_service.is_super_admin() and not GroupService.is_group_member(group_id, user_id):
             flash('You do not have access to this private group', 'error')
-            return redirect(url_for('groups.index'))
+            return redirect(_group_landing_url())
     
     members = GroupService.get_group_members(group_id)
 
@@ -92,7 +87,7 @@ def join_group(group_id):
 
     if not group:
         flash('Group not found or unavailable.', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
     visibility = str(group.get('visibility') or '').strip().lower()
 
@@ -169,8 +164,8 @@ def leave_group(group_id):
         flash('Successfully left the group', 'success')
     except Exception as e:
         flash('Error leaving group', 'error')
-    
-    return redirect(url_for('groups.index'))
+
+    return redirect(url_for('groups.my_groups'))
 
 
 @group_blueprint.route('/<int:group_id>/manage')
@@ -238,19 +233,19 @@ def manager_dashboard():
         elif is_super_admin:
             # Allow super admins to target a group via query parameter only
             flash('Select a group to view analytics.', 'info')
-            return redirect(url_for('groups.index'))
+            return redirect(_group_landing_url())
         else:
             flash('You do not manage any groups yet.', 'warning')
-            return redirect(url_for('groups.index'))
+            return redirect(_group_landing_url())
 
     if not is_super_admin and selected_group_id not in managed_group_ids:
         flash('You do not have access to that group dashboard.', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
     group = GroupService.get_group_by_id(selected_group_id)
     if not group:
         flash('Group not found.', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
     dashboard = GroupService.get_manager_dashboard_snapshot(selected_group_id, include_past_events)
 
@@ -295,7 +290,7 @@ def create_group_event(group_id):
     group = GroupService.get_group_by_id(group_id)
     if not group:
         flash('Group not found', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
     volunteer_roles = GroupService.get_all_volunteer_roles()
     form_data = _initial_event_form_data()
 
@@ -347,7 +342,7 @@ def edit_group_event(group_id, event_id):
     group = GroupService.get_group_by_id(group_id)
     if not group:
         flash('Group not found', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
     event = GroupService.get_group_event(group_id, event_id)
 
     if not event:
@@ -976,40 +971,6 @@ def remove_member(group_id, member_id):
         return jsonify({'error': 'Failed to remove member'}), 500
 
 
-@group_blueprint.route('/apply')
-@require_login
-def apply_for_group():
-    """Form to apply for creating a new group"""
-    return render_template('group/apply_group.html')
-
-
-@group_blueprint.route('/apply', methods=['POST'])
-@require_login
-def submit_group_application():
-    """Submit a group application"""
-    user_id = auth_service.get_user_id()
-    
-    proposed_name = request.form.get('proposed_name')
-    proposed_description = request.form.get('proposed_description')
-    proposed_town = request.form.get('proposed_town')
-    visibility = request.form.get('visibility', 'public')
-    
-    if not proposed_name or not proposed_town:
-        flash('Name and town are required', 'error')
-        return redirect(url_for('groups.apply_for_group'))
-    
-    try:
-        GroupService.create_group_application(
-            user_id, proposed_name, proposed_description, 
-            proposed_town, visibility
-        )
-        flash('Your group application has been submitted for review', 'success')
-        return redirect(url_for('groups.index'))
-    except Exception as e:
-        flash('Error submitting application', 'error')
-        return redirect(url_for('groups.apply_for_group'))
-
-
 @group_blueprint.route('/my-groups')
 @require_login
 def my_groups():
@@ -1018,9 +979,17 @@ def my_groups():
     groups = GroupService.get_user_groups(user_id)
     managed_groups = GroupService.get_user_managed_groups(user_id)
 
+    discovery_url = url_for('app.home_filter_events', filter_type='groups')
+    create_group_url = None
+    if auth_service.is_participant():
+        encoded_id = encode_id(user_id)
+        create_group_url = url_for('participant.create_group_applyform', encoded_participant_id=encoded_id)
+
     return render_template('group/my_groups.html', 
                          groups=groups,
-                         managed_groups=managed_groups)
+                         managed_groups=managed_groups,
+                         discovery_url=discovery_url,
+                         create_group_url=create_group_url)
 
 
 @group_blueprint.route('/participant-search')
@@ -1033,7 +1002,7 @@ def participant_search():
     # Only allow participants to use this search
     if not auth_service.is_participant():
         flash('This search feature is for participants only', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
     # Extract search parameters
     search_term = request.args.get('search', '').strip()
@@ -1135,12 +1104,12 @@ def request_join_form(group_id):
             return redirect(url_for('groups.view_group', group_id=group_id))
     except Exception as e:
         flash('Error checking group permissions', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
     group = GroupService.get_group_by_id(group_id)
     if not group:
         flash('Group not found', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
     return render_template('group/join_request.html', group=group, next_url=next_url)
 
@@ -1185,7 +1154,7 @@ def my_pending_requests():
                              pending_requests=pending_requests)
     except Exception as e:
         flash('Error loading your pending requests', 'error')
-        return redirect(url_for('groups.index'))
+        return redirect(_group_landing_url())
 
 
 
@@ -1230,7 +1199,7 @@ def manage_join_requests(group_id):
         group = GroupService.get_group_by_id(group_id)
         if not group:
             flash('Group not found', 'error')
-            return redirect(url_for('groups.index'))
+            return redirect(_group_landing_url())
 
         requests = GroupService.get_pending_join_requests(group_id)
 
@@ -1263,7 +1232,7 @@ def approve_join_request(request_id):
     except Exception as e:
         flash(f'Redirect error: {str(e)}', 'warning')
 
-    return redirect(url_for('groups.index'))
+    return redirect(_group_landing_url())
 
 
 @group_blueprint.route('/join-requests/<int:request_id>/reject', methods=['POST'])
@@ -1289,4 +1258,4 @@ def reject_join_request(request_id):
     except Exception as e:
         flash(f'Redirect error: {str(e)}', 'warning')
 
-    return redirect(url_for('groups.index'))
+    return redirect(_group_landing_url())

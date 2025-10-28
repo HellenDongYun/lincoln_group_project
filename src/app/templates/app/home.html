@@ -86,13 +86,12 @@ block header %}
                             <span class="input-group-text">
                               <i class="bi bi-geo-alt-fill"></i>
                             </span>
-                            <input
-                              type="text"
-                              name="location"
-                              class="form-control"
-                              placeholder="Location"
-                              aria-label="Location"
-                            />
+                            <select name="location" class="form-select" aria-label="Location">
+                              <option value="">All Locations</option>
+                              {% for option in location_options or [] %}
+                              <option value="{{ option }}" {% if selected_location == option %}selected{% endif %}>{{ option }}</option>
+                              {% endfor %}
+                            </select>
                           </div>
                         </div>
                         <!-- type  -->
@@ -101,13 +100,13 @@ block header %}
                                 <span class="input-group-text">
                                     <i class="bi bi-pin-map-fill"></i>
                                 </span>
-                                <select name="event_type" class="form-select" aria-label="Activity Type">
-                                    <option value="all">All Events</option>
-                                    <option value="run">Run</option>
-                                    <option value="walk">Walk</option>
-                                    <option value="trail">Trail</option>
-                                    <option value="cycling">Cycling</option>
-                                </select>
+                <select name="event_type" class="form-select" aria-label="Activity Type">
+                  <option value="all" {% if selected_event_type == 'all' %}selected{% endif %}>All Events</option>
+                  <option value="run" {% if selected_event_type == 'run' %}selected{% endif %}>Run</option>
+                  <option value="walk" {% if selected_event_type == 'walk' %}selected{% endif %}>Walk</option>
+                  <option value="trail" {% if selected_event_type == 'trail' %}selected{% endif %}>Trail</option>
+                  <option value="cycling" {% if selected_event_type == 'cycling' %}selected{% endif %}>Cycling</option>
+                </select>
                             </div>
                         </div>
                      <!-- Date -->
@@ -116,7 +115,11 @@ block header %}
                                 <span class="input-group-text">
                                     <i class="bi bi-calendar-date-fill"></i>
                                 </span>
-                                <input type="date" name="date" class="form-control" aria-label="Date">
+                <select name="date" class="form-select" aria-label="Date range">
+                  <option value="next_2_weeks" {% if selected_date_filter == 'next_2_weeks' %}selected{% endif %}>Next 2 weeks</option>
+                  <option value="next_3_months" {% if selected_date_filter == 'next_3_months' %}selected{% endif %}>Next 3 months</option>
+                  <option value="all" {% if selected_date_filter == 'all' %}selected{% endif %}>All dates</option>
+                </select>
                             </div>
                         </div>
                         <div class="col-12 text-center mt-3">
