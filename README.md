@@ -5,13 +5,6 @@ Access here https://teamamberproject2.pythonanywhere.com/
 hosting on PythonAnywhere https://www.pythonanywhere.com/user/TeamAmberProject2
 
 
- 
-TeamAmberProject2 
-
-0y2@B0^1G$J3n$R
-
-
-
 ## Test User Accounts
 - Super Admin: super.admin@platform.org, Password: Super123!
 - Support tech: support.tech@platform.org , Password: Support123!
