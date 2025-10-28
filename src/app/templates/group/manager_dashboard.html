@@ -2,37 +2,31 @@
 {% block title %}{{ group.name }} · Manager analytics{% endblock %}
 
 {% block content %}
-<section class="py-5 bg-dark text-white position-relative overflow-hidden">
-  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(135deg, rgba(255,193,7,0.85), rgba(33,37,41,0.9)); opacity: 0.9; z-index: 1;"></div>
+<section class="py-5 position-relative overflow-hidden text-white">
+  <img src="{{ url_for('static', filename='images/group.jpg') }}" class="position-absolute top-0 start-0 w-100 h-100" style="object-fit: cover; object-position: center; z-index: 0;" alt="Group management overview">
+  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(135deg, rgba(15,23,42,0.85), rgba(15,23,42,0.9)); z-index: 1;"></div>
+  <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(255,193,7,0.35), transparent 45%); z-index: 1;"></div>
   <div class="container position-relative" style="z-index: 2;">
-    <div class="row align-items-center g-4">
-      <div class="col-lg-8">
-        <span class="text-uppercase text-warning small fw-semibold">Group manager analytics</span>
-        <h1 class="display-5 fw-bold mb-2">{{ group.name }}</h1>
-        <p class="text-white-50 mb-0">Track participation, volunteer coverage, and performance trends for your community.</p>
-      </div>
-      <div class="col-lg-4 text-lg-end">
-        <a href="{{ url_for('groups.manage_group', group_id=group.id) }}" class="btn btn-outline-light mb-3 mb-lg-0"><i class="bi bi-gear me-2"></i>Manage members and events</a>
-      </div>
-    </div>
-    <div class="row align-items-center g-3 mt-4">
-      <div class="col-lg-6">
+    <div class="row justify-content-center text-center text-lg-start">
+      <div class="col-xl-8 col-lg-10">
+        <p class="text-uppercase text-warning small fw-semibold mb-2">Group manager dashboard</p>
+        <h1 class="display-5 fw-bold mb-3">{{ group.name }}</h1>
+        <p class="lead text-white-50 mb-4">Monitor membership trends, event performance, and volunteer coverage to keep your community thriving.</p>
+        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center justify-content-lg-start">
+          <a href="{{ url_for('groups.manage_group', group_id=group.id) }}" class="btn btn-warning text-black"><i class="bi bi-people-fill me-2"></i>Manage members & roles</a>
+        </div>
         {% if managed_groups|length > 1 %}
-        <form method="get" class="d-flex gap-2 align-items-center">
-          <label for="groupSelect" class="text-white-50 small mb-0">Switch group</label>
-          <select id="groupSelect" name="group_id" class="form-select form-select-sm w-auto">
-            {% for item in managed_groups %}
-              <option value="{{ item.id }}" {% if item.id == selected_group_id %}selected{% endif %}>{{ item.name }}</option>
-            {% endfor %}
-          </select>
-          <input type="hidden" name="events" value="{{ events_scope }}">
-          <button type="submit" class="btn btn-warning text-black btn-sm">Update</button>
-        </form>
+          <form method="get" class="d-flex flex-column flex-sm-row gap-2 align-items-sm-center mt-4">
+            <label for="groupSelect" class="text-white-50 small mb-0">Switch group</label>
+            <select id="groupSelect" name="group_id" class="form-select form-select-sm w-auto">
+              {% for item in managed_groups %}
+                <option value="{{ item.id }}" {% if item.id == selected_group_id %}selected{% endif %}>{{ item.name }}</option>
+              {% endfor %}
+            </select>
+            <input type="hidden" name="events" value="{{ events_scope }}">
+            <button type="submit" class="btn btn-light btn-sm text-dark fw-semibold">View dashboard</button>
+          </form>
         {% endif %}
-      </div>
-      <div class="col-lg-6 text-lg-end">
-        <span class="badge bg-warning text-dark me-2">{{ dashboard.membership_counts.total_members }} total members</span>
-        <span class="badge bg-light text-dark">{{ dashboard.events.total }} events tracked</span>
       </div>
     </div>
   </div>
@@ -126,7 +120,7 @@
                         {% if event.volunteer_needed > 0 %}
                           <div class="d-flex align-items-center gap-2">
                             <div class="progress flex-grow-1" style="height: 8px;">
-                              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ event.volunteer_coverage_percent }}%;" aria-valuenow="{{ event.volunteer_coverage_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                              <div class="progress-bar bg-warning" role="progressbar" data-progress-width="{{ event.volunteer_coverage_percent }}" aria-valuenow="{{ event.volunteer_coverage_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                             <span class="small text-muted">{{ event.volunteer_assigned }}/{{ event.volunteer_needed }}</span>
                           </div>
@@ -139,7 +133,6 @@
                   </tbody>
                 </table>
               </div>
-              <canvas id="volunteerCoverageChart" height="160"></canvas>
             {% else %}
               {% if events_scope == 'all' %}
                 <p class="text-muted text-center mb-0">No events have been recorded for this group yet.</p>
@@ -253,52 +246,16 @@
 
 {% block scripts %}
 {{ super() }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-LZpjkacrTP2PumoefRg2fzGEGZm4G6dkprdFM5lTyBC0bYKT1eZqUPVHtV6nRvWv" crossorigin="anonymous"></script>
-<script type="application/json" id="dashboard-events-data">{{ dashboard.events['items']|tojson|safe }}</script>
 <script>
   (function() {
-    function parseJsonScript(id) {
-      const el = document.getElementById(id);
-      if (!el) return [];
-      try {
-        return JSON.parse(el.textContent || '[]');
-      } catch (error) {
-        console.error('Unable to parse dashboard data', id, error);
-        return [];
+    document.querySelectorAll('[data-progress-width]').forEach(bar => {
+      const raw = parseFloat(bar.getAttribute('data-progress-width'));
+      if (Number.isNaN(raw)) {
+        return;
       }
-    }
-
-    const eventsData = parseJsonScript('dashboard-events-data');
-
-    const volunteerCtx = document.getElementById('volunteerCoverageChart');
-    if (volunteerCtx && eventsData.length) {
-      new Chart(volunteerCtx, {
-        type: 'radar',
-        data: {
-          labels: eventsData.map(item => item.name),
-          datasets: [{
-            label: 'Volunteer coverage %',
-            data: eventsData.map(item => item.volunteer_coverage_percent),
-            backgroundColor: 'rgba(13,110,253,0.15)',
-            borderColor: 'rgba(13,110,253,0.65)',
-            borderWidth: 2,
-            pointBackgroundColor: '#0d6efd'
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            r: {
-              beginAtZero: true,
-              suggestedMax: 100,
-              angleLines: { color: 'rgba(0,0,0,0.05)' },
-              grid: { color: 'rgba(0,0,0,0.05)' },
-              ticks: { showLabelBackdrop: false }
-            }
-          }
-        }
-      });
-    }
+      const clamped = Math.max(0, Math.min(100, raw));
+      bar.style.width = `${clamped}%`;
+    });
   })();
 </script>
 {% endblock %}
