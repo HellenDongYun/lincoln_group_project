@@ -135,10 +135,9 @@ def register():
         age_group_input = form_values['age_group'] or None
 
         for name, value in form_values.items():
-            if name in {'gender', 'age_group'} and not value:
-                display_value = ''
-            else:
-                display_value = value
+            display_value = value
+            if name in {'gender', 'age_group'}:
+                display_value = (gender_input if name == 'gender' else age_group_input) or ''
             form_group.get(name).value = display_value
 
         first_name_input = form_values['first_name']

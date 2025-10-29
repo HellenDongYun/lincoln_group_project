@@ -41,10 +41,10 @@ def upload_results():
     """Upload CSV results - admins and volunteers only"""
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
+    events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
 
     if request.method == "GET":
         # Get all events for the dropdown
-        events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
         return render_template("results/upload.html", events=events)
     
     # Handle POST request - file upload
@@ -311,9 +311,10 @@ def record_time():
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
 
+    events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
+
     if request.method == "GET":
         # Get all events for the dropdown
-        events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
         return render_template("results/record_time.html", events=events)
 
     # Handle POST request - manual time recording

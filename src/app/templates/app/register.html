@@ -4,7 +4,7 @@
 {% endblock %} {% block content %}
 
 <section
-  class="bg-light d-flex align-items-center justify-content-center vh-100"
+  class="bg-light d-flex align-items-center justify-content-center py-5 py-md-0 min-vh-100"
 >
   <div class="container">
     <div class="row justify-content-center">
@@ -122,7 +122,7 @@
                   >Email <span class="text-danger">*</span></label
                 >
                 <input
-                  type="text"
+                  type="email"
                   name="email"
                   id="email"
                   required
@@ -149,7 +149,6 @@
                   required
                   aria-required="true"
                   class="form-control {% if form_group.get('password').errors %}is-invalid{% endif %}"
-                  value="{{ form_group.get('password').value }}"
                 />
                 {% if not form_group.get('password').errors %}
                 <div class="invalid-feedback">Please enter your password.</div>
@@ -170,7 +169,6 @@
                   required
                   aria-required="true"
                   class="form-control {% if form_group.get('password_confirmation').errors %}is-invalid{% endif %}"
-                  value="{{ form_group.get('password_confirmation').value }}"
                 />
                 {% if not form_group.get('password_confirmation').errors %}
                 <div class="invalid-feedback">

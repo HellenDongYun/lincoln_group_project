@@ -7,6 +7,7 @@ from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
 from src.app.user.user import GroupVisibility, GroupStatus
 from src.app.common.nav.encode import encode_id
+from werkzeug.urls import url_parse
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -18,6 +19,22 @@ def _group_landing_url():
             return url_for('groups.participant_search')
         return url_for('groups.my_groups')
     return url_for('app.home_filter_events', filter_type='groups')
+
+
+def _resolve_redirect_target(default: str) -> str:
+    """Return a safe redirect target falling back to *default* when needed."""
+    next_url = (request.form.get('next') or '').strip()
+
+    if not next_url:
+        return default
+
+    parsed = url_parse(next_url)
+
+    if parsed.netloc or next_url.startswith('//'):
+        current_app.logger.warning('Blocked potentially unsafe redirect to %s', next_url)
+        return default
+
+    return next_url
 
 
 @group_blueprint.route('/<int:group_id>')
@@ -78,32 +95,17 @@ def view_group(group_id):
 def join_group(group_id):
     """Join a group"""
     user_id = auth_service.get_user_id()
-    next_url = (request.form.get('next') or '').strip()
-    redirect_target = url_for('groups.view_group', group_id=group_id)
-    if next_url.startswith('/'):
-        redirect_target = next_url
+    redirect_target = _resolve_redirect_target(url_for('groups.view_group', group_id=group_id))
+    outcome = GroupService.attempt_join_group(
+        group_id,
+        user_id,
+        is_super_admin=auth_service.is_super_admin(),
+    )
 
-    group = GroupService.get_group_by_id(group_id)
+    flash(outcome.message, outcome.category)
 
-    if not group:
-        flash('Group not found or unavailable.', 'error')
+    if outcome.redirect_to_landing:
         return redirect(_group_landing_url())
-
-    visibility = str(group.get('visibility') or '').strip().lower()
-
-    if GroupService.is_group_member(group_id, user_id):
-        flash('You are already a member of this group.', 'info')
-        return redirect(redirect_target)
-
-    if visibility != 'public' and not auth_service.is_super_admin():
-        flash('This group requires a request to join.', 'warning')
-        return redirect(redirect_target)
-
-    try:
-        GroupService.add_member_to_group(group_id, user_id)
-        flash('Successfully joined the group!', 'success')
-    except Exception:
-        flash('Error joining group. Please try again later.', 'error')
 
     return redirect(redirect_target)
 
@@ -1116,48 +1118,36 @@ def request_join_form(group_id):
 @group_blueprint.route('/<int:group_id>/cancel-join-request', methods=['POST'])
 @require_login
 def cancel_join_request(group_id):
-   """
-   Cancel pending join request for a private group
-   """  
-   user_id = auth_service.get_user_id()
-    # get the URL parameter of the current page for redirection back
-   search_term = request.args.get('search', '').strip()
-   location_filter = request.args.get('location', '').strip()
-   date_filter = request.args.get('date', '').strip()
-   type_filter = request.args.get('type', '').strip()
-   sort_by = request.args.get('sort', 'popularity').strip()
-   try:
-        
+    """Cancel the current user's pending join request for the given group."""
+    user_id = auth_service.get_user_id()
+
+    search_term = request.args.get('search', '').strip()
+    location_filter = request.args.get('location', '').strip()
+    date_filter = request.args.get('date', '').strip()
+    type_filter = request.args.get('type', '').strip()
+    sort_by = request.args.get('sort', 'popularity').strip()
+
+    try:
         result = GroupService.cancel_join_request(group_id, user_id)
-        
+
         if result['success']:
             flash(result['message'], 'success')
         else:
             flash(result['message'], 'error')
-            
-   except Exception as e:
+
+    except Exception as exc:
+        current_app.logger.exception('Failed to cancel join request: %s', exc)
         flash('Error cancelling join request', 'error')
-    
-   return redirect(url_for('groups.participant_search', group_id=group_id,        search=search_term,location=location_filter,date=date_filter, type=type_filter,
-   sort=sort_by))
 
-# 可选：添加查看待处理请求的路由 check if this one is used this is can delete only in the conter not used in the html page
-@group_blueprint.route('/my-pending-requests')
-@require_login
-def my_pending_requests():
-    """Show user's pending join requests"""
-    user_id = auth_service.get_user_id()
-    
-    try:
-        pending_requests = GroupService.get_user_pending_requests(user_id)
-        return render_template('groups/my_pending_requests.html', 
-                             pending_requests=pending_requests)
-    except Exception as e:
-        flash('Error loading your pending requests', 'error')
-        return redirect(_group_landing_url())
-
-
-
+    return redirect(url_for(
+        'groups.participant_search',
+        group_id=group_id,
+        search=search_term,
+        location=location_filter,
+        date=date_filter,
+        type=type_filter,
+        sort=sort_by,
+    ))
 
 
 

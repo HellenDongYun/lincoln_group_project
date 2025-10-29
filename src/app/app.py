@@ -50,10 +50,8 @@ def get_nav_items():
     # Get unread notification count for notification bell (AC9)
     unread_notification_count = 0
     if user_id:
-        try:
-            unread_notification_count = SupportService.get_unread_count(user_id)
-        except Exception:
-            unread_notification_count = 0
+        unread_notification_count = SupportService.get_unread_count(user_id)
+
     return {
         "left_nav_items": left_nav_items(user_id, user_role),
         "right_nav_items": right_nav_items(user_id, user_role),
