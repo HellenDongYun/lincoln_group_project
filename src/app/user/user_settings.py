@@ -3,15 +3,12 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from src.app import db  
-from src.app.models import User  
+from src.app import db
+from src.app.common.uploads import is_allowed_file
 
 settings_bp = Blueprint("settings", __name__)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @settings_bp.route("/settings", methods=["GET", "POST"])
@@ -30,7 +27,7 @@ def update_settings():
         confirm_password = request.form.get("confirm_password")
 
         file = request.files.get("profile_picture")
-        if file and allowed_file(file.filename):
+        if file and is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
             filename = secure_filename(file.filename)
             upload_path = os.path.join(current_app.root_path, "static", "uploads", filename)
             os.makedirs(os.path.dirname(upload_path), exist_ok=True)

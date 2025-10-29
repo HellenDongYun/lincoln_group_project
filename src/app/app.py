@@ -1,22 +1,25 @@
+import os
+
 from flask import Flask
-from src.app.auth.auth_service import auth_service
+
 from connect import dbuser, dbpass, dbhost, dbname, dbport
 from src.app.admin.admin_controller import admin_blueprint
 from src.app.api.api_controller import api_blueprint
-from src.app.app_controller import app_blueprint, auth_service
-from src.app.volunteer.volunteer_controller import volunteer_blueprint
-from src.app.results.results_controller import results_blueprint
-from src.app.participant.participant_controller import participant_blueprint
-from src.app.group.group_controller import group_blueprint
-from src.app.support.support_controller import support_blueprint
-
+from src.app.app_controller import app_blueprint
+from src.app.auth.auth_service import auth_service
 from src.app.common.db import db
 from src.app.common.nav.nav_items import left_nav_items, right_nav_items
 from src.app.common.nav.nav_link import nav_link
 from src.app.common.timezone_utils import to_nz_time, format_nz_datetime
+from src.app.group.group_controller import group_blueprint
+from src.app.participant.participant_controller import participant_blueprint
+from src.app.results.results_controller import results_blueprint
+from src.app.support.support_controller import support_blueprint
+from src.app.support.support_service import SupportService
+from src.app.volunteer.volunteer_controller import volunteer_blueprint
 
 app = Flask(__name__)
-app.secret_key = 'H9#*lr1Q_T,-2<6gR7:!'
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "development-secret-key")
 
 # Initialise DB using LoginExample function
 db.init_db(app, dbuser, dbpass, dbhost, dbname, dbport)
@@ -48,11 +51,9 @@ def get_nav_items():
     unread_notification_count = 0
     if user_id:
         try:
-            from src.app.support.support_service import SupportService
             unread_notification_count = SupportService.get_unread_count(user_id)
-        except:
-            pass
-
+        except Exception:
+            unread_notification_count = 0
     return {
         "left_nav_items": left_nav_items(user_id, user_role),
         "right_nav_items": right_nav_items(user_id, user_role),

@@ -1,10 +1,19 @@
 from typing import Optional, List, Dict
+
 from src.app.support.support_repository import SupportRepository
+from src.app.user.user_repository import UserRepository
 
-class SupportService:    
+_repository = SupportRepository()
+_user_repository = UserRepository()
 
-    def __init__(self):
-        self.repository = SupportRepository()
+
+def _get_request_or_raise(request_id: int) -> Dict:
+    request = _repository.get_support_request_by_id(request_id)
+    if not request:
+        raise ValueError("Support request not found")
+    return request
+
+class SupportService:
 
     @staticmethod
     def create_support_request(user_id: int, issue_type: str, subject: str,
@@ -26,20 +35,20 @@ class SupportService:
         if priority not in valid_priorities:
             raise ValueError(f"Invalid priority. Must be one of: {', '.join(valid_priorities)}")
 
-        return SupportRepository.create_support_request(
+        return _repository.create_support_request(
             user_id, issue_type, subject.strip(), description.strip(), screenshot_path, priority
         )
 
     @staticmethod
     def get_user_requests(user_id: int) -> List[Dict]:
         #Get all support requests for a user
-        return SupportRepository.get_user_support_requests(user_id)
+        return _repository.get_user_support_requests(user_id)
 
     @staticmethod
     def get_request_details(request_id: int, user_id: Optional[int] = None) -> Optional[Dict]:
         #Get support request details If user_id is provided, verify the user owns the request or is support staff
 
-        request = SupportRepository.get_support_request_by_id(request_id)
+        request = _repository.get_support_request_by_id(request_id)
 
         if not request:
             return None
@@ -50,12 +59,12 @@ class SupportService:
             pass
 
         # Get comments for this request
-        comments = SupportRepository.get_request_comments(request_id)
+        comments = _repository.get_request_comments(request_id)
         request['comments'] = comments
 
         # Get user participation and volunteer history for support staff
-        request['participation_history'] = SupportRepository.get_user_participation_history(request['user_id'])
-        request['volunteer_history'] = SupportRepository.get_user_volunteer_history(request['user_id'])
+        request['participation_history'] = _repository.get_user_participation_history(request['user_id'])
+        request['volunteer_history'] = _repository.get_user_volunteer_history(request['user_id'])
 
         return request
 
@@ -68,10 +77,7 @@ class SupportService:
             raise ValueError("Comment cannot be empty")
 
         # Get the request to check status
-        request = SupportRepository.get_support_request_by_id(request_id)
-
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Regular users cannot comment on resolved or cancelled requests (only staff can comment on resolved)
         if request['status'] == 'resolved' and not is_staff_reply:
@@ -82,13 +88,13 @@ class SupportService:
             raise ValueError("Cannot add comments to cancelled requests.")
 
         # Add the comment
-        comment_id = SupportRepository.add_comment(
+        comment_id = _repository.add_comment(
             request_id, user_id, comment.strip(), is_staff_reply
         )
 
         # If this is a new request and staff is commenting, update to open
         if request['status'] == 'new' and is_staff_reply:
-            SupportRepository.update_request_status(request_id, 'open')
+            _repository.update_request_status(request_id, 'open')
 
         return comment_id  # Return comment_id
 
@@ -101,21 +107,18 @@ class SupportService:
             raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
 
         # Get current request
-        request = SupportRepository.get_support_request_by_id(request_id)
-
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Prevent reverting to 'new' from 'open'
         if request['status'] == 'open' and new_status == 'new':
             raise ValueError("Cannot revert status from 'open' to 'new'")
 
-        return SupportRepository.update_request_status(request_id, new_status)
+        return _repository.update_request_status(request_id, new_status)
 
     @staticmethod
     def assign_request(request_id: int, assigned_to: Optional[int]) -> bool:
         #Assign a request to a support staff member
-        return SupportRepository.assign_request(request_id, assigned_to)
+        return _repository.assign_request(request_id, assigned_to)
 
     @staticmethod
     def get_all_requests(status_filter: Optional[str] = None,
@@ -123,14 +126,14 @@ class SupportService:
                         priority_filter: Optional[str] = None,
                         issue_type_filter: Optional[str] = None) -> List[Dict]:
         #Get all support requests with filters (for support staff)
-        return SupportRepository.get_all_support_requests(
+        return _repository.get_all_support_requests(
             status_filter, assigned_filter, priority_filter, issue_type_filter
         )
 
     @staticmethod
     def can_user_access_request(request_id: int, user_id: int, is_staff: bool) -> bool:
         #Check if a user can access a support request
-        request = SupportRepository.get_support_request_by_id(request_id)
+        request = _repository.get_support_request_by_id(request_id)
 
         if not request:
             return False
@@ -147,9 +150,7 @@ class SupportService:
         #Take ownership of a request - can take unassigned or reassign from others
 
         # Get the request
-        request = SupportRepository.get_support_request_by_id(request_id)
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Cannot take your own request
         if request['assigned_to'] == user_id:
@@ -160,29 +161,26 @@ class SupportService:
             raise ValueError("Cannot take resolved requests. Please reopen first.")
 
         previous_assignee = request['assigned_to']
-        old_status = request['status']
 
         # Assign to user and update status to 'open' if currently 'new'
         if request['status'] == 'new':
-            success = SupportRepository.take_request(request_id, user_id)
+            success = _repository.take_request(request_id, user_id)
             if success:
                 # Log the status change from new to open
-                SupportRepository.log_status_change(
+                _repository.log_status_change(
                     request_id, user_id, 'new', 'open', None
                 )
         else:
             # For non-new requests, just reassign without changing status
-            success = SupportRepository.assign_request(request_id, user_id)
+            success = _repository.assign_request(request_id, user_id)
 
         if success:
             # Get staff name for notification
-            from src.app.user.user_repository import UserRepository
-            user_repo = UserRepository()
-            staff = user_repo.get_user_by_id(user_id)
+            staff = _user_repository.get_user_by_id(user_id)
             staff_name = f"{staff['first_name']} {staff['last_name']}" if staff else "Support Staff"
 
             # Notify request creator
-            SupportRepository.create_notification(
+            _repository.create_notification(
                 request['user_id'],
                 'request_assigned',
                 request_id,
@@ -191,7 +189,7 @@ class SupportService:
 
             # If reassigning from another staff member, notify them
             if previous_assignee and previous_assignee != user_id:
-                SupportRepository.create_notification(
+                _repository.create_notification(
                     previous_assignee,
                     'request_status_changed',
                     request_id,
@@ -205,9 +203,7 @@ class SupportService:
         #Drop ownership of a request
 
         # Get the request
-        request = SupportRepository.get_support_request_by_id(request_id)
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Validate user is the current owner
         if request['assigned_to'] != user_id:
@@ -218,11 +214,11 @@ class SupportService:
             raise ValueError("Cannot drop resolved requests")
 
         # Drop the request
-        success = SupportRepository.drop_request(request_id)
+        success = _repository.drop_request(request_id)
 
         if success:
             # Notify request creator
-            SupportRepository.create_notification(
+            _repository.create_notification(
                 request['user_id'],
                 'request_dropped',
                 request_id,
@@ -236,28 +232,24 @@ class SupportService:
         #Assign request to a staff member
 
         # Validate assigned_to is support staff
-        from src.app.user.user_repository import UserRepository
-        user_repo = UserRepository()
-        user = user_repo.get_user_by_id(assigned_to)
+        user = _user_repository.get_user_by_id(assigned_to)
         if not user or user['global_role'] not in ('super_admin', 'support_technician'):
             raise ValueError("Can only assign to support staff")
 
         # Get the request to check previous assignment
-        request = SupportRepository.get_support_request_by_id(request_id)
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         previous_assignee = request['assigned_to']
 
         # Assign the request
-        success = SupportRepository.assign_request(request_id, assigned_to)
+        success = _repository.assign_request(request_id, assigned_to)
 
         if success:
             # Get staff name
             staff_name = f"{user['first_name']} {user['last_name']}"
 
             # Notify newly assigned staff
-            SupportRepository.create_notification(
+            _repository.create_notification(
                 assigned_to,
                 'request_assigned',
                 request_id,
@@ -266,7 +258,7 @@ class SupportService:
 
             # If previously assigned to someone else, notify them
             if previous_assignee and previous_assignee != assigned_to:
-                SupportRepository.create_notification(
+                _repository.create_notification(
                     previous_assignee,
                     'request_status_changed',
                     request_id,
@@ -286,9 +278,7 @@ class SupportService:
             raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
 
         # Get current request
-        request = SupportRepository.get_support_request_by_id(request_id)
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Cannot revert from 'open' to 'new'
         if request['status'] == 'open' and new_status == 'new':
@@ -299,13 +289,13 @@ class SupportService:
             raise ValueError("A comment is required when marking a request as resolved")
 
         # Update status with log
-        success = SupportRepository.update_status_with_log(
+        success = _repository.update_status_with_log(
             request_id, new_status, changed_by, comment_id
         )
 
         if success:
             # Notify request creator of status change
-            SupportRepository.create_notification(
+            _repository.create_notification(
                 request['user_id'],
                 'request_status_changed',
                 request_id,
@@ -314,7 +304,7 @@ class SupportService:
 
             # Also notify assigned staff if different from changer
             if request['assigned_to'] and request['assigned_to'] != changed_by:
-                SupportRepository.create_notification(
+                _repository.create_notification(
                     request['assigned_to'],
                     'request_status_changed',
                     request_id,
@@ -328,25 +318,21 @@ class SupportService:
         #Reopen a resolved request
 
         # Get the request
-        request = SupportRepository.get_support_request_by_id(request_id)
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Validate status is resolved
         if request['status'] != 'resolved':
             raise ValueError("Can only reopen resolved requests")
 
         # Validate user is request creator or support staff
-        from src.app.user.user_repository import UserRepository
-        user_repo = UserRepository()
-        user = user_repo.get_user_by_id(user_id)
+        user = _user_repository.get_user_by_id(user_id)
         is_staff = user and user['global_role'] in ('super_admin', 'support_technician')
 
         if request['user_id'] != user_id and not is_staff:
             raise ValueError("Only request creator or support staff can reopen requests")
 
         # Reopen the request
-        success = SupportRepository.reopen_request(request_id, user_id)
+        success = _repository.reopen_request(request_id, user_id)
 
         if success:
             # Get user name for notification
@@ -354,7 +340,7 @@ class SupportService:
 
             # Notify assigned staff (if any)
             if request['assigned_to']:
-                SupportRepository.create_notification(
+                _repository.create_notification(
                     request['assigned_to'],
                     'request_status_changed',
                     request_id,
@@ -366,31 +352,29 @@ class SupportService:
     @staticmethod
     def get_staff_list() -> List[Dict]:
         #Get list of support staff for assignment dropdown
-        return SupportRepository.get_support_staff_list()
+        return _repository.get_support_staff_list()
 
     @staticmethod
     def get_notifications(user_id: int, unread_only: bool = False) -> List[Dict]:
         #Get notifications for a user
-        return SupportRepository.get_user_notifications(user_id, unread_only)
+        return _repository.get_user_notifications(user_id, unread_only)
 
     @staticmethod
     def mark_notification_read(notification_id: int, user_id: int) -> bool:
         #Mark a notification as read
-        return SupportRepository.mark_notification_read(notification_id, user_id)
+        return _repository.mark_notification_read(notification_id, user_id)
 
     @staticmethod
     def get_unread_count(user_id: int) -> int:
         #Get count of unread notifications
-        return SupportRepository.get_unread_notification_count(user_id)
+        return _repository.get_unread_notification_count(user_id)
 
     @staticmethod
     def close_user_request(request_id: int, user_id: int) -> bool:
         #Allow users to close their own requests when in new or open status
 
         # Get the request
-        request = SupportRepository.get_support_request_by_id(request_id)
-        if not request:
-            raise ValueError("Support request not found")
+        request = _get_request_or_raise(request_id)
 
         # Verify user is the request creator
         if request['user_id'] != user_id:
@@ -407,22 +391,18 @@ class SupportService:
             else:
                 raise ValueError(f"Cannot close request with status: {request['status']}")
 
-        old_status = request['status']
-
         # Update status to cancelled (displayed as "Closed by User")
-        success = SupportRepository.update_status_with_log(
+        success = _repository.update_status_with_log(
             request_id, 'cancelled', user_id, None
         )
 
         if success:
             # Notify assigned staff if any
             if request['assigned_to']:
-                from src.app.user.user_repository import UserRepository
-                user_repo = UserRepository()
-                user = user_repo.get_user_by_id(user_id)
+                user = _user_repository.get_user_by_id(user_id)
                 user_name = f"{user['first_name']} {user['last_name']}" if user else "User"
 
-                SupportRepository.create_notification(
+                _repository.create_notification(
                     request['assigned_to'],
                     'request_status_changed',
                     request_id,

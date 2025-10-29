@@ -1,21 +1,19 @@
 import time
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from werkzeug.utils import secure_filename
-from src.app.support.support_service import SupportService
-from src.app.support.support_repository import SupportRepository
-from src.app.auth.route_guard import require_login, require_support_staff
+
 from src.app.auth.auth_service import auth_service
+from src.app.auth.route_guard import require_login, require_support_staff
 from src.app.common.file_service import FileService
+from src.app.common.uploads import is_allowed_file
 from src.app.group.group_service import GroupService
+from src.app.support.support_repository import SupportRepository
+from src.app.support.support_service import SupportService
 
 support_blueprint = Blueprint('support', __name__, url_prefix='/support')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-
-def allowed_file(filename):
-    #Check if file extension is allowed
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @support_blueprint.route('/new', methods=['GET', 'POST'])
 @require_login
@@ -56,7 +54,7 @@ def new_request():
                         flash(f"File size exceeds the maximum limit of 5MB. Please select a smaller file.", "danger")
                         return render_template('support/new_request.html', form_data=request.form)
 
-                    if not allowed_file(file.filename):
+                    if not is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
                         flash("Invalid file type. Only PNG, JPG, JPEG, GIF, and PDF files are allowed.", "danger")
                         return render_template('support/new_request.html', form_data=request.form)
 

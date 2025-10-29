@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_bcrypt import generate_password_hash, check_password_hash
 
 from src.app.admin.admin_service import AdminService
-from src.app.auth.auth_service import AuthService
+from src.app.auth.auth_service import auth_service
 from src.app.common.file_service import FileService
 from src.app.common.form_group import FormGroup, FormControl
 from src.app.event.event_service import EventService
@@ -15,7 +15,6 @@ from src.app.group.group_service import GroupService
 from src.app.participant.participant_service import ParticipantService
 
 admin_service = AdminService()
-auth_service = AuthService()
 event_service = EventService()
 file_service = FileService()
 town_service = TownService()
@@ -25,20 +24,20 @@ participant_service = ParticipantService()
 
 app_blueprint = Blueprint('app', __name__)
 
-# map UI age_group string to a representative age integer.
+# Map UI age_group string to a representative age integer.
 # Returns None when age_group is unspecified ("Prefer not to say").
+AGE_GROUP_TO_AGE = {
+    'Under 18': 16,
+    '18-29': 25,
+    '30-44': 37,
+    '45+': 50,
+}
+
+
 def map_age_group_to_age(age_group: str | None) -> int | None:
     if not age_group:
         return None
-    if age_group == 'Under 18':
-        return 16
-    if age_group == '18-29':
-        return 25
-    if age_group == '30-44':
-        return 37
-    if age_group == '45+':
-        return 50
-    return None
+    return AGE_GROUP_TO_AGE.get(age_group)
 
 @app_blueprint.route("")
 def home():
@@ -126,23 +125,28 @@ def register():
     })
 
     if request.method == "POST":
-        first_name_input = request.form.get('first_name', '').strip()
-        last_name_input = request.form.get('last_name', '').strip()
-        town_input = request.form.get('town', '').strip()
-        email_input = request.form.get('email', '').strip()
-        gender_input = request.form.get('gender', '').strip() or None
-        age_group_input = request.form.get('age_group', '').strip() or None
-        password_input = request.form.get('password', '').strip()
-        password_confirmation_input = request.form.get('password_confirmation', '').strip()
+        field_names = (
+            'first_name', 'last_name', 'town', 'gender',
+            'age_group', 'email', 'password', 'password_confirmation'
+        )
+        form_values = {name: request.form.get(name, '').strip() for name in field_names}
 
-        form_group.get("first_name").value = first_name_input
-        form_group.get("last_name").value = last_name_input
-        form_group.get("town").value = town_input
-        form_group.get("gender").value = gender_input or ''
-        form_group.get("age_group").value = age_group_input or ''
-        form_group.get("email").value = email_input
-        form_group.get("password").value = password_input
-        form_group.get("password_confirmation").value = password_confirmation_input
+        gender_input = form_values['gender'] or None
+        age_group_input = form_values['age_group'] or None
+
+        for name, value in form_values.items():
+            if name in {'gender', 'age_group'} and not value:
+                display_value = ''
+            else:
+                display_value = value
+            form_group.get(name).value = display_value
+
+        first_name_input = form_values['first_name']
+        last_name_input = form_values['last_name']
+        town_input = form_values['town']
+        email_input = form_values['email']
+        password_input = form_values['password']
+        password_confirmation_input = form_values['password_confirmation']
 
         # Validate input
         errors = user_service.validate_name_input(first_name_input, "First name")
