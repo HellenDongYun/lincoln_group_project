@@ -676,21 +676,9 @@ def update_user_status_ajax(user_id):
         
         if success:
             status_action = "activated" if new_status == "active" else "deactivated"
-            flash(f"Successfully {status_action} {user['full_name']}", "success")
             return {'success': True, 'message': f"User {status_action}"}, 200
         else:
-            return {'success': False, 'message': 'Failed to update status'}, 500
+            return {'success': False, 'message': 'Failed to update status'}, 400
             
     except Exception as e:
         return {'success': False, 'message': f'Error: {str(e)}'}, 500
-
-
-
-
-
-
-    
-    
-    
-    
-    
