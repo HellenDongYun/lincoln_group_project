@@ -1,16 +1,16 @@
-import os
 from flask import session
 
-from src.app.user.user import GlobalRole, Role
 from src.app.common.nav.encode import encode_id
-
+from src.app.user.user import GlobalRole, Role
 
 """
 A singleton service for managing user authentication using Flask sessions.
 
-This service provides methods to log in and log out users, 
+This service provides methods to log in and log out users,
 check login status, and perform role based checks.
 """
+
+
 class AuthService:
     _instance = None
 
@@ -69,6 +69,6 @@ class AuthService:
     def is_volunteer(self) -> bool:
         # Volunteering is task-based, not  role
         return False
-    
-auth_service = AuthService()    
-    
+
+
+auth_service = AuthService()

@@ -1,27 +1,26 @@
+from datetime import datetime
 import math
-from flask import Blueprint, jsonify, render_template, request, flash, redirect, session, url_for
+
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+
 from src.app.admin.admin_service import AdminService
+from src.app.app_controller import admin_service
+from src.app.auth.auth_service import auth_service
+from src.app.auth.route_guard import require_super_admin, require_super_admin_or_support_technician
 from src.app.common.date_format import DateFormat
 from src.app.common.db.cursor import get_cursor
-from src.app.app_controller import admin_service
-from src.app.auth.route_guard import require_super_admin, require_super_admin_or_support_technician
-from src.app.auth.auth_service import auth_service
 from src.app.common.nav.encode import decode_id
 from src.app.user.user import GlobalRole
-from datetime import datetime
 
-import os
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
-from werkzeug.security import check_password_hash, generate_password_hash
-# from werkzeug.utils import secure_filename
-# from src.app import db 
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-
-""" Example Repo-Service-Controller """ 
+""" Example Repo-Service-Controller """
 admin_blueprint = Blueprint('admin', __name__)
 @admin_blueprint.route("<encoded_admin_id>", methods=["GET", "POST"])
 @require_super_admin

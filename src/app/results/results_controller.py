@@ -1,10 +1,9 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, session
 from werkzeug.utils import secure_filename
-import csv
-import io
 
-from src.app.auth.auth_service import AuthService
+from src.app.auth.auth_service import auth_service
 from src.app.auth.route_guard import require_super_admin, require_volunteer_or_manager
+from src.app.common.uploads import is_allowed_file
 from src.app.results.results_service import ResultsService
 
 results_service = ResultsService()
@@ -12,9 +11,6 @@ results_blueprint = Blueprint('results', __name__)
 
 # Allowed file extensions for CSV upload
 ALLOWED_EXTENSIONS = {'csv'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @results_blueprint.route("/", methods=["GET"])
@@ -43,7 +39,6 @@ def public_results():
 @require_volunteer_or_manager
 def upload_results():
     """Upload CSV results - admins and volunteers only"""
-    auth_service = AuthService()
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
 
@@ -83,7 +78,7 @@ def upload_results():
         flash("No file selected.", "danger")
         return redirect(url_for('results.upload_results'))
     
-    if file and allowed_file(file.filename):
+    if file and is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
         try:
             # Read and process CSV file
             filename = secure_filename(file.filename)
@@ -118,8 +113,8 @@ def upload_results():
                     # Get event details for display
                     event = results_service.get_event_details(event_id)
                     
-                    return render_template("results/upload.html", 
-                                         events=results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin),
+                    return render_template("results/upload.html",
+                                         events=events,
                                          unregistered_confirmation_needed=True,
                                          selected_event=event,
                                          stats=stats,
@@ -138,16 +133,15 @@ def upload_results():
                         'filename': filename
                     }
                     
-                    return render_template("results/upload.html", 
-                                         events=results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin),
+                    return render_template("results/upload.html",
+                                         events=events,
                                          confirmation_needed=True,
                                          selected_event=event,
                                          existing_summary=existing_summary,
                                          message=message)
                 else:
                     # Other validation errors - show detailed error information
-                    events = results_service.get_all_events(user_id=user_id, is_super_admin=is_super_admin)
-                    return render_template("results/upload.html", 
+                    return render_template("results/upload.html",
                                          events=events,
                                          stats=stats,
                                          selected_event_id=event_id,
@@ -165,7 +159,6 @@ def upload_results():
 @require_volunteer_or_manager
 def confirm_overwrite():
     """Confirm overwriting existing results"""
-    auth_service = AuthService()
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
 
@@ -217,7 +210,6 @@ def confirm_overwrite():
 @require_volunteer_or_manager
 def confirm_unregistered():
     """Handle unregistered participant confirmation"""
-    auth_service = AuthService()
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
 
@@ -316,7 +308,6 @@ def remove_results(event_id):
 @require_volunteer_or_manager
 def record_time():
     """Record completion time by participant ID - volunteers and managers only"""
-    auth_service = AuthService()
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
 
