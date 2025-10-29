@@ -5,11 +5,14 @@
 {% block content %}
 <div class="hero-section-dark">
     <div class="container hero-content">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="justify-content-between align-items-center">
             <div>
                 <h1 class="display-5 text-white">Support Request #{{ support_request.id }}</h1>
-                <p class="lead text-white-50">{{ support_request.subject }}</p>
+                <p class="display-6 text-white">{{ support_request.subject }}</p>
             </div>
+            <a href="{{ url_for('support.support_queue') }}" class="btn btn-outline-light">
+                <i class="bi bi-list-ul me-2"></i>Back to Support Queue
+            </a>
             <a href="{{ url_for('support.my_requests') }}" class="btn btn-outline-light">
                 <i class="bi bi-arrow-left me-2"></i>Back to My Requests
             </a>

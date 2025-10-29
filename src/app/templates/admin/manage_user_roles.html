@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             // Hide loading overlay
             document.getElementById('loading-overlay').style.display = 'none';
-            
+                       
             if (data.success) {
                 // Update the status badge in the table
                 const statusBadge = document.getElementById(`status-badge-${userId}`);
@@ -459,16 +459,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     statusBtn.dataset.currentStatus = newStatus;
                     if (newStatus === 'active') {
                         statusBtn.className = 'btn btn-sm btn-outline-danger status-toggle-btn';
-                        statusBtn.innerHTML = '<i class="fas fa-ban me-1"></i>Deactivate';
+                        statusBtn.innerHTML = 'Deactivate';
                     } else {
                         statusBtn.className = 'btn btn-sm btn-outline-success status-toggle-btn';
-                        statusBtn.innerHTML = '<i class="fas fa-check me-1"></i>Activate';
+                        statusBtn.innerHTML = 'Activate';
                     }
                 }
                 
                 // Re-attach event listener to the updated button
                 statusBtn.addEventListener('click', function(e) {
                     e.preventDefault();
+                    document.getElementsByClassName(modal-backdrop)[0].remove();
                     
                     currentUserId = this.dataset.userId;
                     const userName = this.dataset.userName;
@@ -487,9 +488,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const modal = new bootstrap.Modal(document.getElementById('statusChangeModal'));
                     modal.show();
                 });
-                
-                // Show success message
-                showAlert('success', data.message);
             } else {
                 showAlert('danger', data.message || 'Failed to update user status');
             }
