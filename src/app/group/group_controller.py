@@ -7,7 +7,7 @@ from src.app.auth.route_guard import require_login, require_super_admin
 from src.app.group.group_service import GroupService
 from src.app.user.user import GroupVisibility, GroupStatus
 from src.app.common.nav.encode import encode_id
-from werkzeug.urls import url_parse
+from urllib.parse import urlparse
 
 group_blueprint = Blueprint('groups', __name__)
 
@@ -28,7 +28,7 @@ def _resolve_redirect_target(default: str) -> str:
     if not next_url:
         return default
 
-    parsed = url_parse(next_url)
+    parsed = urlparse(next_url)
 
     if parsed.netloc or next_url.startswith('//'):
         current_app.logger.warning('Blocked potentially unsafe redirect to %s', next_url)

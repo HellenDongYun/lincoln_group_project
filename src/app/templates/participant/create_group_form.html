@@ -1,11 +1,12 @@
-{% extends 'base.html'%} {%block content%} 
+{% extends 'base.html'%} {%block content%}
+{% set field_errors = form_errors if form_errors is defined and form_errors else {} %}
 <div class="bg-light container py-5">
   <div class="row justify-content-center">
-    <div class="col-lg-8 col-xl-6">
+    <div class="col-xl-10 col-xxl-8">
       <!-- Header -->
       <div class="text-center mb-5">
         <h1 class="h2 fw-bold text-dark mb-3">Apply to create a new group</h1>
-        <p class="text-muted lead">
+        <p class="text-muted lead mb-0">
           Apply to form a new community group and participate in sports with
           like-minded friends
         </p>
@@ -14,41 +15,48 @@
       <!-- Main Form Card -->
       <div class="card shadow border-0">
         <div class="card-body p-4 p-md-5">
-          <form method="POST">
-            <!-- Group Info Section -->
-            <div class="mb-5">
-              <div class="d-flex align-items-center mb-4">
-                <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                  <i class="bi bi-people-fill text-primary fs-5"></i>
-                </div>
-                <div>
-                  <h5 class="fw-bold mb-1">Group Info</h5>
-                  <!-- <p class="text-muted small mb-0">group description</p> -->
-                </div>
-              </div>
+          <form method="POST" class="needs-validation" novalidate>
+            <fieldset class="mb-5">
+              <legend class="h5 fw-bold border-bottom pb-2 mb-4">
+                <span class="d-flex align-items-center gap-2">
+                  <span class="bg-primary bg-opacity-10 rounded-circle p-2">
+                    <i class="bi bi-people-fill text-primary fs-5"></i>
+                  </span>
+                  <span>Group details</span>
+                </span>
+              </legend>
 
               <!-- Group Name -->
+              {% set group_name_error = field_errors.get('groupName') %}
               <div class="mb-4">
                 <label for="groupName" class="form-label fw-semibold">
-                  group name <span class="text-danger">*</span>
+                  Group name <span class="text-danger">*</span>
                 </label>
                 <input
                   type="text"
-                  class="form-control form-control-lg"
+                  class="form-control form-control-lg {% if group_name_error %}is-invalid{% endif %}"
                   id="groupName"
                   name="groupName"
                   placeholder="Auckland Morning Running"
                   value="{{ application.proposed_name if application else '' }}"
+                  required
+                  aria-required="true"
+                  aria-invalid="{{ 'true' if group_name_error else 'false' }}"
+                  aria-describedby="groupName-help groupName-feedback"
                 />
-                <div class="form-text">
-                  Choose a distinctive and descriptive name
+                <div class="form-text" id="groupName-help">
+                  Choose a distinctive and descriptive name.
+                </div>
+                <div class="invalid-feedback" id="groupName-feedback">
+                  {{ group_name_error or 'Please provide a group name.' }}
                 </div>
               </div>
 
               <!-- Location -->
+              {% set location_error = field_errors.get('location') %}
               <div class="mb-4">
                 <label for="location" class="form-label fw-semibold">
-                  group location <span class="text-danger">*</span>
+                  Group location <span class="text-danger">*</span>
                 </label>
                 <div class="input-group input-group-lg">
                   <span class="input-group-text bg-white">
@@ -56,88 +64,101 @@
                   </span>
                   <input
                     type="text"
-                    class="form-control"
+                    class="form-control {% if location_error %}is-invalid{% endif %}"
                     id="location"
                     name="location"
                     placeholder="Auckland"
                     value="{{ application.proposed_town if application else '' }}"
+                    required
+                    aria-required="true"
+                    aria-invalid="{{ 'true' if location_error else 'false' }}"
+                    aria-describedby="location-feedback"
                   />
+                </div>
+                <div class="invalid-feedback" id="location-feedback">
+                  {{ location_error or 'Please tell us where your group meets most often.' }}
                 </div>
               </div>
 
               <!-- Privacy Settings -->
+              {% set privacy_error = field_errors.get('privacy') %}
               <div class="mb-4">
                 <label for="privacy" class="form-label fw-semibold">
-                  group visibility <span class="text-danger">*</span>
+                  Group visibility <span class="text-danger">*</span>
                 </label>
                 <select
-                  class="form-select form-select-lg"
+                  class="form-select form-select-lg {% if privacy_error %}is-invalid{% endif %}"
                   id="privacy"
                   name="privacy"
-                  value="{{ application.visibility if application else '' }}"
+                  required
+                  aria-required="true"
+                  aria-invalid="{{ 'true' if privacy_error else 'false' }}"
+                  aria-describedby="privacy-feedback"
                 >
                   <option value="">
-                    Please select the visibility Settings
+                    Please select the visibility settings
                   </option>
                   <option value="public" {% if application and application.visibility == "public" %}selected{% endif %}>
-                    public - Everyone can see it and apply to join
+                    Public – everyone can see it and apply to join
                   </option>
                   <option value="private" {% if application and application.visibility == "private" %}selected{% endif %}>
-                    private - You can join only after the application is
-                    approved by the admin
+                    Private – applicants join after administrator approval
                   </option>
                 </select>
+                <div class="invalid-feedback" id="privacy-feedback">
+                  {{ privacy_error or 'Choose who can discover and request to join your group.' }}
+                </div>
               </div>
 
               <!-- Group Description -->
-              <div class="mb-4">
+              <div class="mb-0">
                 <label for="description" class="form-label fw-semibold"
-                  >group description</label
+                  >Group description</label
                 >
                 <textarea
                   class="form-control"
                   id="description"
                   name="description"
-                  rows="4"
-                  placeholder="Describe your group's goals, types of activities, participation requirements, etc"
-                >
-{{ application.proposed_description if application else '' }}</textarea
-                >
-                <div class="d-flex justify-content-between mt-2">
-                  <div class="form-text">
-                    Detailed descriptions can help attract suitable members
+                  rows="5"
+                  maxlength="1000"
+                  placeholder="Describe your group's goals, activities, and participation expectations."
+                  aria-describedby="description-help description-count"
+                >{{ application.proposed_description if application else '' }}</textarea>
+                <div class="d-flex flex-column flex-sm-row justify-content-between gap-1 mt-2">
+                  <div class="form-text" id="description-help">
+                    Detailed descriptions help attract the right members.
                   </div>
-                  <small class="text-muted">0/1000 characters</small>
+                  <small class="text-muted" id="description-count">0 / 1000 characters</small>
                 </div>
               </div>
-            </div>
+            </fieldset>
 
-            <!-- Application Rules Section -->
-            <div class="mb-5">
-              <div class="alert alert-info border-0 bg-info bg-opacity-10">
-                <h6 class="alert-heading fw-bold text-info mb-3">
-                  <i class="bi bi-info-circle me-2"></i>Application
-                  Instructions:
-                </h6>
+            <fieldset class="mb-4">
+              <legend class="h5 fw-bold border-bottom pb-2 mb-4">
+                <span class="d-flex align-items-center gap-2">
+                  <span class="bg-info bg-opacity-10 rounded-circle p-2">
+                    <i class="bi bi-info-circle text-info fs-5"></i>
+                  </span>
+                  <span>Application guidelines</span>
+                </span>
+              </legend>
+              <div class="alert alert-info border-0 bg-info bg-opacity-10 mb-0">
                 <ul class="mb-0 ps-3">
                   <li class="mb-2">
-                    Your application will be reviewed by the super administrator
+                    Your application will be reviewed by the super administrator.
                   </li>
                   <li class="mb-2">
-                    After the review is approved, you will become the
-                    administrator of the group
+                    Once approved you will become the administrator of the group.
                   </li>
                   <li class="mb-2">
-                    Group administrators can create activities and manage
-                    members
+                    Group administrators can create activities and manage members.
                   </li>
                   <li class="mb-0">
-                    Please ensure that the group name is unique and usable in
-                    the future
+                    Please ensure the group name is unique and future-proof.
                   </li>
                 </ul>
               </div>
-            </div>
+            </fieldset>
 
             <!-- Action Buttons -->
             <div class="d-flex flex-column flex-sm-row gap-3">
@@ -145,11 +166,11 @@
                 type="submit"
                 class="btn btn-primary btn-lg px-4 flex-fill"
               >
-                <i class="bi bi-check-circle me-2"></i>{%if is_edit_mode  %} update changes {%else%} Submit application {%endif%}
+                <i class="bi bi-check-circle me-2"></i>
+                {% if is_edit_mode %}Update changes{% else %}Submit application{% endif %}
               </button>
               <a
-                href="{{url_for('participant.myapplications',encoded_participant_id=encoded_participant_id)}}"
-                type="button"
+                href="{{ url_for('participant.myapplications', encoded_participant_id=encoded_participant_id) }}"
                 class="btn btn-outline-secondary btn-lg px-4"
               >
                 <i class="bi bi-arrow-left me-2"></i>Cancel
@@ -160,32 +181,26 @@
       </div>
 
       <!-- Additional Info -->
-      <div class="row mt-4 g-3">
-        <div class="col-md-6">
-          <div
-            class="card border-0 bg-success bg-opacity-75 d-flex justify-content-center text-center"
-            style="height: 120px"
-          >
-            <div class="card-body p-2">
+      <div class="row row-cols-1 row-cols-md-2 g-3 mt-4">
+        <div class="col">
+          <div class="card border-0 bg-success bg-opacity-75 text-center h-100 py-4">
+            <div class="card-body">
               <i class="bi bi-shield-check text-dark fs-3 mb-2"></i>
-              <h6 class="fw-bold mb-1">safety and reliability</h6>
+              <h6 class="fw-bold mb-1">Safety and reliability</h6>
               <p class="small text-muted mb-0">
-                All group applications have undergone strict review
+                Every application is reviewed carefully before approval.
               </p>
             </div>
           </div>
         </div>
 
-        <div class="col-md-6">
-          <div
-            class="card border-0 bg-info bg-opacity-75 d-flex justify-content-center text-center"
-            style="height: 120px"
-          >
-            <div class="card-body p-2">
+        <div class="col">
+          <div class="card border-0 bg-info bg-opacity-75 text-center h-100 py-4">
+            <div class="card-body">
               <i class="bi bi-people text-dark fs-3 mb-2"></i>
-              <h6 class="fw-bold mb-1">community support</h6>
+              <h6 class="fw-bold mb-1">Community support</h6>
               <p class="small text-muted mb-0">
-                A professional team provides group management support
+                Our team is available to help you manage your new group.
               </p>
             </div>
           </div>
@@ -195,12 +210,29 @@
       <!-- Help Section -->
       <div class="text-center mt-5">
         <h6 class="fw-bold mb-3">Need help?</h6>
-        <p class="text-muted mb-4">
-          Learn more
-          <a href="#" class="text-decoration-none">Contact support</a>
+        <p class="text-muted mb-0">
+          Learn more or
+          <a href="#" class="text-decoration-none">contact support</a>
+          for onboarding assistance.
         </p>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const descriptionField = document.getElementById('description');
+    const descriptionCounter = document.getElementById('description-count');
+    if (descriptionField && descriptionCounter) {
+      const limit = parseInt(descriptionField.getAttribute('maxlength') || '1000', 10);
+      const updateCounter = () => {
+        const length = descriptionField.value.trim().length;
+        descriptionCounter.textContent = `${length} / ${limit} characters`;
+      };
+      descriptionField.addEventListener('input', updateCounter);
+      updateCounter();
+    }
+  });
+</script>
 {%endblock%}

@@ -20,6 +20,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 def new_request():
     #Create a new support request
     if request.method == 'POST':
+        form_errors: dict[str, str] = {}
         try:
             user_id = auth_service.get_user_id()
             issue_type = request.form.get('issue_type', '').strip()
@@ -29,16 +30,13 @@ def new_request():
 
             # Validation
             if not issue_type:
-                flash("Please select an issue type.", "danger")
-                return render_template('support/new_request.html', form_data=request.form)
+                form_errors['issue_type'] = "Please select an issue type."
 
             if not subject:
-                flash("Please provide a subject.", "danger")
-                return render_template('support/new_request.html', form_data=request.form)
+                form_errors['subject'] = "Please provide a subject."
 
             if not description:
-                flash("Please provide a description.", "danger")
-                return render_template('support/new_request.html', form_data=request.form)
+                form_errors['description'] = "Please describe the issue you need help with."
 
             # Handle file upload
             screenshot_path = None
@@ -51,22 +49,21 @@ def new_request():
                     file.seek(0)  # Reset to beginning
 
                     if file_size > MAX_FILE_SIZE:
-                        flash(f"File size exceeds the maximum limit of 5MB. Please select a smaller file.", "danger")
-                        return render_template('support/new_request.html', form_data=request.form)
+                        form_errors['screenshot'] = "File size exceeds the maximum limit of 5MB. Please select a smaller file."
+                    elif not is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
+                        form_errors['screenshot'] = "Invalid file type. Only PNG, JPG, JPEG, GIF, and PDF files are allowed."
+                    else:
+                        # Use FileService to save the file
+                        try:
+                            filename = secure_filename(file.filename)
+                            timestamp = str(int(time.time()))
+                            unique_filename = f"support_{user_id}_{timestamp}_{filename}"
+                            screenshot_path = FileService.save_file(file, unique_filename, 'support_screenshots')
+                        except Exception as e:
+                            form_errors['screenshot'] = f"Error uploading screenshot: {str(e)}"
 
-                    if not is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
-                        flash("Invalid file type. Only PNG, JPG, JPEG, GIF, and PDF files are allowed.", "danger")
-                        return render_template('support/new_request.html', form_data=request.form)
-
-                    # Use FileService to save the file
-                    try:
-                        filename = secure_filename(file.filename)
-                        timestamp = str(int(time.time()))
-                        unique_filename = f"support_{user_id}_{timestamp}_{filename}"
-                        screenshot_path = FileService.save_file(file, unique_filename, 'support_screenshots')
-                    except Exception as e:
-                        flash(f"Error uploading screenshot: {str(e)}", "danger")
-                        return render_template('support/new_request.html', form_data=request.form)
+            if form_errors:
+                return render_template('support/new_request.html', form_data=request.form, form_errors=form_errors)
 
             # Create the support request
             request_id = SupportService.create_support_request(
@@ -78,13 +75,13 @@ def new_request():
 
         except ValueError as e:
             flash(str(e), "danger")
-            return render_template('support/new_request.html', form_data=request.form)
+            return render_template('support/new_request.html', form_data=request.form, form_errors=form_errors)
         except Exception as e:
             flash(f"An error occurred: {str(e)}", "danger")
-            return render_template('support/new_request.html', form_data=request.form)
+            return render_template('support/new_request.html', form_data=request.form, form_errors=form_errors)
 
     # GET request
-    return render_template('support/new_request.html', form_data={})
+    return render_template('support/new_request.html', form_data={}, form_errors={})
 
 
 @support_blueprint.route('/my-requests')
