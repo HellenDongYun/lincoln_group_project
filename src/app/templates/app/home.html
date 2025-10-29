@@ -2,6 +2,15 @@
 block header %}
 <h2>Welcome to ActiveLoop</h2>
 {% endblock %} {% block content %}
+{% set active_filter = filter_type if filter_type is defined else 'events' %}
+{% set events_active = active_filter == 'events' %}
+{% set groups_active = active_filter == 'groups' %}
+{% set gallery_images = [
+  ('aboutus1.jpg', 'Participants warming up together before a community run'),
+  ('aboutus2.jpg', 'Cyclists gathering at the start of a weekend ride'),
+  ('aboutus3.jpg', 'Volunteer handing water to a runner on the course'),
+  ('aboutus4.jpg', 'Friends celebrating after finishing a group workout'),
+] %}
 <div class="position-relative overflow-hidden" style="min-height: 50vh;">
   <!-- Background Image -->
   <img 
@@ -20,12 +29,12 @@ block header %}
         <div class="col-lg-6 text-white">
           <div class="px-3 px-lg-5 my-auto">
             <!-- Title -->
-            <h1 class="display-2 display-md-1 fw-bold mb-4">Events.Volunteers.</h1>
-            
+            <h1 class="display-2 display-md-1 fw-bold mb-4">Events. Volunteers. Community.</h1>
+
             <!-- Description -->
             <p class="fs-5 fs-md-4 mb-4">
-              Activeloop is a free community fitness platform that holds running events every week、<br class="d-none d-sm-block">
-              No matter what your fitness level is, can you find activities that suit you。
+              ActiveLoop is a free community fitness platform that hosts running events every week.<br class="d-none d-sm-block">
+              No matter your fitness level, you can discover activities that fit your goals.
             </p>
             
             <!-- Buttons -->
@@ -129,8 +138,20 @@ block header %}
                 </div>
                   <div class="mt-3 text-center d-flex justify-content-center align-items-center">
                     <p class="text-muted fw-bold mb-0 me-2">Filter:</p>
-                    <a href="{{url_for('app.home_filter_events',filter_type='events')}}" class="btn btn-outline-secondary rounded-pill me-2 selected">Events</a>
-                    <a  href="{{url_for('app.home_filter_events',filter_type='groups')}}" class="btn btn-outline-secondary rounded-pill me-2">Group</a>
+                    <a
+                      href="{{ url_for('app.home_filter_events', filter_type='events') }}"
+                      class="btn btn-outline-secondary rounded-pill me-2 {% if events_active %}btn-toggle-active{% endif %}"
+                      aria-pressed="{{ 'true' if events_active else 'false' }}"
+                    >
+                      Events
+                    </a>
+                    <a
+                      href="{{ url_for('app.home_filter_events', filter_type='groups') }}"
+                      class="btn btn-outline-secondary rounded-pill me-2 {% if groups_active %}btn-toggle-active{% endif %}"
+                      aria-pressed="{{ 'true' if groups_active else 'false' }}"
+                    >
+                      Groups
+                    </a>
                 </div>
             </div>
         </div>
@@ -169,13 +190,13 @@ block header %}
       <!-- right images -->
       <div class="col-lg-6">
           <div class="row g-3">
-            {% for img in ['aboutus1.jpg', 'aboutus2.jpg', 'aboutus3.jpg', 'aboutus4.jpg'] %}
+            {% for filename, alt_text in gallery_images %}
               <div class="col-6">
                 <div class="ratio ratio-4x3">
-                  <img src="{{ url_for('static', filename='images/' ~ img) }}"
+                  <img src="{{ url_for('static', filename='images/' ~ filename) }}"
                       class="img-fluid rounded shadow-sm"
                       style="object-fit: cover;"
-                      alt="Activity Image">
+                      alt="{{ alt_text }}">
                 </div>
               </div>
             {% endfor %}

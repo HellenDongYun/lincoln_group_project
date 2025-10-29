@@ -28,13 +28,14 @@
   </head>
 
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header>
       <nav
         class="navbar navbar-expand-sm bg-dark border-bottom border-body ps-4"
         data-bs-theme="dark"
       >
         <div class="container-fluid">
-          <a class="navbar-brand d-flex align-items-center" href="#">
+          <a class="navbar-brand d-flex align-items-center" href="{{ url_for('app.home') }}">
             <img
               src="{{ url_for('static', filename='images/logo.png') }}"
               alt="ActiveLoop Logo"
@@ -93,7 +94,7 @@
       </nav>
     </header>
 
-    <main class="container-fluid p-0">
+    <main id="main-content" class="container-fluid p-0">
       <section>
         {% with messages = get_flashed_messages(with_categories=true) %} {% if
         messages %}

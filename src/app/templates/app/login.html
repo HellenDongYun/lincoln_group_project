@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block title %}User Login{% endblock %} {% block
 content %}
 <section
-  class="bg-light d-flex align-items-center justify-content-center vh-100"
+  class="bg-light d-flex align-items-center justify-content-center py-5 py-md-0 min-vh-100"
 >
   <div class="container">
     <div class="row justify-content-center">
@@ -14,6 +14,7 @@ content %}
 
             <!-- login form -->
             <form method="POST" class="needs-validation" novalidate>
+              {% set email_errors = form_group.get('email').errors %}
               <!-- Email -->
               <div class="mb-3">
                 <label for="email" class="form-label"
@@ -25,17 +26,21 @@ content %}
                   id="email"
                   required
                   aria-required="true"
-                  class="form-control {% if form_group.get('email').errors %}is-invalid{% endif %}"
+                  class="form-control {% if email_errors %}is-invalid{% endif %}"
                   value="{{ form_group.get('email').value }}"
+                  aria-invalid="{{ 'true' if email_errors else 'false' }}"
+                  aria-describedby="email-feedback"
                 />
-                {% if form_group.get('email').errors %} {% for error in
-                form_group.get('email').errors %}
-                <div class="invalid-feedback">{{ error }}</div>
-                {% endfor %} {% else %}
-                <div class="invalid-feedback">Please enter your email.</div>
-                {% endif %}
+                <div class="invalid-feedback" id="email-feedback">
+                  {% if email_errors %}
+                    {{ email_errors|join('<br>')|safe }}
+                  {% else %}
+                    Please enter your email.
+                  {% endif %}
+                </div>
               </div>
 
+              {% set password_errors = form_group.get('password').errors %}
               <!-- Password -->
               <div class="mb-3">
                 <label for="password" class="form-label"
@@ -47,14 +52,17 @@ content %}
                   id="password"
                   required
                   aria-required="true"
-                  class="form-control {% if form_group.get('password').errors %}is-invalid{% endif %}"
-                  value="{{ form_group.get('password').value }}"
+                  class="form-control {% if password_errors %}is-invalid{% endif %}"
+                  aria-invalid="{{ 'true' if password_errors else 'false' }}"
+                  aria-describedby="password-feedback"
                 />
-                {% if not form_group.get('password').errors %}
-                <div class="invalid-feedback">Please enter your password.</div>
-                {% endif %} {% for error in form_group.get('password').errors %}
-                <div class="invalid-feedback">{{error}}</div>
-                {% endfor %}
+                <div class="invalid-feedback" id="password-feedback">
+                  {% if password_errors %}
+                    {{ password_errors|join('<br>')|safe }}
+                  {% else %}
+                    Please enter your password.
+                  {% endif %}
+                </div>
               </div>
 
               <!-- Submit Button -->

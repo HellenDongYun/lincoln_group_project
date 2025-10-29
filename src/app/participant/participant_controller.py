@@ -189,10 +189,11 @@ def create_group_applyform(encoded_participant_id: str):
         )
 
     if request.method == "POST":
-        name = request.form.get("groupName")
-        town = request.form.get("location")
-        visibility = request.form.get("privacy")
-        description = request.form.get("description")
+        name = request.form.get("groupName", "").strip()
+        town = request.form.get("location", "").strip()
+        visibility = request.form.get("privacy", "").strip()
+        description = request.form.get("description", "").strip()
+        form_errors: dict[str, str] = {}
 
         application = {
             "proposed_name": name,
@@ -201,16 +202,20 @@ def create_group_applyform(encoded_participant_id: str):
             "proposed_description": description,
         }
 
-        if not name or not town or not visibility:
-            flash(
-                "Please fill in all required fields: group name, location, and visibility.",
-                "danger",
-            )
+        if not name:
+            form_errors["groupName"] = "Please enter a group name."
+        if not town:
+            form_errors["location"] = "Please enter the primary location for the group."
+        if not visibility:
+            form_errors["privacy"] = "Select who can discover and join your group."
+
+        if form_errors:
             return render_template(
                 "participant/create_group_form.html",
                 encoded_participant_id=encoded_participant_id,
                 application=application,
                 is_edit_mode=is_edit_mode,
+                form_errors=form_errors,
             )
 
         try:
@@ -233,12 +238,20 @@ def create_group_applyform(encoded_participant_id: str):
             )
         except ValueError as error:
             flash(str(error), "danger")
+            return render_template(
+                "participant/create_group_form.html",
+                encoded_participant_id=encoded_participant_id,
+                application=application,
+                is_edit_mode=is_edit_mode,
+                form_errors=form_errors,
+            )
 
     return render_template(
         "participant/create_group_form.html",
         encoded_participant_id=encoded_participant_id,
         application=application,
         is_edit_mode=is_edit_mode,
+        form_errors={},
     )
 
 

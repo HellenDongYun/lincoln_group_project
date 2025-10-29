@@ -1004,7 +1004,7 @@ class GroupRepository(Repository):
 
     @staticmethod
     def check_existing_join_request(cursor, user_id, group_id):
-        """Check if user already has pending request"""
+        """Return the pending join request identifier if one exists."""
         cursor.execute("""
             SELECT id FROM Group_Join_Requests
             WHERE user_id = %s AND group_id = %s AND status = 'pending'
@@ -1024,9 +1024,6 @@ class GroupRepository(Repository):
         """, (request_id,))
         return cursor.fetchone()
     
-    
-
-# === new add delete method ===
     @staticmethod
     def get_pending_request_by_user_group(cursor, user_id, group_id):
         """Get pending join request for specific user and group"""
@@ -1062,15 +1059,6 @@ class GroupRepository(Repository):
             ORDER BY gjr.created_at DESC
         """, (user_id,))
         return cursor.fetchall()
-    
-    @staticmethod
-    def check_existing_join_request(cursor, user_id, group_id):
-        """Check if user already has pending request - 保持原有方法"""
-        cursor.execute("""
-            SELECT id FROM Group_Join_Requests
-            WHERE user_id = %s AND group_id = %s AND status = 'pending'
-        """, (user_id, group_id))
-        return cursor.fetchone()
 
     @staticmethod
     def create_notification(cursor, user_id, notification_type, reference_id, message):

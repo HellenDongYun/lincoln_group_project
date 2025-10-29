@@ -1,5 +1,8 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
+
+from flask import current_app
 
 from src.app.common.db.cursor import get_cursor
 from src.app.group.group_repository import GroupRepository
@@ -11,6 +14,16 @@ from src.app.user.user import (
     GroupVisibility,
     GroupStatus,
 )
+
+
+@dataclass(frozen=True)
+class JoinGroupOutcome:
+    """Result metadata for a participant attempting to join a group."""
+
+    joined: bool
+    category: str
+    message: str
+    redirect_to_landing: bool = False
 
 
 class GroupService:
@@ -168,6 +181,72 @@ class GroupService:
 
             # Private or unknown visibility require manual approval
             return False
+
+    @staticmethod
+    def attempt_join_group(group_id, user_id, is_super_admin=False):
+        """Attempt to join a group and return structured outcome data."""
+        with get_cursor() as cursor:
+            group = GroupRepository.get_group_by_id(cursor, group_id)
+
+            if not group:
+                return JoinGroupOutcome(
+                    joined=False,
+                    category='error',
+                    message='Group not found or unavailable.',
+                    redirect_to_landing=True,
+                )
+
+            visibility_value = (group.get('visibility') or '').strip().lower()
+
+            try:
+                visibility = GroupVisibility(visibility_value)
+            except ValueError:
+                current_app.logger.warning(
+                    'Group %s returned invalid visibility value %r',
+                    group_id,
+                    visibility_value,
+                )
+                visibility = GroupVisibility.PRIVATE
+
+            if GroupRepository.is_group_member(cursor, group_id, user_id):
+                return JoinGroupOutcome(
+                    joined=False,
+                    category='info',
+                    message='You are already a member of this group.',
+                )
+
+            if visibility != GroupVisibility.PUBLIC and not is_super_admin:
+                return JoinGroupOutcome(
+                    joined=False,
+                    category='warning',
+                    message='This group requires a request to join.',
+                )
+
+            try:
+                GroupRepository.add_group_member(cursor, group_id, user_id, 'member')
+            except ValueError as exc:
+                return JoinGroupOutcome(
+                    joined=False,
+                    category='warning',
+                    message=str(exc) or 'Unable to join this group right now.',
+                )
+            except Exception:
+                current_app.logger.exception(
+                    'Failed to add member %s to group %s',
+                    user_id,
+                    group_id,
+                )
+                return JoinGroupOutcome(
+                    joined=False,
+                    category='error',
+                    message='Error joining group. Please try again later.',
+                )
+
+            return JoinGroupOutcome(
+                joined=True,
+                category='success',
+                message='Successfully joined the group!',
+            )
 
     # Group Applications
     @staticmethod
@@ -1214,54 +1293,41 @@ class GroupService:
             return result['count'] > 0 if result else False
         
         
-    # from here is the new code added cancel join priovate group
     @staticmethod
     def cancel_join_request(group_id, user_id):
-        """
-        Cancel a pending join request
-        """
+        """Cancel the current user's pending join request for the given group."""
         try:
             with get_cursor() as cursor:
-                print(f"🔍 DEBUG: Searching pending request for user_id={user_id}, group_id={group_id}")
-                
                 pending_request = GroupRepository.get_pending_request_by_user_group(
                     cursor, user_id, group_id
                 )
-                
-                print(f"🔍 DEBUG: Query result: {pending_request}")
-                
+
                 if not pending_request:
-                    print("❌ DEBUG: No pending request found")
                     return {
                         'success': False,
                         'message': 'No pending join request found for this group'
                     }
-                
-                print(f"✅ DEBUG: Found pending request with ID: {pending_request['id']}")
-                
-                # 使用 Repository 方法删除请求
-                success = GroupRepository.delete_join_request(cursor, pending_request['id'])
-                print(f"🔍 DEBUG: Delete operation result: {success}")
-                
-                if success:
-                    print("✅ DEBUG: Transaction committed successfully")
+
+                was_deleted = GroupRepository.delete_join_request(cursor, pending_request['id'])
+
+                if was_deleted:
                     return {
                         'success': True,
                         'message': 'Your join request has been cancelled successfully'
                     }
-                else:
-                    print("❌ DEBUG: Delete operation failed")
-                    return {
-                        'success': False,
-                        'message': 'Failed to cancel join request'
-                    }
-                        
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
+
+                return {
+                    'success': False,
+                    'message': 'Failed to cancel join request'
+                }
+
+        except Exception as exc:
+            current_app.logger.exception(
+                'Failed to cancel join request for user %s in group %s', user_id, group_id
+            )
             return {
                 'success': False,
-                'message': f'An error occurred: {str(e)}'
+                'message': f'An error occurred: {str(exc)}'
             }
     
     @staticmethod
@@ -1276,8 +1342,10 @@ class GroupService:
                 )
                 return pending_request is not None
                     
-        except Exception as e:
-            print(f"Error checking cancel permission: {str(e)}")
+        except Exception as exc:
+            current_app.logger.exception(
+                'Error checking cancel permission for user %s in group %s', user_id, group_id
+            )
             return False
     
     @staticmethod
@@ -1289,6 +1357,8 @@ class GroupService:
             with get_cursor() as cursor:
                 return GroupRepository.get_user_pending_requests(cursor, user_id)
                     
-        except Exception as e:
-            print(f"Error getting user pending requests: {str(e)}")
+        except Exception as exc:
+            current_app.logger.exception(
+                'Error fetching pending join requests for user %s', user_id
+            )
             return []
