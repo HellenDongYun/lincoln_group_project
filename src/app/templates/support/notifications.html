@@ -68,23 +68,6 @@
         </a>
         {% endfor %}
     </div>
-    {% else %}
-    <!-- Empty State -->
-    <div class="text-center py-5">
-        <i class="bi bi-bell-slash display-1 text-muted mb-3"></i>
-        <h3 class="text-muted">No Notifications</h3>
-        <p class="text-muted mb-4">You're all caught up! You'll receive notifications here when:</p>
-        <ul class="list-unstyled text-muted">
-            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>A support request is assigned to you</li>
-            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your request status changes</li>
-            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Someone comments on your request</li>
-            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your request is unassigned</li>
-            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Your group join request is approved or rejected</li>
-        </ul>
-        <a href="{{ url_for('support.my_requests') }}" class="btn btn-primary mt-3">
-            <i class="bi bi-ticket-detailed me-2"></i>View My Requests
-        </a>
-    </div>
     {% endif %}
 </div>
 {% endblock %}

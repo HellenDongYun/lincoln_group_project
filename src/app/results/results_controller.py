@@ -307,7 +307,7 @@ def remove_results(event_id):
 @results_blueprint.route("/record", methods=["GET", "POST"])
 @require_volunteer_or_manager
 def record_time():
-    """Record completion time by participant ID - volunteers and managers only"""
+    #Record completion time by participant ID
     user_id = auth_service.get_user_id()
     is_super_admin = auth_service.is_super_admin()
 
