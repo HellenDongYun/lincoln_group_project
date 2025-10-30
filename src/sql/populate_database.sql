@@ -2,7 +2,7 @@ USE TeamAmberProject$activeloop;
 
 
 -- Users (1 super admin + participants)
--- super.admin@platform.org	Super123!
+-- super.admin@platform.org	Super123!  (Super Admin can perform the same action as the supprt technichian as per the requirement)
 -- alice.wong@gmail.com	Alice123!
 -- bob.jones@outlook.com	Bob123!
 -- carol.smith@yahoo.com	Carol123!

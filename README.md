@@ -6,7 +6,7 @@ hosting on PythonAnywhere https://www.pythonanywhere.com/user/TeamAmberProject2
 
 
 ## Test User Accounts
-- Super Admin: super.admin@platform.org, Password: Super123!
+- Super Admin: super.admin@platform.org, Password: Super123! (Super Admin can perform the same action as the supprt technichian as per the requirement)
 - Support tech: support.tech@platform.org , Password: Support123!
 - Participant 1 (manager Darfield): alice.wong@gmail.com, Password: Alice123!
 - Participant 2 (manager Harbour Runners): bob.jones@outlook.com , Password: Bob123!
