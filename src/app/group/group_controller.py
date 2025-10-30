@@ -517,6 +517,30 @@ def _build_event_assignment_payload(group_id, event_id):
     snapshot = GroupService.get_event_assignment_snapshot(group_id, event_id)
     event_obj = snapshot.get('event')
 
+    def _normalize_requirement(requirement):
+        if isinstance(requirement, dict):
+            normalized = dict(requirement)
+            raw_spots = normalized.get('spots')
+            normalized['role_id'] = normalized.get('role_id') or normalized.get('task_id')
+            normalized.setdefault('name', normalized.get('role_name'))
+            normalized.setdefault('description', '')
+        else:
+            normalized = {
+                'role_id': getattr(requirement, 'role_id', getattr(requirement, 'task_id', None)),
+                'name': getattr(requirement, 'name', getattr(requirement, 'role_name', None)),
+                'description': getattr(requirement, 'description', ''),
+                'spots': getattr(requirement, 'spots', None)
+            }
+            raw_spots = normalized['spots']
+
+        try:
+            spots_value = int(raw_spots) if raw_spots is not None else None
+        except (TypeError, ValueError):
+            spots_value = None
+
+        normalized['spots'] = spots_value
+        return normalized, max(spots_value or 0, 0)
+
     event_datetime = None
     if event_obj is None:
         event_meta = {
@@ -559,11 +583,21 @@ def _build_event_assignment_payload(group_id, event_id):
             max_participants = None
     event_meta['max_participants'] = max_participants
 
+    raw_requirements = snapshot.get('volunteer_requirements', []) or []
+    normalized_requirements = []
+    total_required = 0
+
+    for item in raw_requirements:
+        normalized, spots_increment = _normalize_requirement(item)
+        total_required += spots_increment
+        normalized_requirements.append(normalized)
+
     return {
         'event': event_meta,
         'participants': snapshot.get('participants', []),
-        'volunteer_requirements': snapshot.get('volunteer_requirements', []),
-        'volunteer_assignments': snapshot.get('volunteer_assignments', [])
+        'volunteer_requirements': normalized_requirements,
+        'volunteer_assignments': snapshot.get('volunteer_assignments', []),
+        'volunteer_required_total': total_required
     }
 
 
