@@ -10,9 +10,11 @@
                 <h1 class="display-5 text-white">Support Request #{{ support_request.id }}</h1>
                 <p class="display-6 text-white">{{ support_request.subject }}</p>
             </div>
+            {% if is_super_admin or is_participant %}
             <a href="{{ url_for('support.support_queue') }}" class="btn btn-outline-light">
                 <i class="bi bi-list-ul me-2"></i>Back to Support Queue
             </a>
+            {% endif %}
             <a href="{{ url_for('support.my_requests') }}" class="btn btn-outline-light">
                 <i class="bi bi-arrow-left me-2"></i>Back to My Requests
             </a>
