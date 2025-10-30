@@ -22,7 +22,6 @@
 </div>
 
 <div class="container-fluid py-4">
-    <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-2">
             <div class="card border-0 shadow-sm">
@@ -74,7 +73,6 @@
         </div>
     </div>
 
-    <!-- Filters -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <form method="GET" action="{{ url_for('support.support_queue') }}" class="row g-3">
@@ -139,7 +137,6 @@
         </div>
     </div>
 
-    <!-- Requests Table -->
     {% if requests %}
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
@@ -266,7 +263,6 @@
         </div>
     </div>
     {% else %}
-    <!-- Empty State -->
     <div class="card border-0 shadow-sm">
         <div class="card-body text-center py-5">
             <i class="bi bi-inbox display-1 text-muted mb-3"></i>

@@ -86,7 +86,6 @@ def new_request():
     # GET request
     return render_template('support/new_request.html', form_data={})
 
-
 @support_blueprint.route('/my-requests')
 @require_login
 def my_requests():
@@ -125,7 +124,6 @@ def view_request(request_id):
                           is_staff=is_staff,
                           staff_list=staff_list,
                           current_user_id=user_id)
-
 
 @support_blueprint.route('/request/<int:request_id>/comment', methods=['POST'])
 @require_login
@@ -271,7 +269,6 @@ def take_request(request_id):
 
     return redirect(request.referrer or url_for('support.view_request', request_id=request_id))
 
-
 @support_blueprint.route('/request/<int:request_id>/drop', methods=['POST'])
 @require_support_staff
 def drop_request(request_id):
@@ -290,7 +287,6 @@ def drop_request(request_id):
         flash(f"An error occurred: {str(e)}", "danger")
 
     return redirect(url_for('support.support_queue'))
-
 
 @support_blueprint.route('/request/<int:request_id>/assign', methods=['POST'])
 @require_support_staff
@@ -315,7 +311,6 @@ def assign_request(request_id):
         flash(f"An error occurred: {str(e)}", "danger")
 
     return redirect(request.referrer or url_for('support.view_request', request_id=request_id))
-
 
 @support_blueprint.route('/request/<int:request_id>/update-status', methods=['POST'])
 @require_support_staff
@@ -352,7 +347,6 @@ def update_status(request_id):
 
     return redirect(url_for('support.view_request', request_id=request_id))
 
-
 @support_blueprint.route('/request/<int:request_id>/reopen', methods=['POST'])
 @require_login
 def reopen_request(request_id):
@@ -371,7 +365,6 @@ def reopen_request(request_id):
         flash(f"An error occurred: {str(e)}", "danger")
 
     return redirect(url_for('support.view_request', request_id=request_id))
-
 
 @support_blueprint.route('/request/<int:request_id>/close', methods=['POST'])
 @require_login
@@ -392,7 +385,6 @@ def close_request(request_id):
 
     return redirect(url_for('support.my_requests'))
 
-
 @support_blueprint.route('/notifications')
 @require_login
 def notifications():
@@ -404,7 +396,6 @@ def notifications():
     return render_template('support/notifications.html',
                          notifications=all_notifications,
                          unread_count=unread_count)
-
 
 @support_blueprint.route('/notifications/<int:notification_id>/mark-read', methods=['GET', 'POST'])
 @require_login
@@ -435,7 +426,6 @@ def mark_notification_read(notification_id):
     except Exception as e:
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('support.notifications'))
-
 
 @support_blueprint.route('/notifications/mark-all-read', methods=['POST'])
 @require_login
