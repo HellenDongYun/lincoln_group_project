@@ -1,18 +1,13 @@
 # COMP639_Project_2_Amber
 
-Access here https://teamamberproject2.pythonanywhere.com/
 
-hosting on PythonAnywhere https://www.pythonanywhere.com/user/TeamAmberProject2
+
+
 
 ## Test User Accounts
 
-- Super Admin: super.admin@platform.org, Password: Super123! (Super Admin can perform the same action as the supprt technichian as per the requirement)
-- Support tech: support.tech@platform.org , Password: Support123!
-- Participant 1 (manager Darfield): alice.wong@gmail.com, Password: Alice123!
-- Participant 2 (manager Harbour Runners): bob.jones@outlook.com , Password: Bob123!
-- Participant 3: carol.smith@yahoo.com , Password: Carol123!
-- Participant 4: dave.brown@xtra.co.nz , Password: Dave123!
-- Participant 5: emma.taylor@gmail.com , Password: Emma123!
+Demo deployment link available upon request.
+Demo accounts are available for testing purposes. Credentials can be provided upon request.
 
 ## Technical Stack
 
@@ -33,12 +28,6 @@ The steps below walk through deploying ActiveLoop on **PythonAnywhere** account.
 - Choose **Python 3.11** (or the latest supported) when prompted for the virtualenv runtime.
 - On the **Databases** tab, create a new MySQL database. PythonAnywhere provisions a database named `<username>$activeloop` with credentials you define.
 
-Record the following values—they are required later:
-
-- Database host: `<username>.mysql.pythonanywhere-services.com`
-- Database name: `<username>$activeloop`
-- Database user: `<username>` (or another you create)
-- Database password: (set during database creation)
 
 ### 2. Upload the application code
 
@@ -65,42 +54,7 @@ PythonAnywhere offers two options:
   ```
 - Back in the Web tab, point the web app to this virtual environment (`/home/<username>/.virtualenvs/activeloop`).
 
-### 4. Configure database credentials
-
-- Duplicate `connect.py` so you keep a template for local development:
-  ```bash
-  cp connect.py connect.local.py
-  ```
-- Edit `connect.py` to reflect the PythonAnywhere MySQL endpoint (use `nano` or the online editor):
-  ```python
-  dbuser = '<username>'
-  dbpass = '<database_password>'
-  dbhost = '<username>.mysql.pythonanywhere-services.com'
-  dbport = 3306
-  dbname = '<username>$activeloop'
-  ```
-
-### 5. Initialise the database schema
-
-- Open a MySQL console from the Databases tab or via Bash:
-  ```bash
-  mysql -u <username> -h <username>.mysql.pythonanywhere-services.com -p
-  ```
-- At the MySQL prompt, select the new database and load the scripts:
-  ```sql
-  USE `<username>$activeloop`;
-  SOURCE /home/<username>/activeloop/src/sql/create_database.sql;
-  SOURCE /home/<username>/activeloop/src/sql/populate_database.sql;
-  ```
-- Exit the MySQL shell. The seed scripts provision sample data including the test accounts listed earlier.
-
-### 6. Reload and verify
-
-- Click **Reload** on the Web tab.
-- Visit `https://<username>.pythonanywhere.com/` and log in as `super.admin@platform.org` (password `Super123!`).
-- Navigate to `/results/upload` and `/results/record` to confirm that group managers can manage results for their own events.
-
-### 6. run the web
+### 4. run the web
 
 - python run.py
 
